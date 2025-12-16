@@ -7,7 +7,7 @@ import NewsletterCard, { NewsletterEntry } from "@/components/NewsletterCarousel
 interface CarouselProps {
   title: string;
   items: NewsletterEntry[];
-  showArrows?: boolean; // <--- NEW PROP
+  showArrows?: boolean; 
 }
 
 export default function NewsletterCarousel({
@@ -15,6 +15,9 @@ export default function NewsletterCarousel({
   items = [],
   showArrows = true,
 }: CarouselProps) {
+  // 🔥 Create a slug-safe ID from the title
+  const carouselId = `carousel-${title.toLowerCase().replace(/\s+/g, "-")}`;
+
   // Needed so arrows scroll the carousel
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -28,7 +31,10 @@ export default function NewsletterCarousel({
   };
 
   return (
-    <div className="flex flex-col gap-4 w-full relative">
+    <div
+      id={carouselId}   // <-- 🔥 NEW ID HERE
+      className="flex flex-col gap-4 w-full relative"
+    >
       {/* Title */}
       <h3 className="text-[24px] ml-2 font-semibold leading-[28px] text-[#0F0F0F]">
         {title}
@@ -39,7 +45,7 @@ export default function NewsletterCarousel({
         {/* LEFT ARROW */}
         {showArrows && (
           <button
-            className="absolute left-0 top-1/2 -translate-y-1/2 z-20 bg-black rounded-full shadow-md "
+            className="absolute left-0 top-1/2 -translate-y-1/2 z-20 bg-black rounded-full shadow-md"
             onClick={() => scroll("left")}
           >
             <Image
@@ -67,7 +73,7 @@ export default function NewsletterCarousel({
         {/* RIGHT ARROW */}
         {showArrows && (
           <button
-            className="absolute right-0 top-1/2 -translate-y-1/2 z-20 bg-black rounded-full shadow-md "
+            className="absolute right-0 top-1/2 -translate-y-1/2 z-20 bg-black rounded-full shadow-md"
             onClick={() => scroll("right")}
           >
             <Image

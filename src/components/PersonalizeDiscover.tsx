@@ -16,7 +16,7 @@ export default function PersonalizeDiscover() {
     { label: "Design", active: false },
   ];
 
-  const initialCount = 7; // number of items to show initially
+  const initialCount = 7;
   const [interests, setInterests] = useState(allInterests);
   const [showMore, setShowMore] = useState(false);
 
@@ -30,20 +30,32 @@ export default function PersonalizeDiscover() {
 
   const hasSelected = interests.some(i => i.active);
 
-  // slice list into visible and hidden
   const visibleItems = showMore
-    ? interests // show all
+    ? interests
     : interests.slice(0, initialCount);
 
   return (
-    <div className="bg-white border border-[#E5E7EB] rounded-xl p-6 shadow-sm flex flex-col gap-4">
+    <div
+      className="
+        /* MOBILE – remove borders, bg, padding, shadow */
+        bg-transparent border-none shadow-none p-0 rounded-none
+
+        /* DESKTOP – restore original card styles */
+        md:bg-white md:border md:border-[#E5E7EB] 
+        md:rounded-xl md:p-6 md:shadow-sm
+
+        flex flex-col gap-4
+        items-center text-center 
+        md:items-start md:text-left
+      "
+    >
 
       {/* Title */}
       <h3
         className="
-          flex items-center gap-2 ml-2
-          text-[26px] leading-[28px] font-medium
-          text-black font-['Helvetica_Neue']
+          flex items-center gap-2 
+          text-[26px] leading-[28px] font-medium text-black font-['Helvetica_Neue']
+          justify-center md:justify-start
         "
       >
         <img src="/icons/personalizedDiscover-icon.png" className="w-6 h-6" />
@@ -53,17 +65,21 @@ export default function PersonalizeDiscover() {
       {/* Subtitle */}
       <p
         className="
-          text-[14px] leading-[16px] ml-8
-          font-normal font-['Helvetica_Neue']
-          text-[#A2AAB4]
+          text-[14px] leading-[16px] font-normal font-['Helvetica_Neue'] text-[#A2AAB4]
+          text-center md:text-left
         "
       >
         Select your interests to customize your Discover experience
       </p>
 
       {/* Pills container */}
-      <div className="flex flex-wrap items-center ml-8 gap-2">
-
+      <div
+        className="
+          flex flex-wrap items-center gap-2
+          justify-center 
+          md:justify-start
+        "
+      >
         {/* Visible items */}
         {visibleItems.map((item, i) => (
           <span
@@ -81,7 +97,7 @@ export default function PersonalizeDiscover() {
           </span>
         ))}
 
-        {/* Show More / Less should come exactly at the end of list */}
+        {/* Show More / Less */}
         {interests.length > initialCount && (
           <span
             onClick={() => setShowMore(!showMore)}
@@ -103,7 +119,7 @@ export default function PersonalizeDiscover() {
         <button
           disabled={!hasSelected}
           className={[
-            "px-6 py-3 rounded-full w-max-[240px] w-[240px] text-[16px] leading-[30px] font-medium font-['Helvetica_Neue'] transition",
+            "px-6 py-3 rounded-full w-[240px] text-[16px] leading-[30px] font-medium font-['Helvetica_Neue'] transition",
             hasSelected
               ? "bg-[#C46A54] text-white cursor-pointer"
               : "bg-[#E5E7EB] text-[#A2AAB4] cursor-not-allowed"

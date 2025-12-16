@@ -8,8 +8,8 @@ import ThemeToggle from "@/components/ThemeToggle";
 
 export default function Navbar() {
   return (
-    <header className="w-full px-4 md:px-10 py-4">
-      <div className="flex items-center justify-between w-full gap-4">
+    <header className="w-full px-4 md:px-10">
+      <div className="flex items-center justify-between mt-2 w-full gap-4">
 
         <LogoSection />
 

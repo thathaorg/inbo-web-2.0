@@ -18,51 +18,50 @@ export default function PublicationItem({
   desc,
   onClick
 }: PublicationItemProps) {
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobileOrTablet, setIsMobileOrTablet] = useState(false);
 
   useEffect(() => {
-    const checkSize = () => setIsMobile(window.innerWidth < 768);
+    const checkSize = () => setIsMobileOrTablet(window.innerWidth <= 1024); // <1024 = mobile + tablet
     checkSize();
     window.addEventListener("resize", checkSize);
     return () => window.removeEventListener("resize", checkSize);
   }, []);
 
   return (
-    <div className="flex items-center justify-between bg-white p-4 border border-[#E5E7EB] rounded-2xl shadow-sm w-full max-l-6 relative z-10">
-
+    <div
+      className={`
+        flex items-center justify-between bg-white p-4 border border-[#E5E7EB]
+        rounded-2xl shadow-sm w-full relative z-10
+        ${isMobileOrTablet ? "cursor-pointer" : ""}
+      `}
+      onClick={isMobileOrTablet ? onClick : undefined}
+    >
       {/* Left Section */}
       <div className="flex items-center gap-4">
-        {/* Rank */}
+
         <span className="
-          w-6 flex-shrink-0
-          text-[22px] leading-[30px] font-semi-bold
-          text-[#0C1014]
-          font-['Helvetica_Neue']
+          w-6 flex-shrink-0 text-[22px] leading-[30px]
+          font-semibold text-[#0C1014] font-['Helvetica_Neue']
         ">
           {rank}
         </span>
 
-        {/* Logo */}
         <img
           src={logo}
           alt={name}
           className="w-12 h-12 rounded-full object-cover pointer-events-none"
         />
 
-        {/* Name + Description */}
         <div className="flex flex-col">
-
           <p className="
-            text-[20px] leading-[30px] font-medium
-            text-black
+            text-[20px] leading-[30px] font-medium text-black
             font-['Helvetica_Neue']
           ">
             {name}
           </p>
 
           <p className="
-            text-[16px] leading-[20px] font-normal
-            text-[#A2AAB4]
+            text-[16px] leading-[20px] text-[#A2AAB4]
             font-['Helvetica_Neue']
           ">
             {desc}
@@ -71,32 +70,29 @@ export default function PublicationItem({
       </div>
 
       {/* Right Section */}
-      {isMobile ? (
-        <button
-          onClick={onClick}
-          className="
-            max-w-8 max-h-8 rounded-2xl
-            border border-[#E5E7EB] 
-            flex items-center justify-center
-            hover:bg-gray-100 transition
-          "
-        >
-          <ChevronRight />
-        </button>
+      {isMobileOrTablet ? (
+        <div className="pointer-events-none">
+          {/* This shows Chevron icon but does NOT override card click */}
+          <div
+            className="
+              max-w-8 max-h-8 rounded-2xl border border-[#E5E7EB]
+              flex items-center justify-center
+            "
+          >
+            <ChevronRight />
+          </div>
+        </div>
       ) : (
         <button
-          onClick={onClick}
+          onClick={(e) => {
+            e.stopPropagation(); // prevent clicking entire card on desktop
+            onClick?.();
+          }}
           className="
-            max-w-24 max-h-8
-            flex items-center justify-center
-            rounded-2xl
-            p-2
-            border border-[#E5E7EB]
-            text-[14px] leading-[16px] font-medium
-            text-[#0C1014]
-            font-['Helvetica_Neue']
-            hover:bg-gray-100 transition
-            whitespace-nowrap
+            max-w-24 max-h-8 flex items-center justify-center rounded-2xl p-2
+            border border-[#E5E7EB] text-[14px] leading-[16px] font-medium
+            text-[#0C1014] font-['Helvetica_Neue']
+            hover:bg-gray-100 transition whitespace-nowrap
           "
         >
           see details

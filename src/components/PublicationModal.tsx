@@ -1,15 +1,18 @@
 "use client";
 
-import { useEffect,useState } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
-import { X, Share2, Bookmark } from "lucide-react";
+import { X, Bookmark } from "lucide-react";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 
-interface Publication {
+export interface Publication {
   rank: number;
   logo: string;
   name: string;
   desc: string;
+  description: string;
+  frequency: string;
 }
 
 export default function PublicationModal({
@@ -22,6 +25,10 @@ export default function PublicationModal({
   publication: Publication | null;
 }) {
   const [filled, setFilled] = useState(false);
+
+  // 🔥 Detect mobile (full screen)
+  const isMobile = useMediaQuery("(max-width: 768px)");
+
   useEffect(() => {
     document.body.style.overflow = isOpen ? "hidden" : "";
     return () => {
@@ -30,45 +37,42 @@ export default function PublicationModal({
   }, [isOpen]);
 
   if (!isOpen || !publication) return null;
-  
 
   const handlecollectionClick = () => {
     setFilled(!filled);
     toast.success("Added to Collections");
   };
+
   const modal = (
     <div
-      className="
+      className={`
         fixed inset-0 
         bg-black/20
-        flex justify-end items-end
-        z-[999999]
-        p-4
-      "
+        flex z-[999999]
+
+        ${isMobile
+          ? "justify-center items-center p-0"       /* FULLSCREEN MOBILE */
+          : "justify-end items-end p-4"}            /* BOTTOM SHEET DESKTOP */
+      `}
       onClick={onClose}
     >
-      {/* BOTTOM SHEET */}
       <div
         onClick={(e) => e.stopPropagation()}
-        className="
-          w-full
-          h-full
+        className={`
           bg-white
-          p-4 pt-6
           flex flex-col
           overflow-hidden
           animate-[slideUp_0.25s_ease-out_forwards]
+          w-full
 
-          /* Desktop bottom-sheet */
-          md:max-w-sm
-          md:rounded-2xl
-          md:h-auto
-          md:max-h-[70vh]
-        "
+          ${isMobile
+            ? "h-full rounded-none p-4 pt-6"        /* MOBILE FULLSCREEN */
+            : "h-auto max-h-[70vh] md:max-w-sm p-4 pt-6 rounded-2xl"} /* DESKTOP SHEET */
+        `}
       >
         {/* SCROLLABLE CONTENT */}
         <div className="flex-1 overflow-y-auto scrollbar-hide">
-
+          
           {/* HEADER */}
           <div className="flex items-center justify-between w-full mb-4">
             <button onClick={onClose}>
@@ -76,8 +80,8 @@ export default function PublicationModal({
             </button>
 
             <div className="flex items-center gap-5">
-              <img src="/icons/campus-icon.png" alt="navigation" className="w-7 h-7"/>
-              <img src="/icons/share-icon.png" alt="share" className="w-7 h-7"/>
+              <img src="/icons/campus-icon.png" alt="navigation" className="w-7 h-7" />
+              <img src="/icons/share-icon.png" alt="share" className="w-7 h-7" />
             </div>
           </div>
 
@@ -104,15 +108,14 @@ export default function PublicationModal({
             {publication.desc}
           </p>
 
-          {/* SUBSCRIBE ROW */}
+          {/* SUBSCRIBE + BOOKMARK */}
           <div className="flex items-center gap-3 w-full mb-6">
             <button
               onClick={() => toast.success("Subscription saved!")}
               className="
                 cursor-pointer
                 group
-                flex-1
-                h-[40px]
+                flex-1 h-[40px]
                 bg-[#0C1014]
                 text-white
                 rounded-full
@@ -153,18 +156,17 @@ export default function PublicationModal({
             >
               <Bookmark
                 strokeWidth={2}
-                className="w-6 h-6 text-[#0C1014] transition-all duration-200"
+                className="w-6 h-6 text-[#0C1014]"
                 fill={filled ? "#0C1014" : "transparent"}
               />
             </button>
           </div>
 
-          {/* LATEST HEADER */}
+          {/* LATEST */}
           <h3 className="text-[16px] font-medium text-[#6F7680] mb-3">
             Latest
           </h3>
 
-          {/* LATEST LIST */}
           <div className="space-y-3">
             {[
               {
@@ -206,16 +208,12 @@ export default function PublicationModal({
                   bg-white
                 "
               >
-                {/* DATE ROW */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-[#6A7282] text-[14px]">
-                    {article.date}
-                    <div className="w-1.5 h-1.5 bg-[#6A7282] rounded-full" />
-                    {article.time}
-                  </div>
+                <div className="flex items-center gap-2 text-[#6A7282] text-[14px]">
+                  {article.date}
+                  <div className="w-1.5 h-1.5 bg-[#6A7282] rounded-full" />
+                  {article.time}
                 </div>
 
-                {/* TITLE + IMAGE */}
                 <div className="flex items-center gap-2">
                   <div className="flex-1 text-[16px] font-medium text-[#1C1C1C]">
                     {article.title}
@@ -224,11 +222,10 @@ export default function PublicationModal({
                   <img
                     src={article.img}
                     className="w-[84px] h-[54px] rounded-[12px] object-cover"
-                    alt="Article thumbnail"
+                    alt="Article image"
                   />
                 </div>
 
-                {/* DESCRIPTION */}
                 <p className="text-[14px] text-[#6F7680] leading-4">
                   {article.desc}
                 </p>
@@ -238,7 +235,7 @@ export default function PublicationModal({
         </div>
       </div>
 
-      {/* GLOBAL STYLE FOR HIDING SCROLLBAR + FORCING OUTLINE-ONLY ICONS */}
+      {/* GLOBAL STYLES */}
       <style>{`
         .scrollbar-hide::-webkit-scrollbar {
           display: none;
@@ -246,9 +243,6 @@ export default function PublicationModal({
         .scrollbar-hide {
           -ms-overflow-style: none;
           scrollbar-width: none;
-        }
-        .fill-transparent {
-          fill: transparent !important;
         }
 
         @keyframes slideUp {

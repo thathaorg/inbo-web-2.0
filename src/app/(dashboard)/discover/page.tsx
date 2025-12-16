@@ -1,9 +1,9 @@
 "use client";
-import { RefreshCw } from "lucide-react";
 import InterestedIn from "@/components/InterestedIn";
 import NewsletterCarousel from "@/components/NewsletterCarousel";
 import PublicationList from "@/components/PublicationList";
 import PersonalizeDiscover from "@/components/PersonalizeDiscover";
+import MobileDiscoverSection from "./MobileDiscoverSection";
 
 export default function DiscoverPage() {
     const forYouItems = [
@@ -131,37 +131,44 @@ const cryptoItems = [
 ];
 
   return (
-    <div className="flex flex-col w-full">
+      <div className="flex flex-col w-full">
 
-      {/* ========== CONTAINER 1: HEADER ========== */}
-      <div className="w-full">
-        <div className="w-full h-[78px] bg-white  border border-[#E5E7EB] flex items-center justify-between px-6 shadow-sm">
-          <h2 className="text-[26px] font-bold text-[#0C1014]">Discover</h2>
+        {/* ======================= */}
+        {/* MOBILE VERSION (only <768px) */}
+        {/* ======================= */}
+        <MobileDiscoverSection
+          forYouItems={forYouItems}
+          techItems={techItems}
+          cryptoItems={cryptoItems}
+        />
+
+        {/* ======================= */}
+        {/* DESKTOP/TABLET VERSION */}
+        {/* ======================= */}
+        <div className="hidden md:block w-full">
+          {/* ========== CONTAINER 1: HEADER ========== */}
+          <div className="w-full">
+            <div className="w-full h-[78px] bg-white border border-[#E5E7EB] flex items-center justify-between px-6 shadow-sm">
+              <h2 className="text-[26px] font-bold text-[#0C1014]">Discover</h2>
+            </div>
+          </div>
+
+          {/* ========== CONTAINER 2: MAIN CONTENT ========== */}
+          <div className="flex flex-col gap-10 w-full px-6 py-10">
+
+            <InterestedIn />
+
+            <NewsletterCarousel title="For you" items={forYouItems} showArrows={false} />
+
+            <PublicationList title="Popular Publications" />
+
+            <NewsletterCarousel title="Technology" items={techItems} />
+
+            <NewsletterCarousel title="Crypto" items={cryptoItems} />
+
+            <PersonalizeDiscover />
+          </div>
         </div>
       </div>
-
-      {/* ========== CONTAINER 2: MAIN CONTENT ========== */}
-      <div className="flex flex-col gap-10 w-full px-6 py-10">
-
-        {/* INTERESTED IN */}
-        <InterestedIn />
-
-        {/* FOR YOU CAROUSEL */}
-        <NewsletterCarousel title="For you" items={forYouItems} showArrows={false}/>
-
-        {/* POPULAR PUBLICATIONS */}
-        <PublicationList title="Popular Publications" />
-
-        {/* TECHNOLOGY */}
-        <NewsletterCarousel title="Technology" items={techItems}/>
-
-        {/* CRYPTO */}
-        <NewsletterCarousel title="Crypto" items={cryptoItems}/>
-
-        {/* PERSONALIZE SECTION */}
-        <PersonalizeDiscover />
-      </div>
-
-    </div>
-  );
+    );
 }

@@ -1,29 +1,33 @@
 "use client";
 
-import { Menu } from "lucide-react";
-import Image from "next/image";
+import FlameBadge from "../FlameBadge";
+import UserSection from "../UserSection";
 
-export default function MobileHeader({ onMenuClick }: { onMenuClick: () => void }) {
+export default function MobileHeader({
+  title,
+  onMenuClick,
+}: {
+  title: string;
+  onMenuClick: () => void;
+}) {
   return (
-    <header className="flex md:hidden w-full px-4 py-3 bg-white shadow-sm">
-      <div className="flex items-center justify-between w-full">
+    <header className="flex md:hidden w-full px-4 py-3 items-center justify-between">
+      {/* LEFT — Dynamic Title */}
+      <h1 className="text-[26px] font-bold text-[#0C1014]">{title}</h1>
 
-        {/* Mobile menu button */}
-        <button onClick={onMenuClick} className="p-2">
-          <Menu size={26} />
-        </button>
+      {/* RIGHT — Flame + User Icon */}
+      <div className="flex items-center gap-2">
+        
+        {/* FlameBadge box */}
+        <div className="w-8 h-8 flex items-center justify-center">
+          <FlameBadge />
+        </div>
 
-        {/* Logo */}
-        <Image
-          src="/logos/inbo-logo.png"
-          alt="Inbo Logo"
-          width={110}
-          height={40}
-          className="object-contain"
-        />
+        {/* User icon box */}
+        <div className="w-8 h-8 flex items-center justify-center">
+          <UserSection collapsed={true} />
+        </div>
 
-        {/* Optional right side items */}
-        <div className="w-[26px]" />
       </div>
     </header>
   );

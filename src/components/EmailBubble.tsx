@@ -20,7 +20,7 @@ export default function EmailBubble() {
   };
 
   return (
-    <div className="flex items-center gap-2 px-3 py-1 bg-[#F3F4F6] rounded-full">
+    <div className="flex items-center gap-2 px-2 py-1 bg-[#F3F4F6] rounded-full">
       <Image src="/icons/mail-icon.png" width={20} height={20} alt="Mail" />
 
       <span className="text-[16px] text-[#C46A54] font-medium">

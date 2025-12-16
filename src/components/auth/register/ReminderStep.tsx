@@ -1,6 +1,117 @@
 "use client";
 
-import { useState } from "react";
+import {
+  Sunrise,
+  Train,
+  Salad,
+  Moon,
+} from "lucide-react";
+
+import { useState, useRef, useEffect } from "react";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
+
+/* ================= WHEEL ================= */
+
+function Wheel({
+  values,
+  value,
+  onChange,
+}: {
+  values: string[];
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const ITEM_HEIGHT = 48;
+  const PADDING = 3; // MUST match padding count
+
+  const paddedValues = [
+    ...Array(PADDING).fill(""),
+    ...values,
+    ...Array(PADDING).fill(""),
+  ];
+
+  /* ---------- scroll to selected value ---------- */
+  useEffect(() => {
+    if (!ref.current) return;
+
+    const index = values.indexOf(value);
+    if (index === -1) return;
+
+    ref.current.scrollTo({
+      top: (index + PADDING) * ITEM_HEIGHT,
+      behavior: "instant" as ScrollBehavior,
+    });
+  }, [value, values]);
+
+  /* ---------- handle snapping ---------- */
+  useEffect(() => {
+    if (!ref.current) return;
+    const el = ref.current;
+
+    let raf: number | null = null;
+
+    const onScroll = () => {
+      if (raf) cancelAnimationFrame(raf);
+
+      raf = requestAnimationFrame(() => {
+        const rawIndex =
+          Math.round(el.scrollTop / ITEM_HEIGHT) - PADDING;
+
+        const index = Math.max(
+          0,
+          Math.min(values.length - 1, rawIndex)
+        );
+
+        const targetTop = (index + PADDING) * ITEM_HEIGHT;
+
+        // hard snap into place
+        el.scrollTo({
+          top: targetTop,
+          behavior: "smooth",
+        });
+
+        onChange(values[index]);
+      });
+    };
+
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      el.removeEventListener("scroll", onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [values, onChange]);
+
+  return (
+    <div className="relative h-[144px] w-[80px] overflow-hidden">
+      {/* Selection window */}
+      <div className="absolute top-1/2 -translate-y-1/2 h-[48px] w-full border border-black rounded-xl pointer-events-none z-10" />
+
+      <div
+        ref={ref}
+        className="h-full overflow-y-scroll snap-y snap-mandatory"
+        style={{
+          scrollbarWidth: "none",
+          overscrollBehavior: "contain",
+        }}
+      >
+        {paddedValues.map((v, i) => (
+          <div
+            key={i}
+            className="h-[48px] flex items-center justify-center snap-center text-[22px] font-semibold text-[#0C1014]"
+          >
+            {v}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+
+
+
+/* ================= MAIN ================= */
 
 export default function ReminderStep({
   reminder,
@@ -10,160 +121,170 @@ export default function ReminderStep({
   onContinue,
   onBack,
 }: any) {
+  const isMobile = useMediaQuery("(max-width: 768px)");
   const [showTimeSelect, setShowTimeSelect] = useState(false);
 
+  /* ---------------- TIME STATE (SOURCE OF TRUTH) ---------------- */
+
+  const [hour, setHour] = useState("6");
+  const [period, setPeriod] = useState("AM");
+
+  /* ---------------- SYNC reminderTime (SAFE, ONE-WAY) ---------------- */
+
+  useEffect(() => {
+    let h = Number(hour);
+
+    if (period === "PM" && h !== 12) h += 12;
+    if (period === "AM" && h === 12) h = 0;
+
+    setReminderTime(`${String(h).padStart(2, "0")}:00`);
+  }, [hour, period, setReminderTime]);
+
+
+
+  /* ---------------- OPTIONS ---------------- */
+
   const options = [
-    ["after_waking_up", "After waking up"],
-    ["while_commuting", "While commuting"],
-    ["at_lunchtime", "At lunchtime"],
-    ["before_bedtime", "Before bedtime"],
+    { key: "after_waking_up", label: "After waking up", icon: Sunrise, color: "#F97316" },
+    { key: "while_commuting", label: "While commuting", icon: Train, color: "#2563EB" },
+    { key: "at_lunchtime", label: "At lunchtime", icon: Salad, color: "#16A34A" },
+    { key: "before_bedtime", label: "Before bedtime", icon: Moon, color: "#C026D3" },
   ];
 
-  // Continue button enabled only when a real reminder is selected
   const canContinue = reminder !== "" && reminder !== "none";
+  const radius = isMobile ? "rounded-2xl" : "rounded-full";
 
-  const handleOptionClick = (key: string) => {
-    setReminder(key);
-  };
+  /* ---------------- HANDLERS ---------------- */
 
   const handleContinue = () => {
     if (!canContinue) return;
-
-    // Move to time picker screen
     setShowTimeSelect(true);
   };
 
-  return (
-    <div className="w-full flex flex-col items-center justify-center">
+  const handleSkip = () => {
+    setReminder("none");
+    onContinue();
+  };
 
-      {/* TITLE */}
-      <div className="text-center mb-10">
-        <h1 className="text-[32px] font-bold text-[#0C1014] leading-[38px]">
-          Would you like to get a<br />reading reminder?
+  /* ---------------- CTA ---------------- */
+
+  const CTAButton = (
+    <button
+      onClick={showTimeSelect ? onContinue : handleContinue}
+      disabled={!canContinue && !showTimeSelect}
+      className={`
+        w-full py-4 text-[18px] font-medium text-white
+        ${radius}
+        ${canContinue || showTimeSelect
+          ? "bg-[#C46A54]"
+          : "bg-[#E5C5BE] opacity-50"}
+      `}
+    >
+      Continue
+    </button>
+  );
+
+  return (
+    <div className="w-full flex flex-col items-center px-4">
+      {/* ---------------- TITLE ---------------- */}
+      <div className="text-center mt-6 mb-8 max-w-[360px]">
+        <h1 className="text-[28px] font-bold leading-[34px] text-[#0C1014]">
+          Would you like to get a reading reminder?
         </h1>
 
-        <p className="text-[#6F7680] text-[15px] mt-3 max-w-[360px] mx-auto leading-[22px]">
-          Having a specific time set apart for reading can help
-          build a habit and be more consistent
+        <p className="mt-3 text-[15px] leading-[22px] text-[#6F7680]">
+          Having a specific time set apart for reading can help build a habit and
+          be more consistent
         </p>
       </div>
 
-      {/* ======================================
-          VIEW 1: REMINDER OPTIONS (No time yet)
-      =======================================*/}
+      {/* ================= VIEW 1 ================= */}
       {!showTimeSelect && (
         <>
-          <div className="flex flex-col gap-3 w-full max-w-[380px]">
-
-            {options.map(([key, label]) => {
+          <div className="w-full max-w-[380px] flex flex-col gap-3">
+            {options.map(({ key, label, icon: Icon, color }) => {
               const active = reminder === key;
 
               return (
                 <button
                   key={key}
-                  onClick={() => handleOptionClick(key)}
+                  onClick={() => setReminder(key)}
                   className={`
-                    flex items-center gap-3 px-5 py-4 w-full rounded-full border text-[15px]
-                    transition-all
+                    flex items-center gap-4 px-5 py-4
+                    border transition-all text-[15px]
+                    ${radius}
                     ${active
                       ? "bg-[#F6ECE7] border-[#C46A54]"
-                      : "bg-[#F5F7F9] border-transparent hover:bg-[#ECECEC]"}
+                      : "bg-[#F5F7F9] border-transparent"}
                   `}
                 >
-                  {label}
+                  <span className="flex items-center justify-center w-8 h-8" style={{ color }}>
+                    <Icon size={22} strokeWidth={2} />
+                  </span>
+                  <span className="text-[#0C1014] font-medium">{label}</span>
                 </button>
               );
             })}
           </div>
 
-          {/* Continue Button (disabled unless chosen) */}
-          <button
-            onClick={handleContinue}
-            disabled={!canContinue}
-            className={`
-              mt-10 w-[280px] py-3 rounded-full text-[19px] font-medium
-              ${canContinue
-                ? "bg-[#C46A54] text-white"
-                : "bg-[#E5C5BE] text-white opacity-50 cursor-not-allowed"}
-            `}
-          >
-            Continue
-          </button>
-
-          {/* Back */}
-          <button onClick={onBack} className="text-[#0C1014] underline text-md font-semibold mt-4">
-            ← Back
-          </button>
-
-          {/* Skip (acts like "Skip → Next Step", NOT a real option) */}
-          <button
-            onClick={() => {
-              setReminder("none");
-              onContinue();        // go directly to next page
-            }}
-            className="text-[#6F7680] underline text-sm mt-3"
-          >
-            Skip
-          </button>
+          {!isMobile && (
+            <>
+              <div className="mt-10 w-[280px]">{CTAButton}</div>
+              <button onClick={onBack} className="mt-4 text-md font-semibold underline">← Back</button>
+              <button onClick={handleSkip} className="mt-3 text-sm underline text-[#6F7680]">Skip</button>
+            </>
+          )}
         </>
       )}
 
-      {/* ======================================
-          VIEW 2: TIME SELECTION SCREEN
-      =======================================*/}
+      {/* ================= VIEW 2 ================= */}
       {showTimeSelect && (
         <>
-          <div className="w-full max-w-[380px] bg-white border border-[#E9EAEE] shadow-sm py-10 px-6 rounded-2xl text-center mb-8">
-            <h2 className="text-[20px] font-semibold text-[#0C1014] mb-3">
-              Perfect!
-            </h2>
-            <p className="text-[#6F7680] text-[14px] leading-[20px] mb-6">
-              We’ll send you a reminder one hour <br/> before your reading.
+          <div className={`w-full max-w-[380px] bg-white border border-[#E9EAEE] shadow-sm text-center p-8 mb-6 ${radius}`}>
+            <h2 className="text-[20px] font-semibold mb-3">Perfect!</h2>
+
+            <p className="text-[14px] text-[#6F7680] mb-8">
+              We’ll send you a reminder one hour before your reading.
             </p>
 
-            {/* Time Picker */}
-            <div className="inline-flex items-center bg-[#F6F7F8] px-6 py-3 rounded-full border border-[#E0E1E3]">
-              <select
-                value={reminderTime}
-                onChange={(e) => setReminderTime(e.target.value)}
-                className="bg-transparent outline-none font-semibold text-[19px]"
-              >
-                {Array.from({ length: 24 }).map((_, i) => (
-                  <option key={i} value={`${String(i).padStart(2, "0")}:00`}>
-                    {String(i).padStart(2, "0")}:00
-                  </option>
-                ))}
-              </select>
+            {/* ================= iOS STYLE TIME ================= */}
+            <div className="flex justify-center gap-8">
+              <Wheel
+                values={["1","2","3","4","5","6","7","8","9","10","11","12"]}
+                value={hour}
+                onChange={setHour}
+              />
+              <Wheel
+                values={["AM","PM"]}
+                value={period}
+                onChange={setPeriod}
+              />
+            </div>
+
+            {/* Selected time */}
+            <div className="mt-6 text-[22px] font-semibold text-[#0C1014]">
+              {hour}:00 {period}
             </div>
           </div>
 
-          {/* Continue Button */}
-          <button
-            onClick={onContinue}
-            className="w-[280px] py-3 rounded-full bg-[#C46A54] text-white text-[19px] font-medium"
-          >
-            Continue
-          </button>
+          {!isMobile && (
+            <>
+              <div className="w-[280px]">{CTAButton}</div>
+              <button onClick={() => setShowTimeSelect(false)} className="mt-4 underline font-semibold">← Back</button>
+              <button onClick={handleSkip} className="mt-3 text-sm underline text-[#6F7680]">Skip</button>
+            </>
+          )}
+        </>
+      )}
 
-          {/* Back */}
-          <button
-            onClick={() => setShowTimeSelect(false)}
-            className="text-[#0C1014] underline font-semibold text-md mt-4"
-          >
-            ← Back
-          </button>
-
-          {/* Skip */}
-          <button
-            onClick={() => {
-              setReminder("none");
-              onContinue();
-            }}
-            className="text-[#6F7680] underline text-sm mt-3"
-          >
+      {/* ================= MOBILE BOTTOM CTA ================= */}
+      {isMobile && (
+        <div className="fixed bottom-0 left-0 right-0 bg-white px-4 pb-6 pt-4">
+          <button onClick={handleSkip} className="block w-full text-center text-sm underline text-[#6F7680] mb-4">
             Skip
           </button>
-        </>
+          {CTAButton}
+        </div>
       )}
     </div>
   );

@@ -3,6 +3,8 @@
 
 import React, { useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useMediaQuery } from "@/hooks/useMediaQuery"; // <-- your existing hook
 
 export default function InterestedIn() {
   const categories = [
@@ -20,6 +22,13 @@ export default function InterestedIn() {
 
   const [selected, setSelected] = useState<string[]>([]);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  const router = useRouter();
+  const isMobile = useMediaQuery("(max-width: 640px)");
+
+  // Convert category → slug (e.g., "Current Affairs" → "current-affairs")
+  const slugify = (label: string) =>
+    label.toLowerCase().replace(/\s+/g, "-");
 
   const toggle = (name: string) => {
     setSelected(prev =>
@@ -42,69 +51,107 @@ export default function InterestedIn() {
     el.scrollTo({ left: next, behavior: "smooth" });
   };
 
-  const Pill = ({ label }: { label: string }) => (
-    <button
-      onClick={() => toggle(label)}
-      className={
-        "px-5 py-2 rounded-full flex items-center gap-3 whitespace-nowrap text-[16px] font-medium transition " +
-        (selected.includes(label)
-          ? "bg-black text-white"
-          : "bg-[#F3F4F6] text-[#0C1014]")
-      }
-    >
-      <div className="relative w-[48px] h-5 flex-shrink-0">
-        <span className="absolute left-0 w-5 h-5 rounded-full bg-[#08DC2F] z-[3]" />
-        <img
-          src='/icons/forbes-icon.png'
-          className="absolute left-[14px] w-5 h-5 rounded-full z-[2]"
-        />
-        <span className="absolute left-[28px] w-5 h-5 rounded-full bg-[#DC4949] z-[1]" />
-      </div>
+  // 🔥 Desktop behavior: scroll to matching carousel ID
+  const scrollToCarousel = (label: string) => {
+    const slug = slugify(label);
+    const el = document.getElementById(`carousel-${slug}`);
 
-      <span>{label}</span>
-    </button>
-  );
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
+  // 🔥 Pill component with desktop + mobile behavior
+  const Pill = ({ label }: { label: string }) => {
+    const handleClick = () => {
+      const slug = slugify(label);
+
+      if (isMobile) {
+        // 👉 MOBILE → navigate to dynamic category page
+        router.push(`/discover/${slug}`);
+        return;
+      }
+
+      // 👉 DESKTOP → toggle and scroll to carousel
+      toggle(label);
+      scrollToCarousel(label);
+    };
+
+    return (
+      <button
+        onClick={handleClick}
+        className={
+          "px-5 py-2 rounded-full flex items-center gap-3 whitespace-nowrap text-[16px] font-medium transition " +
+          (selected.includes(label)
+            ? "bg-black text-white"
+            : "bg-[#F3F4F6] text-[#0C1014]")
+        }
+      >
+        <div className="relative w-[48px] h-5 flex-shrink-0">
+          <span className="absolute left-0 w-5 h-5 rounded-full bg-[#08DC2F] z-[3]" />
+          <img
+            src='/icons/forbes-icon.png'
+            className="absolute left-[14px] w-5 h-5 rounded-full z-[2]"
+          />
+          <span className="absolute left-[28px] w-5 h-5 rounded-full bg-[#DC4949] z-[1]" />
+        </div>
+
+        <span>{label}</span>
+      </button>
+    );
+  };
 
   return (
-    <div className="bg-white border rounded-2xl p-4 w-full flex flex-col gap-4">
+    <>
+      {/* -------- DESKTOP VIEW -------- */}
+      <div className="hidden sm:flex bg-white border rounded-2xl p-4 w-full flex-col gap-4">
 
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div className="flex items-center">
-          <img src="/icons/InterestedIn-icon.png" className="w-6 h-6" />
-          <p className="text-[16px] font-medium px-2">
-            What are you interested in?
-          </p>
+        {/* Header */}
+        <div className="flex justify-between items-center">
+          <div className="flex items-center">
+            <img src="/icons/InterestedIn-icon.png" className="w-6 h-6" />
+            <p className="text-[16px] font-medium px-2">
+              What are you interested in?
+            </p>
+          </div>
+
+          {/* Desktop arrows */}
+          <div className="flex gap-2">
+            <button
+              onClick={() => scroll("left")}
+              className="p-1 rounded-full hover:bg-gray-100"
+            >
+              <ChevronLeft size={20} />
+            </button>
+            <button
+              onClick={() => scroll("right")}
+              className="p-1 rounded-full hover:bg-gray-100"
+            >
+              <ChevronRight size={20} />
+            </button>
+          </div>
         </div>
 
-        {/* Desktop arrows */}
-        <div className="hidden sm:flex gap-2">
-          <button onClick={() => scroll("left")} className="p-1 rounded-full hover:bg-gray-100">
-            <ChevronLeft size={20}/>
-          </button>
-          <button onClick={() => scroll("right")} className="p-1 rounded-full hover:bg-gray-100">
-            <ChevronRight size={20}/>
-          </button>
+        {/* Scroll wrapper */}
+        <div
+          ref={scrollRef}
+          className="no-scrollbar overflow-x-auto overflow-y-hidden"
+        >
+          {/* Desktop: 2 rows */}
+          <div className="flex flex-col gap-3 w-max">
+            <div className="flex gap-4 flex-nowrap">
+              {row1.map(item => <Pill key={item} label={item} />)}
+            </div>
+            <div className="flex gap-4 flex-nowrap">
+              {row2.map(item => <Pill key={item} label={item} />)}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Scroll wrapper */}
-      <div
-        ref={scrollRef}
-        className="no-scrollbar overflow-x-auto overflow-y-hidden"
-      >
-        {/* Desktop: 2 rows */}
-        <div className="hidden sm:flex flex-col gap-3 w-max">
-          <div className="flex gap-4 flex-nowrap">
-            {row1.map(item => <Pill key={item} label={item} />)}
-          </div>
-          <div className="flex gap-4 flex-nowrap">
-            {row2.map(item => <Pill key={item} label={item} />)}
-          </div>
-        </div>
-
-        {/* Mobile: 1 long row */}
-        <div className="flex sm:hidden gap-4 flex-nowrap w-max">
+      {/* -------- MOBILE VIEW -------- */}
+      <div className="sm:hidden w-full overflow-x-auto no-scrollbar">
+        <div className="flex gap-4 flex-nowrap w-max">
           {mobileRow.map(item => <Pill key={item} label={item} />)}
         </div>
       </div>
@@ -113,6 +160,6 @@ export default function InterestedIn() {
         .no-scrollbar::-webkit-scrollbar { display:none; }
         .no-scrollbar { scrollbar-width:none; -ms-overflow-style:none; }
       `}</style>
-    </div>
+    </>
   );
 }

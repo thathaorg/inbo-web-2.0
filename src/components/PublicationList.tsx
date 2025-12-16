@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import PublicationItem from "@/components/PublicationItem";
 import PublicationModal from "@/components/PublicationModal";
+import { ChevronDown } from "lucide-react";
 
 export default function PublicationList({ title }: { title: string }) {
   const list = [
@@ -81,14 +82,25 @@ export default function PublicationList({ title }: { title: string }) {
         ))}
       </div>
 
-      {/* View More */}
+      {/* View More (Desktop) / Show More (Mobile) */}
       {hasMore && (
-        <button
-          onClick={handleViewMore}
-          className="self-center px-5 py-2 text-sm bg-white border border-[#E5E7EB] rounded-full hover:bg-gray-100 transition"
-        >
-          View more
-        </button>
+        isDesktop ? (
+          // ------- DESKTOP BUTTON -------
+          <button
+            onClick={handleViewMore}
+            className="self-center px-5 py-2 text-sm bg-white border border-[#E5E7EB] rounded-full hover:bg-gray-100 transition"
+          >
+            View more
+          </button>
+        ) : (
+          // ------- MOBILE BUTTON -------
+          <button
+            onClick={() => setVisibleCount(prev => prev + 3)}
+            className="w-full flex items-center justify-center py-3 mt-2 text-[#D95A33] font-medium text-[15px]"
+          >
+            Show more <span className="ml-1"><ChevronDown /></span>
+          </button>
+        )
       )}
 
       {/* Modal */}

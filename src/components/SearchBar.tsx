@@ -8,7 +8,7 @@ export default function SearchBar() {
       <div
         className="
           flex items-center bg-white
-          w-full md:w-[420px] h-[44px]
+          w-full md:w-[380px] h-[40px]
           rounded-full border border-[#DBDFE4]
           shadow-[0_4px_12px_rgba(0,0,0,0.05)]
           pl-5 pr-2

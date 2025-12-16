@@ -66,7 +66,7 @@ export default function AuthCarousel() {
             "
           >
             {/* Title */}
-            <h2 className="text-[32px] font-semibold text-center leading-[42px] max-w-[480px]">
+            <h2 className="text-[28px] font-semibold text-center leading-[42px] max-w-[480px]">
               {slide.title}
             </h2>
 
@@ -74,7 +74,7 @@ export default function AuthCarousel() {
             <p
               className="
                 mt-4 max-w-[400px] text-center text-white
-                text-[21px] leading-[20px] font-[400]
+                text-[21px] leading-[18px] font-[400]
                 font-['Helvetica_Neue'] break-words
               "
               style={{

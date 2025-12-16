@@ -1,0 +1,258 @@
+"use client";
+
+import React, { useEffect, useRef, useState } from "react";
+
+/* ---------------- MEDIA QUERY ---------------- */
+function useMediaQuery(query: string) {
+  const [matches, setMatches] = useState(false);
+
+  useEffect(() => {
+    const media = window.matchMedia(query);
+    const listener = () => setMatches(media.matches);
+    listener();
+    media.addEventListener("change", listener);
+    return () => media.removeEventListener("change", listener);
+  }, [query]);
+
+  return matches;
+}
+
+type VerifyCodePageProps = {
+  email: string;
+  onResend?: () => void;
+  onSimulateOpen?: () => void;
+  onVerify?: (code: string) => void;
+  devMode?: boolean;
+};
+
+export default function VerifyCodePage({
+  email,
+  onResend,
+  onSimulateOpen,
+  onVerify,
+  devMode = false,
+}: VerifyCodePageProps) {
+  const isMobile = useMediaQuery("(max-width: 640px)");
+
+  const [code, setCode] = useState<string[]>(["", "", "", ""]);
+  const [timer, setTimer] = useState(30);
+  const [hasError, setHasError] = useState(false);
+
+  const inputsRef = useRef<Array<HTMLInputElement | null>>([]);
+
+  /* ---------------- TIMER ---------------- */
+  useEffect(() => {
+    if (timer <= 0) {
+      setTimer(0);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setTimer((t) => t - 1);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [timer]);
+
+  /* ---------------- AUTO SUBMIT ---------------- */
+  useEffect(() => {
+    if (code.every((d) => d !== "")) {
+      const finalCode = code.join("");
+      onVerify?.(finalCode);
+
+      // ❗️Trigger error UI (replace with API failure response)
+      setHasError(true);
+
+      // Dev shortcut
+      if (devMode && onSimulateOpen) {
+        setTimeout(onSimulateOpen, 300);
+      }
+    }
+  }, [code, devMode, onSimulateOpen, onVerify]);
+
+  /* ---------------- HANDLERS ---------------- */
+  const handleChange = (value: string, index: number) => {
+    if (!/^\d?$/.test(value)) return;
+
+    const next = [...code];
+    next[index] = value;
+    setCode(next);
+    setHasError(false);
+
+    if (value && index < 3) {
+      inputsRef.current[index + 1]?.focus();
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent, index: number) => {
+    if (e.key === "Backspace" && !code[index] && index > 0) {
+      inputsRef.current[index - 1]?.focus();
+    }
+  };
+
+  const handleResend = () => {
+    if (timer !== 0) return;
+
+    setTimer(30);
+    setCode(["", "", "", ""]);
+    setHasError(false);
+    inputsRef.current[0]?.focus();
+    onResend?.();
+  };
+
+  /* ======================================================
+     MOBILE SECTION (NEW — MATCHES IMAGE UI)
+     ====================================================== */
+  if (isMobile) {
+    return (
+      <div className="px-4 text-center">
+        <h1 className="text-[26px] font-semibold text-[#0C1014]">
+          Enter the verification code
+        </h1>
+
+        <p className="mt-3 text-[15px] text-[#6F7680] leading-[22px]">
+          We sent you a 4-digit code to
+          <br />
+          <span className="font-medium text-[#0C1014]">{email}</span>
+        </p>
+
+        {/* OTP INPUTS */}
+        <div className="flex justify-center gap-3 mt-8">
+          {code.map((digit, i) => (
+            <input
+              key={i}
+              ref={(el) => {
+                inputsRef.current[i] = el;
+              }}
+              value={digit}
+              onChange={(e) => handleChange(e.target.value, i)}
+              onKeyDown={(e) => handleKeyDown(e, i)}
+              maxLength={1}
+              inputMode="numeric"
+              className={`
+                w-[56px] h-[56px]
+                rounded-2xl
+                text-center
+                text-[22px]
+                font-semibold
+                outline-none
+                transition
+                ${
+                  hasError
+                    ? "border-2 border-red-500 bg-red-50"
+                    : "border border-[#DADDE2] bg-[#F7F7F8]"
+                }
+              `}
+            />
+          ))}
+        </div>
+
+        {/* ERROR MESSAGE */}
+        {hasError && (
+          <p className="mt-4 text-[15px] text-red-500">
+            This OTP doesn’t match. Recheck and enter again.
+          </p>
+        )}
+
+        {/* TIMER / RESEND */}
+        <p className="mt-6 text-[15px] text-[#6F7680]">
+          Didn’t receive the code?{" "}
+          {timer === 0 ? (
+            <button
+              onClick={handleResend}
+              className="text-[#C46A54] font-medium"
+            >
+              Resend code
+            </button>
+          ) : (
+            <span>(00:{String(timer).padStart(2, "0")})</span>
+          )}
+        </p>
+      </div>
+    );
+  }
+
+  /* ======================================================
+     DESKTOP SECTION (UNCHANGED — YOUR CODE)
+     ====================================================== */
+  return (
+    <div className="w-full flex flex-col items-center text-center">
+      <h1 className="text-[28px] sm:text-[32px] font-semibold text-[#0C1014]">
+        Enter the verification code
+      </h1>
+
+      <p className="mt-3 text-[16px] leading-[22px] text-[#6F7680]">
+        We sent you a 4-digit code to
+        <br />
+        <span className="font-medium text-[#0C1014]">{email}</span>
+      </p>
+
+      {/* OTP INPUTS */}
+      <div className="flex gap-3 mt-8">
+        {code.map((digit, i) => (
+          <input
+            key={i}
+            ref={(el) => {
+              inputsRef.current[i] = el;
+            }}
+            value={digit}
+            onChange={(e) => handleChange(e.target.value, i)}
+            onKeyDown={(e) => handleKeyDown(e, i)}
+            maxLength={1}
+            inputMode="numeric"
+            autoFocus={i === 0}
+            className={`
+              w-[56px] h-[56px]
+              rounded-xl
+              border
+              text-center
+              text-[22px]
+              font-medium
+              outline-none
+              transition
+              ${digit ? "border-black" : "border-[#DADDE2] bg-[#F7F7F8]"}
+              focus:border-black
+            `}
+          />
+        ))}
+      </div>
+
+      {/* TIMER / RESEND */}
+      <p className="mt-6 text-[15px] text-[#6F7680]">
+        Didn’t receive the code?{" "}
+        {timer === 0 ? (
+          <button
+            onClick={handleResend}
+            className="font-medium text-[#0C1014] underline"
+          >
+            Resend
+          </button>
+        ) : (
+          <span className="font-medium">
+            (00:{String(timer).padStart(2, "0")})
+          </span>
+        )}
+      </p>
+
+      {/* DEV MODE BUTTON */}
+      {devMode && onSimulateOpen && (
+        <button
+          onClick={onSimulateOpen}
+          className="
+            mt-8
+            px-6 py-3
+            rounded-full
+            bg-[#0C1014]
+            text-white
+            text-[15px]
+            font-medium
+            hover:bg-[#1C1F24]
+            transition
+          "
+        >
+          Simulate → Continue
+        </button>
+      )}
+    </div>
+  );
+}

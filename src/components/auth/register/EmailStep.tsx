@@ -2,6 +2,23 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useState } from "react";
+
+function useMediaQuery(query: string) {
+  const [matches, setMatches] = useState(false);
+
+  useEffect(() => {
+    const media = window.matchMedia(query);
+    const listener = () => setMatches(media.matches);
+
+    listener();
+    media.addEventListener("change", listener);
+
+    return () => media.removeEventListener("change", listener);
+  }, [query]);
+
+  return matches;
+}
 
 export default function EmailStep({
   formData,
@@ -11,6 +28,84 @@ export default function EmailStep({
   onContinue,
   devMode = false,
 }: any) {
+  const isMobile = useMediaQuery("(max-width: 640px)");
+  const isEmailValid =
+  !!formData.email &&
+  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email);
+  /* =========================
+     MOBILE SECTION
+     ========================= */
+  if (isMobile) {
+    const showError = !!formData.email && !isEmailValid;
+
+    return (
+      <div className="h-full flex flex-col bg-white">
+        {/* CONTENT */}
+        <div className="flex-1 px-4 pt-6 pb-36">
+          {/* Title */}
+          <div className="text-center mb-6">
+            <h1 className="text-[24px] font-bold text-[#0C1014]">
+              Let’s get you start reading
+            </h1>
+            <p className="text-[#6F7680] text-[14px] mt-2">
+              Enter your email to receive a 4-Digit <br /> verification code.
+            </p>
+          </div>
+
+          {/* Email Input */}
+          <input
+            type="email"
+            value={formData.email}
+            placeholder="name@example.com"
+            onChange={(e) =>
+              setFormData((p: any) => ({ ...p, email: e.target.value }))
+            }
+            className={`
+              w-full py-4 px-4 rounded-2xl text-[16px] outline-none
+              placeholder-[#A2AAB4]
+              ${
+                showError
+                  ? "border-2 border-red-500 bg-red-50"
+                  : "border border-[#DBDFE4] focus:ring-2 focus:ring-[#C46A54]"
+              }
+            `}
+          />
+
+          {/* Error */}
+          {showError && (
+            <p className="mt-2 text-[14px] text-red-500">
+              Please enter a valid email address.
+            </p>
+          )}
+        </div>
+
+        {/* STICKY CTA (follows keyboard) */}
+        <div
+          className="fixed left-0 right-0 bottom-0 bg-white"
+          style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        >
+          <div className="px-4 py-4">
+            <button
+              onClick={onContinue}
+              disabled={!isEmailValid || isLoading}
+              className="
+                w-full py-4 rounded-2xl text-[16px] font-medium
+                disabled:bg-[#F1F3F5] disabled:text-[#A2AAB4]
+                bg-[#C46A54] text-white
+              "
+            >
+              {isLoading ? "Sending..." : "Send OTP"}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+
+  /* =========================
+     DESKTOP SECTION (UNCHANGED)
+     ========================= */
   return (
     <div className="w-full border-black">
 

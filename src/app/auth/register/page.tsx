@@ -1,35 +1,42 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { SEOHead } from "@/components/seo/SEOHead";
 import AuthCarousel from "@/components/auth/AuthCarousel";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
+
+// Mobile section
+import MobileSignupSection from "@/app/auth/register/MobileSignupSection";
 
 // Steps
 import EmailStep from "@/components/auth/register/EmailStep";
-import CheckEmailStep from "@/components/auth/register/CheckEmailStep";
+import VerifyCodePage from "@/components/auth/register/VerifyCode";
 import UsernameStep from "@/components/auth/register/UsernameStep";
 import CategoriesStep from "@/components/auth/register/CategoriesStep";
 import ReminderStep from "@/components/auth/register/ReminderStep";
 import WhereStep from "@/components/auth/register/WhereHeardStep";
 
-type Step =
+export type Step =
+  | "intro"
   | "email"
   | "check-email"
   | "username"
   | "categories"
   | "reminder"
-  | "where";
+  | "where"
+  | "notify";
 
 export default function SignupPage() {
   const router = useRouter();
   const { i18n } = useTranslation();
 
+  const isMobile = useMediaQuery("(max-width: 768px)");
   const DEV_MODE = true;
 
-  const [step, setStep] = useState<Step>("email");
+  const [step, setStep] = useState<Step | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -44,7 +51,14 @@ export default function SignupPage() {
 
   const usernameInputRef = useRef<HTMLInputElement | null>(null);
 
-  /* ---------------- SIMULATED FLOWS ---------------- */
+  useEffect(() => {
+    if (isMobile === null) return;
+    setStep(isMobile ? "intro" : "email");
+  }, [isMobile]);
+
+  if (step === null) return null;
+
+  /* ---------------- FLOWS ---------------- */
 
   const handleEmailContinue = () => {
     if (!formData.email.includes("@")) return;
@@ -65,38 +79,73 @@ export default function SignupPage() {
   };
 
   const handleBack = () => {
+    if (step === "email") {
+      if (isMobile) setStep("intro");
+      return;
+    }
+
     if (step === "check-email") setStep("email");
     else if (step === "username") setStep("check-email");
     else if (step === "categories") setStep("username");
     else if (step === "reminder") setStep("categories");
-    else if (step === "where") setStep("reminder");
+    else if (step === "where") setStep("reminder"); // ✅ added
+    else if (step === "notify") {
+      setStep("where"); // ✅ mobile-only
+    }
   };
 
-  /* ---------------- CONDITIONS ---------------- */
-
   const showCarousel = step === "email" || step === "check-email";
+
+  /* ---------------- MOBILE ---------------- */
+
+  if (isMobile) {
+    return (
+      <>
+        <SEOHead title="Sign up" description="Create an account" />
+
+        <MobileSignupSection
+          step={step}
+          formData={formData}
+          setFormData={setFormData}
+          categories={categories}
+          setCategories={setCategories}
+          reminder={reminder}
+          setReminder={setReminder}
+          reminderTime={reminderTime}
+          setReminderTime={setReminderTime}
+          whereHeard={whereHeard}
+          setWhereHeard={setWhereHeard}
+          isLoading={isLoading}
+          usernameInputRef={usernameInputRef}
+          onEmailContinue={handleEmailContinue}
+          onFinalSubmit={handleFinalSubmit}
+          onBack={handleBack}
+          setStep={setStep}
+          devMode={DEV_MODE}
+        />
+      </>
+    );
+  }
+
+  /* ---------------- DESKTOP ---------------- */
 
   return (
     <>
       <SEOHead title="Sign up" description="Create an account" />
 
       <div className="flex h-screen bg-white">
-
-        {/* LEFT SIDE — only for first 2 steps */}
         {showCarousel && (
           <div className="hidden lg:flex w-1/2 h-full">
             <AuthCarousel />
           </div>
         )}
 
-        {/* RIGHT SIDE */}
         <div
           className={`
             flex flex-col relative text-[#0C1014]
             ${showCarousel ? "w-full lg:w-1/2" : "w-full items-center justify-center"}
           `}
         >
-          {/* MAIN CONTENT WRAPPER */}
           <div
             className={`
               flex flex-col items-center justify-center
@@ -104,33 +153,32 @@ export default function SignupPage() {
               ${showCarousel ? "flex-1" : "w-full max-w-[700px] mx-auto"}
             `}
           >
-            {/* Logo */}
-            {showCarousel &&(<Image
-              src="/logos/inbo-logo.png"
-              width={140}
-              height={55}
-              alt="Logo"
-              className={`mb-10 transition-all ${showCarousel ? "mt-0" : "mt-6"}`}
-            />)}
+            {showCarousel && (
+              <Image
+                src="/logos/inbo-logo.png"
+                width={140}
+                height={55}
+                alt="Logo"
+                className="mb-10"
+              />
+            )}
 
-            {/* STEP CONTENT */}
             <div className="w-full max-w-[380px]">
-
               {step === "email" && (
                 <EmailStep
                   formData={formData}
                   setFormData={setFormData}
                   onContinue={handleEmailContinue}
-                  googleLogin={() => alert("Simulated Google")}
+                  googleLogin={() => {}}
                   isLoading={isLoading}
                   devMode={DEV_MODE}
                 />
               )}
 
               {step === "check-email" && (
-                <CheckEmailStep
+                <VerifyCodePage
                   email={formData.email}
-                  onResend={() => alert("Simulated resend")}
+                  onResend={() => {}}
                   onSimulateOpen={() => setStep("username")}
                   devMode={DEV_MODE}
                 />
@@ -141,10 +189,6 @@ export default function SignupPage() {
                   ref={usernameInputRef}
                   formData={formData}
                   setFormData={setFormData}
-                  suggestions={[]}
-                  selectedSuggestion={null}
-                  setSelectedSuggestion={() => {}}
-                  generateUsernameSuggestions={() => []}
                   onContinue={() => setStep("categories")}
                   onBack={handleBack}
                 />
@@ -187,7 +231,6 @@ export default function SignupPage() {
               )}
             </div>
 
-            {/* LANGUAGE SELECTOR */}
             <div className="mt-10 text-center">
               <span className="text-[#6F7680] mr-2 text-lg">Language</span>
               <select
@@ -200,7 +243,6 @@ export default function SignupPage() {
                 <option value="es">Español</option>
               </select>
             </div>
-
           </div>
         </div>
       </div>

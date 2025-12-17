@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
-import PublicationItem from "@/components/PublicationItem";
-import PublicationModal from "@/components/PublicationModal";
+import PublicationItem from "@/components/discover/PublicationItem";
+import PublicationModal from "@/components/discover/PublicationModal";
 import { ChevronDown } from "lucide-react";
 
 export default function PublicationList({ title }: { title: string }) {

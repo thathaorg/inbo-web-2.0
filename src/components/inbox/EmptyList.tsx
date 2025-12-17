@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 
-export default function EmptyInbox() {
+export default function EmptyList() {
   const router = useRouter();
 
   return (

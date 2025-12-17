@@ -4,10 +4,10 @@ import { useState } from "react";
 import { use } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import PublisherListItem from "@/components/PublisherListItem";
+import PublisherListItem from "@/components/discover/PublisherListItem";
 import PublicationModal, {
   type Publication,
-} from "@/components/PublicationModal";
+} from "@/components/discover/PublicationModal";
 
 // -------------------
 // TYPES

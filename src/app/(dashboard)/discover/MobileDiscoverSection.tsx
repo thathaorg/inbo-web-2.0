@@ -1,10 +1,10 @@
 "use client";
 
 import MobileHeader from "@/components/layout/MobileHeader";
-import InterestedIn from "@/components/InterestedIn";
-import NewsletterCarousel from "@/components/NewsletterCarousel";
-import PublicationList from "@/components/PublicationList";
-import PersonalizeDiscover from "@/components/PersonalizeDiscover";
+import InterestedIn from "@/components/discover/InterestedIn";
+import NewsletterCarousel from "@/components/discover/NewsletterCarousel";
+import PublicationList from "@/components/discover/PublicationList";
+import PersonalizeDiscover from "@/components/discover/PersonalizeDiscover";
 
 export default function MobileDiscoverSection({
   forYouItems,

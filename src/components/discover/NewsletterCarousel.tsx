@@ -2,7 +2,7 @@
 
 import { useRef } from "react";
 import Image from "next/image";
-import NewsletterCard, { NewsletterEntry } from "@/components/NewsletterCarouselItem";
+import NewsletterCard, { NewsletterEntry } from "@/components/discover/NewsletterCarouselItem";
 
 interface CarouselProps {
   title: string;

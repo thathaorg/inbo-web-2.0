@@ -1,6 +1,6 @@
 "use client";
 
-import CountBubble from "@/components/CountBubble";
+import CountBubble from "@/components/inbox/CountBubble";
 
 export type TabType = "unread" | "read" | "all";
 

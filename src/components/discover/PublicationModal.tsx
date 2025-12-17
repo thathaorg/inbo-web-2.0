@@ -5,13 +5,14 @@ import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { X, Bookmark } from "lucide-react";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
+import SubscribeButton from "../SubscribeButton";
 
 export interface Publication {
   rank: number;
   logo: string;
   name: string;
   desc: string;
-  description: string;
+   description: string;
   frequency: string;
 }
 
@@ -109,38 +110,8 @@ export default function PublicationModal({
           </p>
 
           {/* SUBSCRIBE + BOOKMARK */}
-          <div className="flex items-center gap-3 w-full mb-6">
-            <button
-              onClick={() => toast.success("Subscription saved!")}
-              className="
-                cursor-pointer
-                group
-                flex-1 h-[40px]
-                bg-[#0C1014]
-                text-white
-                rounded-full
-                flex items-center justify-center gap-2
-                text-[16px] font-medium
-                transition-all duration-300
-                hover:bg-[#F2F3F5]
-                hover:text-[#0C1014]
-              "
-            >
-              <span>Subscribe</span>
-
-              <span className="relative flex items-center">
-                <img
-                  src="/icons/subscribe-icon-light.png"
-                  className="w-5 h-5 block group-hover:hidden"
-                  alt=""
-                />
-                <img
-                  src="/icons/subscribe-icon-dark.png"
-                  className="w-5 h-5 hidden group-hover:block"
-                  alt=""
-                />
-              </span>
-            </button>
+          <div className="flex items-center justify-between gap-3 w-full mb-6">
+            <SubscribeButton/>
 
             <button
               onClick={handlecollectionClick}

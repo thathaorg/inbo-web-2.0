@@ -1,6 +1,7 @@
 "use client";
 import { Mail } from "lucide-react";
 import Image from "next/image";
+import SubscribeButton from "../SubscribeButton";
 
 export interface NewsletterEntry {
   title: string;
@@ -69,43 +70,7 @@ export default function NewsletterCarouselItem({
         <div className="flex justify-between items-center">
 
           {/* CTA BUTTON */}
-          <button
-            className="
-              cursor-pointer
-              group
-              w-[114px] h-[36px]
-              bg-[#0C1014]
-              text-white
-              rounded-full
-              flex items-center justify-center gap-2
-              text-[14px] font-medium leading-[16px]
-              transition-all duration-300
-              hover:bg-[#F2F3F5]
-              hover:text-[#0C1014]
-            "
-          >
-            <span>{ctaLabel}</span>
-
-            <span className="text-[16px] leading-none flex items-center relative">
-              <Image
-                src="/icons/subscribe-icon-light.png"
-                alt=""
-                width={16}
-                height={16}
-                draggable={false}
-                className="block group-hover:hidden"
-              />
-
-              <Image
-                src="/icons/subscribe-icon-dark.png"
-                alt=""
-                width={16}
-                height={16}
-                draggable={false}
-                className="hidden group-hover:block"
-              />
-            </span>
-          </button>
+          <SubscribeButton/>
 
           {/* FREQUENCY */}
           <div className="px-1.5 py-1 rounded-b-[12px] flex items-center gap-2">

@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import MobileHeader from "@/components/layout/MobileHeader";
-import EmptyInbox from "@/components/EmptyInbox";
-import InboxCardMobile from "@/components/InboxCard";
+import EmptyList from "@/components/inbox/EmptyList";
+import InboxCardMobile from "@/components/inbox/InboxCard";
 import FilterButton from "@/components/FilterButton";
 import { ChevronDown } from "lucide-react";
+import EmptyInbox from "@/components/inbox/EmptyInbox";
 
 const INITIAL_VISIBLE = 2;
 const LOAD_MORE = 5;
@@ -27,24 +28,37 @@ export default function MobileInboxSection({
   const showMore24 = visible24 < filtered24.length;
   const showMore7 = visible7 < filtered7.length;
 
-  return (
-    <div className="w-full md:hidden flex flex-col bg-[#F5F6FA]">
+  const is24Empty = filtered24.length === 0;
+  const is7Empty = filtered7.length === 0;
 
+  // 👉 exactly one list is empty
+  const showEmptyList = is24Empty !== is7Empty;
+
+  return (
+    <div className="w-full md:hidden flex flex-col bg-[#F5F6FA] min-h-screen">
       {/* MOBILE HEADER */}
       <MobileHeader title="Your Reads" onMenuClick={() => {}} />
 
       {/* MAIN CONTENT */}
-      <div className="flex flex-col bg-white pt-4 rounded-t-3xl flex-1 min-h-screen pb-20">
-
+      <div className="flex flex-col bg-white pt-4 rounded-t-3xl flex-1 pb-20">
         {/* FILTER BUTTON */}
         <div className="flex justify-end px-4">
           <FilterButton onClick={() => console.log("Filter opened")} />
         </div>
 
         {/* -------------------------------------- */}
+        {/* BOTH EMPTY → EMPTY INBOX */}
+        {/* -------------------------------------- */}
+        {is24Empty && is7Empty && (
+          <div className="flex-1 flex items-center justify-center">
+            <EmptyInbox />
+          </div>
+        )}
+
+        {/* -------------------------------------- */}
         {/* LAST 24 HOURS */}
         {/* -------------------------------------- */}
-        {filtered24.length > 0 && (
+        {!is24Empty && (
           <section>
             <h3 className="text-[15px] font-semibold text-gray-600 mb-3 px-4">
               Last 24 hours
@@ -54,7 +68,7 @@ export default function MobileInboxSection({
               <InboxCardMobile
                 key={i}
                 {...item}
-                title={longTitle}   // ⬅️ use long dummy title
+                title={longTitle}
               />
             ))}
 
@@ -72,7 +86,7 @@ export default function MobileInboxSection({
         {/* -------------------------------------- */}
         {/* LAST 7 DAYS */}
         {/* -------------------------------------- */}
-        {filtered7.length > 0 && (
+        {!is7Empty && (
           <section className="pb-6 mt-6">
             <h3 className="text-[15px] font-semibold text-gray-600 px-4 mb-3">
               Last 7 days
@@ -82,7 +96,7 @@ export default function MobileInboxSection({
               <InboxCardMobile
                 key={i}
                 {...item}
-                title={longTitle}   // ⬅️ use long dummy title
+                title={longTitle}
               />
             ))}
 
@@ -97,8 +111,14 @@ export default function MobileInboxSection({
           </section>
         )}
 
-        {/* EMPTY STATE */}
-        {filtered24.length === 0 && filtered7.length === 0 && <EmptyInbox />}
+        {/* -------------------------------------- */}
+        {/* ONE EMPTY → EMPTY LIST AT BOTTOM */}
+        {/* -------------------------------------- */}
+        {showEmptyList && (
+          <div className="mt-6">
+            <EmptyList />
+          </div>
+        )}
       </div>
     </div>
   );

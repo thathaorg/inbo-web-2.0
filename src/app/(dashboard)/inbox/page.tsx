@@ -8,6 +8,7 @@ import FilterButton from "@/components/FilterButton";
 import RefreshButton from "@/components/inbox/RefreshButton";
 import TabSwitcher from "@/components/inbox/TabSwitcher";
 import MobileInboxSection from "./MobileInboxSection";
+import EmptyState from "@/components/SearchNotFound";
 
 /* --------------------- DUMMY NEWSLETTER GENERATOR --------------------- */
 

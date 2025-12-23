@@ -1,78 +1,127 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { MoveLeft, Flame } from "lucide-react";
+
 import ReadingInsightsCard from "@/components/analytics/ReadingInsightsCard";
 import MoreLikeYouRead from "@/components/analytics/MoreLikeYouRead";
-import InboxSnapshot from "@/components/analytics/InboxSnapshot";
 import AchievementsCard from "@/components/analytics/AchievementsCard";
+import DailyStreakCard from "@/components/analytics/DailyStreakCard";
 
-export default function MobileAnalyticsSection({
-  onOpenStreak,
-  onOpenAchievements,
-}: {
+type MobileAnalyticsSectionProps = {
+  streakCount?: number;
   onOpenStreak: () => void;
   onOpenAchievements: () => void;
-}) {
+};
+
+export default function MobileAnalyticsSection({
+  streakCount=0,
+  onOpenStreak,
+  onOpenAchievements,
+}: MobileAnalyticsSectionProps) {
+  const router = useRouter();
+
+  const hasStreak = streakCount > 0;
+
   return (
-    <div className="flex flex-col gap-6 px-4 pb-8">
+    <>
+      <style>{`
+        .hide-scrollbar {
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+      `}</style>
+      <div className="hide-scrollbar overflow-y-auto">
+      {/* ===== HEADER / STREAK CARD ===== */}
+      <div
+        className={`p-6 mb-4 relative text-white overflow-hidden transition-colors duration-300 ${
+          hasStreak ? "bg-[#FF9600]" : "bg-[#FFD7A3]"
+        }`}
+      >
+        {/* Top Header */}
+        <div className={`flex items-center justify-center relative mb-6 ${
+          hasStreak ? "bg-[#FF9600] text-white" : "bg-[#FFD7A3] text-black"
+        }`}>
+          {/* Back Button */}
+          <button
+            onClick={() => router.push("/profile")}
+            className="absolute left-0 text-2xl"
+            aria-label="Back to profile"
+          >
+            <MoveLeft />
+          </button>
 
-      {/* ===== STREAK HERO ===== */}
-      <div className="rounded-3xl bg-[#FAD39C] p-6 text-white relative">
-        <h2 className="text-5xl font-bold leading-none">0</h2>
-        <p className="text-lg mt-1">Streaks Days</p>
+          {/* Title */}
+          <h1 className="text-lg font-semibold">Insights</h1>
+        </div>
 
-        {/* Flame Icon */}
-        <div className="absolute right-6 top-6 text-5xl">🔥</div>
+        {/* Streak Info */}
+        <div className="flex items-start justify-between">
+          <div>
+            <h2 className="text-6xl font-bold leading-none">
+              {streakCount}
+            </h2>
+            <p className="text-lg mt-1 opacity-90">Streak Days</p>
+          </div>
+
+          {/* Flame Icon */}
+          <div className="opacity-90">
+            <Flame
+              size={80}
+              fill={hasStreak ? "#FF9601" : "#E0B37A"}
+              stroke={hasStreak ? "#FF9601" : "#E0B37A"}
+            />
+          </div>
+        </div>
 
         {/* CTA */}
-        <div className="bg-white text-gray-700 rounded-2xl p-4 mt-6">
-          <p className="text-sm mb-2">
-            🎉 Every habit begins with{" "}
-            <span className="text-orange-500 font-semibold">Day 1</span>. Start
-            when it feels right.
-          </p>
+        <div className="bg-white rounded-2xl p-4 mt-6 flex gap-3">
+          {/* Icon */}
+          <div className="shrink-0">
+            <span className="text-xl">🎉</span>
+          </div>
 
-          <button
-            onClick={onOpenStreak}
-            className="text-orange-500 font-semibold"
-          >
-            Start Reading
-          </button>
-        </div>
-      </div>
+          {/* Content */}
+          <div className="flex flex-col gap-3 flex-1">
+            {/* Message */}
+            <p className="text-[18px] leading-6 text-[#6F7680]">
+              Every habit begins with{" "}
+              <span className="text-orange-500 font-medium">Day 1</span>. Start
+              when it feels right.
+            </p>
 
-      {/* ===== THIS WEEK ===== */}
-      <div className="bg-white rounded-2xl p-4 shadow-sm">
-        <div className="flex justify-between items-center mb-3">
-          <h3 className="font-semibold">This Week</h3>
-          <button
-            onClick={onOpenStreak}
-            className="text-sm bg-orange-100 text-orange-600 px-3 py-1 rounded-full"
-          >
-            See details
-          </button>
-        </div>
-
-        <div className="flex justify-between text-sm">
-          {["Sa", "Mo", "Tu", "Th", "Fr", "Su", "Mo"].map((day) => (
-            <div
-              key={day}
-              className="w-9 h-9 rounded-full border flex items-center justify-center text-gray-600"
+            {/* Action */}
+            <button
+              onClick={() => router.push("/inbox")}
+              className="text-[18px] leading-6 font-medium text-[#C46A54] text-left"
             >
-              {day}
-            </div>
-          ))}
+              Start Reading
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* ===== MORE LIKE YOU READ ===== */}
-      <MoreLikeYouRead />
+      {/* ===== CONTENT ===== */}
+      <div className="flex flex-col gap-6 px-4 pb-8">
+        {/* THIS WEEK */}
+        <DailyStreakCard
+          onOpen={onOpenStreak}
+          className="shadow-sm"
+        />
 
-      {/* ===== INBOX SNAPSHOT ===== */}
-      <InboxSnapshot />
+        {/* MORE LIKE YOU READ */}
+        <MoreLikeYouRead />
 
-      {/* ===== READING INSIGHTS (GRADIENT CARD) ===== */}
-      <ReadingInsightsCard />
+        {/* READING INSIGHTS */}
+        <ReadingInsightsCard />
 
-      {/* ===== ACHIEVEMENTS ===== */}
-      <AchievementsCard onOpen={onOpenAchievements} />
-    </div>
+        {/* ACHIEVEMENTS */}
+        <AchievementsCard onOpen={onOpenAchievements} />
+      </div>
+      </div>
+    </>
   );
 }

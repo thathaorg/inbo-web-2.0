@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { ArrowLeft, ChevronRight, Pencil } from "lucide-react";
+import { ArrowLeft, ChevronRight, Pencil,BarChart3 } from "lucide-react";
 import { getInitials } from "./page";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -92,8 +92,9 @@ export default function MobileProfileSection({
 
       {/* HEADER */}
       <div className="flex items-center h-[56px] px-4 border-[#EAECF0]">
-        <ArrowLeft size={22} onClick={() => router.back()} className="mr-3" />
+        <ArrowLeft size={22} onClick={() => router.push("/inbox")} className="mr-3" />
         <p className="text-[17px] font-semibold flex-1 text-center mr-6">Profile</p>
+        <BarChart3 size={22} onClick={() => router.push("/analytics")} className="mr-3"/>
       </div>
 
       {/* TOP PROFILE */}

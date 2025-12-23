@@ -18,7 +18,7 @@ export default function DashboardLayout({ children }: Props) {
   const hideHelpWidget = pathname === "/profile";
 
   // Detect mobile screen
-  const isMobile = useMedia({ maxWidth: 767 });
+  const isMobile = useMedia({ maxWidth: 768 });
 
   // ---------------------------------------------------------
   // 🚀 MOBILE LAYOUT SECTION

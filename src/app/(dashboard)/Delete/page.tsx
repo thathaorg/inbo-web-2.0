@@ -1,5 +1,3 @@
-"use client";
-
 import { useState } from "react";
 import NewsletterCard from "@/components/inbox/InboxCard"; // ✅ adjust path if needed
 import MobileDeleteSection from "./MobileDeleteSection";

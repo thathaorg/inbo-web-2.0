@@ -12,15 +12,26 @@ import { useMediaQuery } from "@/hooks/useMediaQuery";
 export default function LoginPage() {
   const { i18n } = useTranslation();
   const router = useRouter();
-  const { isAuthenticated, requestMagicLink, googleAuth } = useAuth();
+  const { isAuthenticated, sendOTP, googleAuth } = useAuth();
 
   const isMobile = useMediaQuery("(max-width: 768px)");
 
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isValidEmail, setIsValidEmail] = useState(false);
 
   const selectRef = useRef<HTMLSelectElement>(null);
+
+  // Email validation
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  useEffect(() => {
+    setIsValidEmail(validateEmail(email));
+  }, [email]);
 
   const openDropdown = () => {
     if (selectRef.current) {
@@ -33,7 +44,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      router.push("/dashboard");
+      router.push("/inbox");
     }
   }, [isAuthenticated, router]);
 
@@ -44,6 +55,40 @@ export default function LoginPage() {
       router.replace("/auth/register");
     }
   }, [isMobile, router]);
+
+  /* ================= SEND OTP HANDLER ================= */
+
+  const handleSendOTP = async () => {
+    if (!isValidEmail) {
+      setError("Please enter a valid email address");
+      return;
+    }
+
+    setError(null);
+    setIsLoading(true);
+    
+    try {
+      await sendOTP(email);
+      // Navigate to OTP verification page with email
+      router.push(`/auth/verify-otp?email=${encodeURIComponent(email)}`);
+    } catch (err: any) {
+      const errorMessage = 
+        err?.response?.data?.message || 
+        err?.message || 
+        "Failed to send OTP. Please try again.";
+      setError(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  /* ================= HANDLE KEY PRESS ================= */
+
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && isValidEmail && !isLoading) {
+      handleSendOTP();
+    }
+  };
 
   if (isMobile) return null;
 
@@ -76,7 +121,7 @@ export default function LoginPage() {
                 Welcome back 👋
               </h1>
               <p className="text-[#6F7680] text-[16px] max-w-[260px] mx-auto mt-2">
-                We’ll email you a magic link so we can verify your email.
+                We'll send you a one-time code to verify your email.
               </p>
             </div>
 
@@ -113,37 +158,25 @@ export default function LoginPage() {
                 placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                onKeyPress={handleKeyPress}
                 className="
                   w-full py-3 px-4 mt-2 rounded-full border border-[#DBDFE4]
                   text-gray-700 placeholder-[#A2AAB4]
-                  focus:ring-2 focus:ring-[#C46A54]
+                  focus:ring-2 focus:ring-[#C46A54] focus:outline-none
                 "
               />
             </div>
 
-            {/* Send Link */}
+            {/* Send OTP Button */}
             <button
-              onClick={async () => {
-                setError(null);
-                setIsLoading(true);
-                try {
-                  await requestMagicLink(email);
-                  router.push(`/auth/verify?email=${email}`);
-                } catch (err: any) {
-                  setError(
-                    err?.response?.data?.message || "Login failed"
-                  );
-                } finally {
-                  setIsLoading(false);
-                }
-              }}
-              disabled={isLoading}
+              onClick={handleSendOTP}
+              disabled={isLoading || !isValidEmail}
               className="
                 w-full bg-[#C46A54] text-white py-3.5 rounded-full font-medium
-                hover:bg-[#b25949] transition disabled:opacity-50
+                hover:bg-[#b25949] transition disabled:opacity-50 disabled:cursor-not-allowed
               "
             >
-              {isLoading ? "Sending..." : "Send Link"}
+              {isLoading ? "Sending..." : "Send Code"}
             </button>
 
             {/* Error */}

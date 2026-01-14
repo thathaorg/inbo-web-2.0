@@ -1,7 +1,7 @@
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
 import Cookies from 'js-cookie';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://inbo-django-api.azurewebsites.net/api';
 
 // Create axios instance
 const apiClient: AxiosInstance = axios.create({
@@ -9,7 +9,6 @@ const apiClient: AxiosInstance = axios.create({
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
-    'API-Version': 'v1',
   },
 });
 
@@ -40,18 +39,15 @@ apiClient.interceptors.response.use(
       try {
         const refreshToken = Cookies.get('refresh_token');
         if (refreshToken) {
-          const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
-            refresh: refreshToken,
+          const response = await axios.post(`${API_BASE_URL}/auth/refresh/`, {
+            refreshToken: refreshToken,
           });
 
-          const { access, refresh } = response.data;
-          Cookies.set('access_token', access, { expires: 7 });
-          if (refresh) {
-            Cookies.set('refresh_token', refresh, { expires: 30 });
-          }
+          const { accessToken } = response.data;
+          Cookies.set('access_token', accessToken, { expires: 7 });
 
           if (originalRequest.headers) {
-            originalRequest.headers.Authorization = `Bearer ${access}`;
+            originalRequest.headers.Authorization = `Bearer ${accessToken}`;
           }
 
           return apiClient(originalRequest);

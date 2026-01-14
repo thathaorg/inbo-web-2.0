@@ -21,7 +21,7 @@ type VerifyCodePageProps = {
   email: string;
   onResend?: () => void;
   onSimulateOpen?: () => void;
-  onVerify?: (code: string) => void;
+  onVerify?: (code: string) => Promise<void>;
   devMode?: boolean;
 };
 
@@ -35,8 +35,9 @@ export default function VerifyCodePage({
   const isMobile = useMediaQuery("(max-width: 640px)");
 
   const [code, setCode] = useState<string[]>(["", "", "", ""]);
-  const [timer, setTimer] = useState(30);
+  const [timer, setTimer] = useState(60);
   const [hasError, setHasError] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
 
   const inputsRef = useRef<Array<HTMLInputElement | null>>([]);
 
@@ -56,19 +57,29 @@ export default function VerifyCodePage({
 
   /* ---------------- AUTO SUBMIT ---------------- */
   useEffect(() => {
-    if (code.every((d) => d !== "")) {
-      const finalCode = code.join("");
-      onVerify?.(finalCode);
+    const verifyCode = async () => {
+      if (code.every((d) => d !== "") && !isVerifying) {
+        const finalCode = code.join("");
+        setIsVerifying(true);
+        setHasError(false);
 
-      // ❗️Trigger error UI (replace with API failure response)
-      setHasError(true);
-
-      // Dev shortcut
-      if (devMode && onSimulateOpen) {
-        setTimeout(onSimulateOpen, 300);
+        try {
+          if (onVerify) {
+            await onVerify(finalCode);
+          } else if (devMode && onSimulateOpen) {
+            // Dev mode fallback
+            setTimeout(onSimulateOpen, 300);
+          }
+        } catch (error) {
+          setHasError(true);
+        } finally {
+          setIsVerifying(false);
+        }
       }
-    }
-  }, [code, devMode, onSimulateOpen, onVerify]);
+    };
+
+    verifyCode();
+  }, [code]);
 
   /* ---------------- HANDLERS ---------------- */
   const handleChange = (value: string, index: number) => {
@@ -90,10 +101,26 @@ export default function VerifyCodePage({
     }
   };
 
+  const handlePaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData("text").slice(0, 4);
+    if (/^\d+$/.test(pastedData)) {
+      const digits = pastedData.split("");
+      const newCode = [...code];
+      digits.forEach((digit, i) => {
+        if (i < 4) newCode[i] = digit;
+      });
+      setCode(newCode);
+      // Focus last filled input or the next empty one
+      const lastIndex = Math.min(digits.length, 3);
+      inputsRef.current[lastIndex]?.focus();
+    }
+  };
+
   const handleResend = () => {
     if (timer !== 0) return;
 
-    setTimer(30);
+    setTimer(60);
     setCode(["", "", "", ""]);
     setHasError(false);
     inputsRef.current[0]?.focus();
@@ -127,8 +154,10 @@ export default function VerifyCodePage({
               value={digit}
               onChange={(e) => handleChange(e.target.value, i)}
               onKeyDown={(e) => handleKeyDown(e, i)}
+              onPaste={handlePaste}
               maxLength={1}
               inputMode="numeric"
+              disabled={isVerifying}
               className={`
                 w-[56px] h-[56px]
                 rounded-2xl
@@ -137,6 +166,7 @@ export default function VerifyCodePage({
                 font-semibold
                 outline-none
                 transition
+                ${isVerifying ? "opacity-50" : ""}
                 ${
                   hasError
                     ? "border-2 border-red-500 bg-red-50"
@@ -153,7 +183,12 @@ export default function VerifyCodePage({
             This OTP doesn’t match. Recheck and enter again.
           </p>
         )}
-
+        {/* VERIFYING STATE */}
+        {isVerifying && (
+          <p className="mt-4 text-[15px] text-[#6F7680]">
+            Verifying...
+          </p>
+        )}
         {/* TIMER / RESEND */}
         <p className="mt-6 text-[15px] text-[#6F7680]">
           Didn’t receive the code?{" "}
@@ -198,9 +233,11 @@ export default function VerifyCodePage({
             value={digit}
             onChange={(e) => handleChange(e.target.value, i)}
             onKeyDown={(e) => handleKeyDown(e, i)}
+            onPaste={handlePaste}
             maxLength={1}
             inputMode="numeric"
             autoFocus={i === 0}
+            disabled={isVerifying}
             className={`
               w-[56px] h-[56px]
               rounded-xl
@@ -210,12 +247,27 @@ export default function VerifyCodePage({
               font-medium
               outline-none
               transition
-              ${digit ? "border-black" : "border-[#DADDE2] bg-[#F7F7F8]"}
+              ${isVerifying ? "opacity-50" : ""}
+              ${hasError ? "border-red-500 bg-red-50" : digit ? "border-black" : "border-[#DADDE2] bg-[#F7F7F8]"}
               focus:border-black
             `}
           />
         ))}
       </div>
+
+      {/* ERROR MESSAGE */}
+      {hasError && (
+        <p className="mt-4 text-[15px] text-red-500">
+          Invalid OTP. Please try again.
+        </p>
+      )}
+
+      {/* VERIFYING STATE */}
+      {isVerifying && (
+        <p className="mt-4 text-[15px] text-[#6F7680]">
+          Verifying...
+        </p>
+      )}
 
       {/* TIMER / RESEND */}
       <p className="mt-6 text-[15px] text-[#6F7680]">

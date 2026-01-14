@@ -3,6 +3,8 @@
 import { useState } from "react";
 import Image from "next/image";
 import { ChevronRight } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useRouter } from "next/navigation";
 
 // Sub Pages
 import { useMediaQuery } from "@/hooks/useMediaQuery";
@@ -129,11 +131,23 @@ function QRBadge({ label }: { label: string }) {
 ---------------------------------------- */
 export default function ProfileSection() {
   const isMobile = useMediaQuery("(max-width: 768px)");
+  const router = useRouter();
+  const { logout } = useAuth();
   const [appearance, setAppearance] =
     useState<"light" | "dark" | "system">("system");
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText("example@inbo.club");
+  };
+
+  // Handle logout
+  const handleLogout = async () => {
+    try {
+      await logout();
+      router.push('/auth/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
   };
 
   const [activePage, setActivePage] = useState<
@@ -511,7 +525,10 @@ export default function ProfileSection() {
             </div>
           ))}
 
-          <button className="mt-6 w-full text-red-500 border border-red-300 py-2 rounded-lg bg-[#FFF5F5] hover:bg-[#ffecec]">
+          <button 
+            onClick={handleLogout}
+            className="mt-6 w-full text-red-500 border border-red-300 py-2 rounded-lg bg-[#FFF5F5] hover:bg-[#ffecec]"
+          >
             Logout
           </button>
         </div>

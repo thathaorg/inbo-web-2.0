@@ -45,6 +45,8 @@ export default function MobileSignupSection(props: any) {
     isLoading,
     usernameInputRef,
     onEmailContinue,
+    onVerifyOTP,
+    onResendOTP,
     onFinalSubmit,
     onBack,
     setStep,
@@ -175,7 +177,8 @@ export default function MobileSignupSection(props: any) {
             {step === "check-email" && (
               <VerifyCodePage
                 email={formData.email}
-                onResend={() => {}}
+                onResend={onResendOTP}
+                onVerify={onVerifyOTP}
                 onSimulateOpen={() => setStep("username")}
                 devMode={devMode}
               />

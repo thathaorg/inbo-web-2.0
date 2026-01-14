@@ -5,6 +5,7 @@ import { ArrowLeft, ChevronRight, Pencil, BarChart3 } from "lucide-react";
 import { getInitials } from "./page";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import EditProfileModal from "@/components/profile/EditProfileModal";
 import ThemeBottomSheet from "@/components/profile/ThemeBottomSheet";
 
@@ -81,6 +82,7 @@ export default function MobileProfileSection({
   copyToClipboard,
 }: any) {
   const router = useRouter();
+  const { logout } = useAuth();
   const [notifications, setNotifications] = useState(true);
   const [haptics, setHaptics] = useState(true);
 
@@ -92,6 +94,16 @@ export default function MobileProfileSection({
   const [themeMode, setThemeMode] = useState<
     "light" | "dark" | "system"
   >(appearance || "system");
+
+  // Handle logout
+  const handleLogout = async () => {
+    try {
+      await logout();
+      router.push('/auth/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#F5F6FA] pb-20">
@@ -278,7 +290,10 @@ export default function MobileProfileSection({
       />
 
       {/* LOGOUT */}
-      <div className="mx-4 mt-4 bg-white rounded-xl border shadow-sm p-4 flex justify-between items-center">
+      <div 
+        onClick={handleLogout}
+        className="mx-4 mt-4 bg-white rounded-xl border shadow-sm p-4 flex justify-between items-center cursor-pointer hover:bg-red-50"
+      >
         <p className="text-[15px] text-red-500 font-medium">Log Out</p>
         <ChevronRight size={20} className="text-red-500" />
       </div>

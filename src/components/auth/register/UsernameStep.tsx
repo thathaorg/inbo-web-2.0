@@ -1,10 +1,21 @@
 "use client";
 
-import React, { forwardRef } from "react";
-import { CheckCircle2, AlertCircle } from "lucide-react";
+import React, { forwardRef, useState, useEffect, useCallback } from "react";
+import { CheckCircle2, AlertCircle, XCircle, Loader2 } from "lucide-react";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { userService } from "@/services/user";
 
-const dummySuggestions = ["Alex", "AlexSmith", "Alex09"];
+// Debounce hook
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+
+  return debouncedValue;
+}
 
 /* =========================
    STABLE SUB-COMPONENTS
@@ -16,6 +27,9 @@ const UsernameInput = ({
     setSelectedSuggestion,
     inputRef,
     isMobile,
+    isChecking,
+    isAvailable,
+    availabilityMessage,
   }: any) => (
     <>
       <label className="text-[16px] md:text-[18px] text-[#6F7680]">
@@ -35,7 +49,7 @@ const UsernameInput = ({
           placeholder="example34"
           value={formData.username}
           onChange={(e) => {
-            const v = e.target.value;
+            const v = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '');
             setFormData((p: any) => ({ ...p, username: v }));
             setSelectedSuggestion?.(null);
           }}
@@ -58,15 +72,25 @@ const UsernameInput = ({
       </div>
 
       <div className="mt-2 ml-2 h-[20px]">
-        {formData.username && formData.username.length > 1 ? (
-          <p className="text-green-600 text-sm flex items-center gap-1">
-            <CheckCircle2 size={16} /> Available
+        {isChecking ? (
+          <p className="text-[#6F7680] text-sm flex items-center gap-1">
+            <Loader2 size={16} className="animate-spin" /> Checking...
           </p>
-        ) : (
+        ) : formData.username && formData.username.length >= 2 ? (
+          isAvailable ? (
+            <p className="text-green-600 text-sm flex items-center gap-1">
+              <CheckCircle2 size={16} /> {availabilityMessage || "Available"}
+            </p>
+          ) : (
+            <p className="text-red-500 text-sm flex items-center gap-1">
+              <XCircle size={16} /> {availabilityMessage || "Not available"}
+            </p>
+          )
+        ) : formData.username ? (
           <p className="text-red-500 text-xs">
             Enter at least 2 characters
           </p>
-        )}
+        ) : null}
       </div>
     </>
   );
@@ -126,20 +150,127 @@ const MobileWarning = () => (
    MAIN COMPONENT
 ========================== */
 
+interface UsernameStepProps {
+  formData: { username: string; [key: string]: any };
+  setFormData: React.Dispatch<React.SetStateAction<any>>;
+  onContinue: () => Promise<void> | void;
+  onBack: () => void;
+}
+
 const UsernameStep = forwardRef(function UsernameStep(
   {
     formData,
     setFormData,
-    suggestions = [],
-    selectedSuggestion,
-    setSelectedSuggestion,
     onContinue,
     onBack,
-  }: any,
+  }: UsernameStepProps,
   ref: any
 ) {
   const isMobile = useMediaQuery("(max-width: 768px)");
-  const list = suggestions.length > 0 ? suggestions : dummySuggestions;
+  
+  // State for suggestions, availability, and loading
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [selectedSuggestion, setSelectedSuggestion] = useState<string | null>(null);
+  const [isAvailable, setIsAvailable] = useState<boolean | null>(null);
+  const [availabilityMessage, setAvailabilityMessage] = useState<string>("");
+  const [isChecking, setIsChecking] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [error, setError] = useState<string>("");
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+
+  // Debounce username input
+  const debouncedUsername = useDebounce(formData.username, 500);
+
+  // Fetch suggested usernames on mount
+  useEffect(() => {
+    const fetchSuggestions = async () => {
+      setLoadingSuggestions(true);
+      try {
+        const response = await userService.getSuggestedUsernames();
+        if (response.success && response.suggestions) {
+          setSuggestions(response.suggestions);
+        }
+      } catch (err) {
+        console.error("Failed to fetch suggestions:", err);
+        // Use fallback suggestions
+        setSuggestions(["user123", "reader456", "inbox789"]);
+      } finally {
+        setLoadingSuggestions(false);
+      }
+    };
+
+    fetchSuggestions();
+  }, []);
+
+  // Check availability when username changes
+  useEffect(() => {
+    const checkAvailability = async () => {
+      if (!debouncedUsername || debouncedUsername.length < 2) {
+        setIsAvailable(null);
+        setAvailabilityMessage("");
+        return;
+      }
+
+      setIsChecking(true);
+      setError("");
+
+      try {
+        const response = await userService.checkInboxAvailability(debouncedUsername);
+        setIsAvailable(response.is_available);
+        setAvailabilityMessage(response.message || (response.is_available ? "Username is available!" : "Username is taken"));
+      } catch (err: any) {
+        console.error("Availability check failed:", err);
+        setIsAvailable(false);
+        setAvailabilityMessage(err?.response?.data?.message || "Could not check availability");
+      } finally {
+        setIsChecking(false);
+      }
+    };
+
+    checkAvailability();
+  }, [debouncedUsername]);
+
+  // Handle continue button
+  const handleContinue = async () => {
+    if (!formData.username || formData.username.length < 2) {
+      setError("Please enter a username with at least 2 characters");
+      return;
+    }
+
+    if (!isAvailable) {
+      setError("Please choose an available username");
+      return;
+    }
+
+    setIsCreating(true);
+    setError("");
+
+    try {
+      const response = await userService.createInbox(formData.username);
+      if (response.success) {
+        // Inbox created successfully, proceed to next step
+        await onContinue();
+      } else {
+        setError(response.message || "Failed to create inbox");
+      }
+    } catch (err: any) {
+      console.error("Inbox creation failed:", err);
+      setError(err?.response?.data?.message || "Failed to create inbox. Please try again.");
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  // Handle suggestion click
+  const handleSuggestionClick = (username: string) => {
+    setSelectedSuggestion(username);
+    setFormData((p: any) => ({ ...p, username }));
+    // Immediately set as available since suggestions are pre-checked
+    setIsAvailable(true);
+    setAvailabilityMessage("Username is available!");
+  };
+
+  const canContinue = formData.username && formData.username.length >= 2 && isAvailable && !isChecking;
 
   /* =========================
      MOBILE LAYOUT
@@ -166,13 +297,29 @@ const UsernameStep = forwardRef(function UsernameStep(
             setSelectedSuggestion={setSelectedSuggestion}
             inputRef={ref}
             isMobile={true}
+            isChecking={isChecking}
+            isAvailable={isAvailable}
+            availabilityMessage={availabilityMessage}
           />
-          <Suggestions
-            list={list}
-            selectedSuggestion={selectedSuggestion}
-            setSelectedSuggestion={setSelectedSuggestion}
-            setFormData={setFormData}
-          />
+          
+          {loadingSuggestions ? (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="animate-spin text-[#6F7680]" size={24} />
+            </div>
+          ) : suggestions.length > 0 && (
+            <Suggestions
+              list={suggestions}
+              selectedSuggestion={selectedSuggestion}
+              setSelectedSuggestion={handleSuggestionClick}
+              setFormData={setFormData}
+            />
+          )}
+
+          {error && (
+            <div className="mt-4 px-4 py-3 rounded-xl bg-red-50 border border-red-200">
+              <p className="text-red-600 text-sm">{error}</p>
+            </div>
+          )}
         </div>
 
         <div
@@ -182,10 +329,21 @@ const UsernameStep = forwardRef(function UsernameStep(
           <div className="px-4 pt-3 pb-4">
             <MobileWarning />
             <button
-              onClick={onContinue}
-              className="mt-4 w-full bg-[#C46A54] text-white py-4 rounded-2xl text-[16px] font-medium"
+              onClick={handleContinue}
+              disabled={!canContinue || isCreating}
+              className={`mt-4 w-full py-4 rounded-2xl text-[16px] font-medium transition
+                ${canContinue && !isCreating
+                  ? "bg-[#C46A54] text-white"
+                  : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                }`}
             >
-              Continue
+              {isCreating ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Loader2 size={20} className="animate-spin" /> Creating...
+                </span>
+              ) : (
+                "Continue"
+              )}
             </button>
           </div>
         </div>
@@ -216,22 +374,50 @@ const UsernameStep = forwardRef(function UsernameStep(
             setFormData={setFormData}
             setSelectedSuggestion={setSelectedSuggestion}
             inputRef={ref}
-            ismobile={false}
+            isMobile={false}
+            isChecking={isChecking}
+            isAvailable={isAvailable}
+            availabilityMessage={availabilityMessage}
           />
-          <Suggestions
-            list={list}
-            selectedSuggestion={selectedSuggestion}
-            setSelectedSuggestion={setSelectedSuggestion}
-            setFormData={setFormData}
-          />
+          
+          {loadingSuggestions ? (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="animate-spin text-[#6F7680]" size={24} />
+            </div>
+          ) : suggestions.length > 0 && (
+            <Suggestions
+              list={suggestions}
+              selectedSuggestion={selectedSuggestion}
+              setSelectedSuggestion={handleSuggestionClick}
+              setFormData={setFormData}
+            />
+          )}
+          
           <DesktopWarning />
+
+          {error && (
+            <div className="mt-4 px-4 py-3 rounded-xl bg-red-50 border border-red-200">
+              <p className="text-red-600 text-sm">{error}</p>
+            </div>
+          )}
         </div>
 
         <button
-          onClick={onContinue}
-          className="w-full mt-8 bg-[#C46A54] text-white py-4 rounded-full text-[16px] font-medium"
+          onClick={handleContinue}
+          disabled={!canContinue || isCreating}
+          className={`w-full mt-8 py-4 rounded-full text-[16px] font-medium transition
+            ${canContinue && !isCreating
+              ? "bg-[#C46A54] text-white"
+              : "bg-gray-300 text-gray-500 cursor-not-allowed"
+            }`}
         >
-          Start reading
+          {isCreating ? (
+            <span className="flex items-center justify-center gap-2">
+              <Loader2 size={20} className="animate-spin" /> Creating inbox...
+            </span>
+          ) : (
+            "Start reading"
+          )}
         </button>
 
         <button

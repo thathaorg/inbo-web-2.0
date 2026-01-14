@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { SEOHead } from "@/components/seo/SEOHead";
 import AuthCarousel from "@/components/auth/AuthCarousel";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { useAuth } from "@/contexts/AuthContext";
 
 // Mobile section
 import MobileSignupSection from "@/app/auth/register/MobileSignupSection";
@@ -32,12 +33,14 @@ export type Step =
 export default function SignupPage() {
   const router = useRouter();
   const { i18n } = useTranslation();
+  const { sendOTP, verifyOTP } = useAuth();
 
   const isMobile = useMediaQuery("(max-width: 768px)");
-  const DEV_MODE = true;
+  const DEV_MODE = false; // Set to false for production
 
   const [step, setStep] = useState<Step | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     email: "",
@@ -58,16 +61,56 @@ export default function SignupPage() {
 
   if (step === null) return null;
 
-  /* ---------------- FLOWS ---------------- */
-
-  const handleEmailContinue = () => {
+  /* ---------------- API: SEND OTP ---------------- */
+  const handleEmailContinue = async () => {
     if (!formData.email.includes("@")) return;
 
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
+    setError(null);
+
+    try {
+      await sendOTP(formData.email);
       setStep("check-email");
-    }, 600);
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Failed to send OTP. Please try again.");
+      console.error("Send OTP error:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  /* ---------------- API: VERIFY OTP ---------------- */
+  const handleVerifyOTP = async (code: string) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await verifyOTP(formData.email, code);
+      
+      // Check if this is a new user or existing user
+      if (response.isNewUser || !response.user.isInboxCreated) {
+        // New user - continue with signup flow
+        setStep("username");
+      } else {
+        // Existing user with inbox - redirect to inbox
+        router.push("/inbox");
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Invalid OTP. Please try again.");
+      console.error("Verify OTP error:", err);
+      throw err; // Re-throw to show error in VerifyCode component
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  /* ---------------- RESEND OTP ---------------- */
+  const handleResendOTP = async () => {
+    try {
+      await sendOTP(formData.email);
+    } catch (err: any) {
+      console.error("Resend OTP error:", err);
+    }
   };
 
   const handleFinalSubmit = () => {
@@ -118,6 +161,8 @@ export default function SignupPage() {
           isLoading={isLoading}
           usernameInputRef={usernameInputRef}
           onEmailContinue={handleEmailContinue}
+          onVerifyOTP={handleVerifyOTP}
+          onResendOTP={handleResendOTP}
           onFinalSubmit={handleFinalSubmit}
           onBack={handleBack}
           setStep={setStep}
@@ -178,7 +223,8 @@ export default function SignupPage() {
               {step === "check-email" && (
                 <VerifyCodePage
                   email={formData.email}
-                  onResend={() => {}}
+                  onResend={handleResendOTP}
+                  onVerify={handleVerifyOTP}
                   onSimulateOpen={() => setStep("username")}
                   devMode={DEV_MODE}
                 />

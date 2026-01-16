@@ -38,6 +38,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   console.log(`[PROXY GET] Original path array:`, path);
   console.log(`[PROXY GET] Request URL: ${request.url}`);
   console.log(`[PROXY GET] Constructed backend URL: ${url.toString()}`);
+  console.log(`[PROXY GET] Authorization header:`, request.headers.get('Authorization') ? 'Present' : 'MISSING');
   
   // Preserve query parameters
   request.nextUrl.searchParams.forEach((value, key) => {
@@ -45,18 +46,19 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   });
 
   try {
-    console.log(`[PROXY GET] ${url.toString()}`);
+    console.log(`[PROXY GET] Final URL with params: ${url.toString()}`);
     
+    const authHeader = request.headers.get('Authorization') || '';
     const response = await fetch(url.toString(), {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': request.headers.get('Authorization') || '',
+        'Authorization': authHeader,
       },
     });
 
     const data = await response.json().catch(() => ({}));
-    console.log(`[PROXY RESPONSE] Status: ${response.status}`, data);
+    console.log(`[PROXY RESPONSE] Status: ${response.status}`, JSON.stringify(data).substring(0, 200));
     return NextResponse.json(data, { status: response.status });
   } catch (error) {
     console.error('[PROXY ERROR]', error);

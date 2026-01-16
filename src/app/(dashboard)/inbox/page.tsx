@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import EmptyList from "@/components/inbox/EmptyList";
 import EmptyInbox from "@/components/inbox/EmptyInbox";
 import NewsletterCard from "@/components/inbox/InboxCard";
@@ -74,17 +74,19 @@ function transformEmailToCard(email: EmailListItem) {
     newsletterName: newsletterName,
     newsletterLogo: email.newsletterLogo,
     sender: email.sender,
+    dateReceived: email.dateReceived, // Keep for sorting
   };
 }
 
 /* --------------------- PAGINATION CONSTANTS --------------------- */
 const EMAILS_PER_API_PAGE = 20; // Backend returns 20 emails per page
-const PAGES_TO_LOAD = 3; // Load 3 API pages at once (60 emails total)
+const PAGES_TO_LOAD_INITIAL = 1; // Load 1 page initially for fast first paint
+const PAGES_TO_LOAD_MORE = 2; // Load 2 pages when loading more
 const INITIAL_VISIBLE = 50; // Show 50 emails initially per section
 const LOAD_MORE = 50; // Load 50 more when "view more" is clicked
-const REQUEST_TIMEOUT_MS = 60000; // Increased to 60s for slow backend
+const REQUEST_TIMEOUT_MS = 45000; // 45s timeout (reduced from 60s)
 
-// Small helper to wrap API calls with a fast timeout so UI can respond quickly
+// Small helper to wrap API calls with a timeout so UI can respond
 async function withTimeout<T>(promise: Promise<T>, label: string, timeoutMs = REQUEST_TIMEOUT_MS): Promise<T> {
   return await Promise.race([
     promise,
@@ -113,6 +115,7 @@ export default function InboxPage() {
 
   // Reset pagination when tab changes
   useEffect(() => {
+    console.log(`📑 Tab changed to: ${tab}`);
     setTodayEmails([]);
     setLast7DaysEmails([]);
     setLast30DaysEmails([]);
@@ -124,8 +127,8 @@ export default function InboxPage() {
   // Group emails by time periods
   const groupEmailsByTime = (emails: EmailListItem[]) => {
     const now = new Date();
-    // Get today's start in local timezone
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    // Get midnight today in local timezone
+    const todayStart = new Date(now);
     todayStart.setHours(0, 0, 0, 0);
 
     // Calculate time boundaries
@@ -137,15 +140,27 @@ export default function InboxPage() {
     const last30Days: any[] = [];
     const older: any[] = [];
 
+    console.log(`📅 Grouping ${emails.length} emails by time...`);
+    console.log(`📅 Now: ${now.toLocaleString()}`);
+    console.log(`📅 Today start: ${todayStart.toLocaleString()}`);
+    console.log(`📅 7 days ago: ${sevenDaysAgo.toLocaleString()}`);
+    console.log(`📅 30 days ago: ${thirtyDaysAgo.toLocaleString()}`);
+
     emails.forEach((email) => {
       const dateReceived = email.dateReceived ? new Date(email.dateReceived) : null;
       if (!dateReceived) {
+        console.log(`⚠️ Email ${email.id} has no dateReceived, placing in Older`);
         older.push(transformEmailToCard(email));
         return;
       }
 
-      // Check if email is from today (using robust local date string comparison)
-      if (dateReceived.toDateString() === now.toDateString()) {
+      // Log first few emails for debugging
+      if (today.length + last7Days.length + last30Days.length + older.length < 3) {
+        console.log(`📧 Email: ${email.subject?.substring(0, 30)}... | Date: ${dateReceived.toLocaleString()}`);
+      }
+
+      // Check if email is from today
+      if (dateReceived >= todayStart) {
         today.push(transformEmailToCard(email));
       } else if (dateReceived >= sevenDaysAgo) {
         last7Days.push(transformEmailToCard(email));
@@ -155,6 +170,20 @@ export default function InboxPage() {
         older.push(transformEmailToCard(email));
       }
     });
+
+    // Sort each section by date (newest first)
+    const sortByDate = (a: any, b: any) => {
+      const dateA = new Date(a.dateReceived || 0).getTime();
+      const dateB = new Date(b.dateReceived || 0).getTime();
+      return dateB - dateA; // Descending (newest first)
+    };
+
+    today.sort(sortByDate);
+    last7Days.sort(sortByDate);
+    last30Days.sort(sortByDate);
+    older.sort(sortByDate);
+
+    console.log(`📊 Grouped: Today=${today.length}, Last 7 Days=${last7Days.length}, Last 30 Days=${last30Days.length}, Older=${older.length}`);
 
     return { today, last7Days, last30Days, older };
   };
@@ -181,14 +210,14 @@ export default function InboxPage() {
         setLoading(true);
         setError(null);
 
-        console.log(`🔄 Fetching inbox emails [Tab: ${tab}] - Pages ${nextPageToFetch} to ${nextPageToFetch + PAGES_TO_LOAD - 1}...`);
+        console.log(`🔄 Fetching inbox emails [Tab: ${tab}] - Page ${nextPageToFetch}...`);
 
         // Define isRead filter based on tab
         const isReadParam = tab === "unread" ? false : tab === "read" ? true : undefined;
 
-        // Fetch multiple pages in parallel (API returns 20 items per page)
+        // Fetch initial page (single page for faster first paint)
         const pagePromises = [];
-        for (let i = 0; i < PAGES_TO_LOAD; i++) {
+        for (let i = 0; i < PAGES_TO_LOAD_INITIAL; i++) {
           const pageNum = nextPageToFetch + i;
           pagePromises.push(emailService.getInboxEmails("latest", isReadParam, pageNum));
         }
@@ -255,7 +284,7 @@ export default function InboxPage() {
           setHasMorePages(allEmails.length > 0);
 
           // Increment page counter for next batch
-          setNextPageToFetch(prev => prev + PAGES_TO_LOAD);
+          setNextPageToFetch(prev => prev + PAGES_TO_LOAD_INITIAL);
         }
       } catch (err: any) {
         console.error('❌ Failed to fetch emails:', err);
@@ -284,8 +313,35 @@ export default function InboxPage() {
       }
     };
 
+    // Listen for email status changes from reading page
+    const handleEmailStatusChange = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const { emailId, isRead } = customEvent.detail;
+      
+      console.log(`📧 Email ${emailId} status changed: isRead=${isRead}`);
+      
+      // Update all email lists to reflect the status change
+      const updateLists = (prev: any[]) =>
+        prev.map(e =>
+          e.emailId === emailId ? { ...e, read: isRead } : e
+        );
+      
+      setTodayEmails(updateLists);
+      setLast7DaysEmails(updateLists);
+      setLast30DaysEmails(updateLists);
+      setOlderEmails(updateLists);
+      
+      // Refresh unread count
+      fetchUnreadCount();
+    };
+
     window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
+    window.addEventListener('emailStatusChanged', handleEmailStatusChange);
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('emailStatusChanged', handleEmailStatusChange);
+    };
   }, [tab]);
 
   // Visible counts for each section
@@ -302,9 +358,9 @@ export default function InboxPage() {
     try {
       const isReadParam = tab === "unread" ? false : tab === "read" ? true : undefined;
 
-      // Fetch next 3 pages
+      // Fetch next batch of pages
       const pagePromises = [];
-      for (let i = 0; i < PAGES_TO_LOAD; i++) {
+      for (let i = 0; i < PAGES_TO_LOAD_MORE; i++) {
         const pageNum = nextPageToFetch + i;
         pagePromises.push(emailService.getInboxEmails("latest", isReadParam, pageNum));
       }
@@ -340,7 +396,7 @@ export default function InboxPage() {
 
         // Continue loading as long as we're getting emails
         setHasMorePages(allEmails.length > 0);
-        setNextPageToFetch(prev => prev + PAGES_TO_LOAD);
+        setNextPageToFetch(prev => prev + PAGES_TO_LOAD_MORE);
       }
     } catch (err) {
       console.error('Failed to load more emails:', err);
@@ -350,24 +406,22 @@ export default function InboxPage() {
   };
 
   /* ---------------- FILTERING LOGIC ---------------- */
-  // The API already filters for unread/read if the tab is not 'all'
-  // But we keep this for consistency and handle any leftover logic
-  const filterByTab = (items: any[]) => {
-    // If API already filtered, this is mostly a no-op except for 'all' tab if we wanted sub-filtering
-    // But since we catch everything in all, and specify unread/read in others, it's safe.
-    if (tab === "unread") return items.filter((x) => !x.read);
-    if (tab === "read") return items.filter((x) => x.read);
-    return items;
-  };
-
-  const filteredToday = filterByTab(todayEmails);
-  const filtered7Days = filterByTab(last7DaysEmails);
-  const filtered30Days = filterByTab(last30DaysEmails);
-  const filteredOlder = filterByTab(olderEmails);
+  // The API already filters for unread/read based on tab
+  // We don't need additional filtering here - just use the data as-is
+  const filteredToday = todayEmails;
+  const filtered7Days = last7DaysEmails;
+  const filtered30Days = last30DaysEmails;
+  const filteredOlder = olderEmails;
 
   const unreadCountForSwitcher = realUnreadCount || [...todayEmails, ...last7DaysEmails, ...last30DaysEmails, ...olderEmails].filter(
     (i) => !i.read
   ).length;
+
+  const readCountForSwitcher = [...todayEmails, ...last7DaysEmails, ...last30DaysEmails, ...olderEmails].filter(
+    (i) => i.read
+  ).length;
+
+  const allCountForSwitcher = [...todayEmails, ...last7DaysEmails, ...last30DaysEmails, ...olderEmails].length;
 
   /* ---------------- REFRESH FEATURE ---------------- */
   const refreshInbox = async () => {
@@ -383,13 +437,6 @@ export default function InboxPage() {
     setOlderEmails([]);
     // Trigger refetch by resetting state
     window.location.reload();
-  };
-
-  /* ---------------- LOAD MORE PAGES ---------------- */
-  const loadMorePages = async () => {
-    if (!hasMorePages || loadingMore) return;
-    console.log(`📄 Loading next batch...`);
-    await loadNextBatch();
   };
 
   /* ---------------- ACTION HANDLERS ---------------- */
@@ -423,26 +470,41 @@ export default function InboxPage() {
   };
 
   /* ---------------- PAGINATION ---------------- */
-  // Load more within sections (local data)
-  const loadMoreSection = (
-    visible: number,
-    total: number,
-    setter: React.Dispatch<React.SetStateAction<number>>
-  ) => {
-    if (visible < total) {
-      setter((prev) => Math.min(prev + LOAD_MORE, total));
+  // Single "View more" button at bottom
+  const totalEmails = todayEmails.length + last7DaysEmails.length + last30DaysEmails.length + olderEmails.length;
+  const totalVisible = visibleToday + visible7Days + visible30Days + visibleOlder;
+  
+  // Show more local data across all sections
+  const loadMoreEmails = async () => {
+    // First, try to show more local data in any section that has hidden emails
+    let expanded = false;
+    
+    if (visibleToday < filteredToday.length) {
+      setVisibleToday(prev => Math.min(prev + LOAD_MORE, filteredToday.length));
+      expanded = true;
+    } else if (visible7Days < filtered7Days.length) {
+      setVisible7Days(prev => Math.min(prev + LOAD_MORE, filtered7Days.length));
+      expanded = true;
+    } else if (visible30Days < filtered30Days.length) {
+      setVisible30Days(prev => Math.min(prev + LOAD_MORE, filtered30Days.length));
+      expanded = true;
+    } else if (visibleOlder < filteredOlder.length) {
+      setVisibleOlder(prev => Math.min(prev + LOAD_MORE, filteredOlder.length));
+      expanded = true;
+    }
+    
+    // If all local data is shown and API has more, fetch next batch
+    if (!expanded && hasMorePages && !loadingMore) {
+      await loadNextBatch();
     }
   };
 
-  const loadMoreToday = () => loadMoreSection(visibleToday, filteredToday.length, setVisibleToday);
-  const loadMore7Days = () => loadMoreSection(visible7Days, filtered7Days.length, setVisible7Days);
-  const loadMore30Days = () => loadMoreSection(visible30Days, filtered30Days.length, setVisible30Days);
-  const loadMoreOlder = () => loadMoreSection(visibleOlder, filteredOlder.length, setVisibleOlder);
-
-  const showMoreToday = visibleToday < filteredToday.length;
-  const showMore7Days = visible7Days < filtered7Days.length;
-  const showMore30Days = visible30Days < filtered30Days.length;
-  const showMoreOlder = visibleOlder < filteredOlder.length;
+  // Show global "View more" button if there's hidden local data OR more API pages
+  const hasHiddenEmails = visibleToday < filteredToday.length || 
+                          visible7Days < filtered7Days.length || 
+                          visible30Days < filtered30Days.length || 
+                          visibleOlder < filteredOlder.length;
+  const showGlobalViewMore = hasHiddenEmails || (hasMorePages && !loadingMore);
 
   const isTodayEmpty = filteredToday.length === 0;
   const is7DaysEmpty = filtered7Days.length === 0;
@@ -481,6 +543,8 @@ export default function InboxPage() {
             filtered30Days={filtered30Days}
             filteredOlder={filteredOlder}
             unreadCount={unreadCountForSwitcher}
+            readCount={readCountForSwitcher}
+            allCount={allCountForSwitcher}
             hasMorePages={hasMorePages}
             loadingMore={loadingMore}
             onRequestMore={loadNextBatch}
@@ -500,7 +564,6 @@ export default function InboxPage() {
 
                 <div className="flex items-center gap-4 px-4 shrink-0">
                   <div className="flex items-center gap-3 bg-white border border-[#DBDFE4] rounded-full px-3 py-2 shadow-sm">
-                    <EmailBubble />
                     <FlameBadge />
                     <ThemeToggle />
                   </div>
@@ -508,6 +571,8 @@ export default function InboxPage() {
                     tab={tab}
                     setTab={setTab}
                     unreadCount={unreadCountForSwitcher}
+                    readCount={readCountForSwitcher}
+                    allCount={allCountForSwitcher}
                   />
                 </div>
               </div>
@@ -525,7 +590,7 @@ export default function InboxPage() {
                     Today
                   </h3>
                   {filteredToday.slice(0, visibleToday).map((item) => (
-                    <div key={item.slug} className="mb-2">
+                    <div key={item.emailId} className="mb-2">
                       <NewsletterCard
                         {...item}
                         onMoveToTrash={onMoveToTrash}
@@ -533,7 +598,6 @@ export default function InboxPage() {
                       />
                     </div>
                   ))}
-                  {showMoreToday && <CenterButton onClick={loadMoreToday} />}
                 </section>
               )}
 
@@ -544,7 +608,7 @@ export default function InboxPage() {
                     Last 7 days
                   </h3>
                   {filtered7Days.slice(0, visible7Days).map((item) => (
-                    <div key={item.slug} className="mb-2">
+                    <div key={item.emailId} className="mb-2">
                       <NewsletterCard
                         {...item}
                         onMoveToTrash={onMoveToTrash}
@@ -552,7 +616,6 @@ export default function InboxPage() {
                       />
                     </div>
                   ))}
-                  {showMore7Days && <CenterButton onClick={loadMore7Days} />}
                 </section>
               )}
 
@@ -563,7 +626,7 @@ export default function InboxPage() {
                     Last 30 days
                   </h3>
                   {filtered30Days.slice(0, visible30Days).map((item) => (
-                    <div key={item.slug} className="mb-2">
+                    <div key={item.emailId} className="mb-2">
                       <NewsletterCard
                         {...item}
                         onMoveToTrash={onMoveToTrash}
@@ -571,7 +634,6 @@ export default function InboxPage() {
                       />
                     </div>
                   ))}
-                  {showMore30Days && <CenterButton onClick={loadMore30Days} />}
                 </section>
               )}
 
@@ -582,7 +644,7 @@ export default function InboxPage() {
                     Older
                   </h3>
                   {filteredOlder.slice(0, visibleOlder).map((item) => (
-                    <div key={item.slug} className="mb-2">
+                    <div key={item.emailId} className="mb-2">
                       <NewsletterCard
                         {...item}
                         onMoveToTrash={onMoveToTrash}
@@ -590,49 +652,31 @@ export default function InboxPage() {
                       />
                     </div>
                   ))}
-                  {showMoreOlder && <CenterButton onClick={loadMoreOlder} />}
                 </section>
               )}
 
+              {/* GLOBAL VIEW MORE BUTTON */}
+              {showGlobalViewMore && (
+                <div className="w-full flex justify-center mt-8 pb-12">
+                  <button
+                    onClick={loadMoreEmails}
+                    disabled={loadingMore}
+                    className="px-8 py-3 border border-gray-300 rounded-full text-black font-medium hover:bg-gray-50 transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loadingMore ? "Loading..." : "View more"}
+                  </button>
+                </div>
+              )}
+
               {loadingMore && (
-                <div className="flex justify-center mt-6">
+                <div className="flex justify-center mt-6 pb-12">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                 </div>
               )}
             </div>
-
-            {/* GLOBAL LOAD MORE BUTTON (Desktop) */}
-            {hasMorePages && !loadingMore && (
-              <div className="w-full flex justify-center pb-12">
-                <button
-                  onClick={loadMorePages}
-                  className="px-6 py-2 border border-gray-300 rounded-full text-black font-medium hover:bg-gray-50 transition shadow-sm"
-                >
-                  Load more emails
-                </button>
-              </div>
-            )}
-
-            {loadingMore && (
-              <div className="flex justify-center pb-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              </div>
-            )}
           </div>
         </>
       )}
     </>
-  );
-}
-
-/* ---------------- "View more" BUTTON ---------------- */
-function CenterButton({ onClick }: { onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      className="mx-auto mt-4 block px-6 py-2 border border-gray-300 rounded-full text-black font-medium hover:bg-white transition"
-    >
-      View more
-    </button>
   );
 }

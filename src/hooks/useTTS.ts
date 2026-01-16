@@ -76,7 +76,10 @@ export const useTTS = () => {
     };
 
     newUtterance.onerror = (event) => {
-      console.error('TTS Error:', event);
+      // Only log if it's a real error, not just an interruption
+      if (event.error !== 'interrupted') {
+        console.error('TTS Error:', event.error, event);
+      }
       setState((prev) => ({ ...prev, isPlaying: false, isPaused: false }));
     };
 

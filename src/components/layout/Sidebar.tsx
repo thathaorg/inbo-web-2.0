@@ -91,9 +91,8 @@ export default function Sidebar({ openMobile, onClose }: any) {
               width={18}
               height={18}
               alt="Collapse Sidebar"
-              className={`transition-transform duration-300 ${
-                collapsed ? "rotate-180" : "rotate-0"
-              }`}
+              className={`transition-transform duration-300 ${collapsed ? "rotate-180" : "rotate-0"
+                }`}
             />
           </button>
         )}
@@ -112,10 +111,9 @@ export default function Sidebar({ openMobile, onClose }: any) {
                   className={`
                     flex items-center gap-2 py-2 rounded-xl text-[16px]
                     transition-all
-                    ${
-                      active
-                        ? "bg-[#DBDFE6] font-medium"
-                        : "hover:bg-[#F3F4F6]"
+                    ${active
+                      ? "bg-[#DBDFE6] font-medium"
+                      : "hover:bg-[#F3F4F6]"
                     }
                     ${collapsed ? "justify-center px-0" : "px-4"}
                   `}
@@ -154,6 +152,7 @@ export default function Sidebar({ openMobile, onClose }: any) {
                       width={110}
                       height={110}
                       className="object-contain"
+                      style={{ width: "auto", height: "auto" }}
                     />
 
                     <div className="flex flex-col gap-1 mb-6">
@@ -163,6 +162,7 @@ export default function Sidebar({ openMobile, onClose }: any) {
                         width={70}
                         height={30}
                         className="object-contain"
+                        style={{ width: "auto", height: "auto" }}
                       />
                       <Image
                         src="/badges/apple-store.png"
@@ -170,6 +170,7 @@ export default function Sidebar({ openMobile, onClose }: any) {
                         width={70}
                         height={30}
                         className="object-contain"
+                        style={{ width: "auto", height: "auto" }}
                       />
                     </div>
                   </div>

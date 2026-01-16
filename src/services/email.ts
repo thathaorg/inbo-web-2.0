@@ -1,7 +1,5 @@
 import apiClient from '@/utils/api';
-
-// Cache for newsletter provider info to avoid repeated API calls
-const newsletterProviderCache = new Map<string, { logo: string | null; name: string | null }>();
+import cacheManager, { CACHE_TTL, CACHE_KEYS } from '@/utils/cache';
 
 export interface EmailListItem {
   id: string;
@@ -213,10 +211,12 @@ export function extractFirstImage(htmlContent: string | null | undefined): strin
 async function fetchNewsletterProviderLogo(sender: string): Promise<string | null> {
   if (!sender) return null;
 
+  const cacheKey = CACHE_KEYS.NEWSLETTER_PROVIDER(sender);
+
   // Check cache first
-  const cacheKey = sender.toLowerCase();
-  if (newsletterProviderCache.has(cacheKey)) {
-    return newsletterProviderCache.get(cacheKey)?.logo || null;
+  const cached = cacheManager.get<{ logo: string | null; name: string | null }>(cacheKey);
+  if (cached !== null) {
+    return cached.logo;
   }
 
   try {
@@ -238,17 +238,17 @@ async function fetchNewsletterProviderLogo(sender: string): Promise<string | nul
       const logo = provider.logo || provider.image || null;
       const name = provider.name || null;
 
-      // Cache the result
-      newsletterProviderCache.set(cacheKey, { logo, name });
+      // Cache the result with long TTL (rarely changes)
+      cacheManager.set(cacheKey, { logo, name }, CACHE_TTL.VERY_LONG, true);
       return logo;
     }
 
     // Cache null result to avoid repeated failed requests
-    newsletterProviderCache.set(cacheKey, { logo: null, name: null });
+    cacheManager.set(cacheKey, { logo: null, name: null }, CACHE_TTL.LONG, true);
   } catch (error) {
     // Silently fail - newsletter logos are optional, backend endpoint has issues
     // Cache null result to avoid repeated failed requests
-    newsletterProviderCache.set(cacheKey, { logo: null, name: null });
+    cacheManager.set(cacheKey, { logo: null, name: null }, CACHE_TTL.MEDIUM);
   }
 
   return null;
@@ -260,16 +260,18 @@ async function fetchNewsletterProviderLogo(sender: string): Promise<string | nul
 async function fetchNewsletterProviderName(sender: string): Promise<string | null> {
   if (!sender) return null;
 
-  const cacheKey = sender.toLowerCase();
-  if (newsletterProviderCache.has(cacheKey)) {
-    return newsletterProviderCache.get(cacheKey)?.name || null;
+  const cacheKey = CACHE_KEYS.NEWSLETTER_PROVIDER(sender);
+  const cached = cacheManager.get<{ logo: string | null; name: string | null }>(cacheKey);
+  if (cached !== null) {
+    return cached.name;
   }
 
   // If logo fetch already cached the name, return it
   // Otherwise, trigger a fetch (which will cache both)
   await fetchNewsletterProviderLogo(sender);
 
-  return newsletterProviderCache.get(cacheKey)?.name || null;
+  const freshCached = cacheManager.get<{ logo: string | null; name: string | null }>(cacheKey);
+  return freshCached?.name || null;
 }
 
 function normalizeEmailListItem(item: EmailListItemApi): EmailListItem {
@@ -277,11 +279,12 @@ function normalizeEmailListItem(item: EmailListItemApi): EmailListItem {
   const contentPreview = item.contentPreview ?? item.content_preview ?? null;
 
   // Extract newsletter name (prefer API provided, then cache, then extract)
-  const cachedName = newsletterProviderCache.get(sender.toLowerCase())?.name;
+  const cached = cacheManager.get<{ logo: string | null; name: string | null }>(CACHE_KEYS.NEWSLETTER_PROVIDER(sender));
+  const cachedName = cached?.name;
   const newsletterName = item.newsletterName ?? item.newsletter_name ?? cachedName ?? extractNewsletterName(sender);
 
   // Get logo from cache if available
-  const cachedLogo = newsletterProviderCache.get(sender.toLowerCase())?.logo;
+  const cachedLogo = cached?.logo;
   const newsletterLogo = item.newsletterLogo ?? item.newsletter_logo ?? cachedLogo ?? null;
 
   // Extract first image from content
@@ -319,48 +322,76 @@ const EMAIL_ENDPOINTS = {
 class EmailService {
   /**
    * Get inbox emails with optional filtering
+   * Uses caching with request deduplication to prevent redundant API calls
    */
   async getInboxEmails(
     filter: 'latest' | 'oldest' = 'latest',
     isRead?: boolean,
-    page: number = 1
+    page: number = 1,
+    forceRefresh: boolean = false
   ): Promise<EmailListItem[] | EmptyInboxResponse[]> {
-    const params = new URLSearchParams();
-    params.append('filter', filter);
-    if (isRead !== undefined) {
-      params.append('isRead', isRead.toString());
-    }
-    params.append('page', page.toString());
+    const cacheKey = CACHE_KEYS.INBOX_PAGE(page, isRead);
 
-    const response = await apiClient.get<any>(
-      `${EMAIL_ENDPOINTS.INBOX}?${params.toString()}`
-    );
-
-    // Handle paginated response structure: {data: Array, page, limit, total, hasNext}
-    const responseData = response.data?.data ?? response.data ?? [];
-    const data = Array.isArray(responseData) ? responseData : [];
-
-    if (data.length > 0 && 'pendingNewsletters' in (data[0] as any)) {
-      return data as unknown as EmptyInboxResponse[];
-    }
-
-    const emails = (data as EmailListItemApi[]).map(normalizeEmailListItem);
-
-    // Fetch provider logos for emails that don't have them yet (in parallel)
-    const logoPromises = emails.map(async (email) => {
-      if (!email.newsletterLogo && email.sender) {
-        const logo = await fetchNewsletterProviderLogo(email.sender);
-        if (logo) {
-          email.newsletterLogo = logo;
+    // Use fetchWithCache for automatic caching and deduplication
+    return cacheManager.fetchWithCache(
+      cacheKey,
+      async () => {
+        const params = new URLSearchParams();
+        params.append('filter', filter);
+        if (isRead !== undefined) {
+          params.append('isRead', isRead.toString());
         }
+        params.append('page', page.toString());
+
+        const response = await apiClient.get<any>(
+          `${EMAIL_ENDPOINTS.INBOX}?${params.toString()}`
+        );
+
+        // Handle paginated response structure: {data: Array, page, limit, total, hasNext}
+        const responseData = response.data?.data ?? response.data ?? [];
+        const data = Array.isArray(responseData) ? responseData : [];
+
+        if (data.length > 0 && 'pendingNewsletters' in (data[0] as any)) {
+          return data as unknown as EmptyInboxResponse[];
+        }
+
+        const emails = (data as EmailListItemApi[]).map(normalizeEmailListItem);
+
+        // Fetch provider logos for emails that don't have them yet (in parallel)
+        // Using deduplication to prevent multiple requests for the same sender
+        const uniqueSenders = new Set(emails.filter(e => !e.newsletterLogo && e.sender).map(e => e.sender));
+
+        // Batch fetch logos for unique senders only
+        const logoPromises = Array.from(uniqueSenders).map(sender =>
+          cacheManager.deduplicateRequest(
+            `logo:${sender}`,
+            () => fetchNewsletterProviderLogo(sender)
+          )
+        );
+
+        await Promise.all(logoPromises);
+
+        // Update emails with cached logos
+        emails.forEach(email => {
+          if (!email.newsletterLogo && email.sender) {
+            const cached = cacheManager.get<{ logo: string | null; name: string | null }>(
+              CACHE_KEYS.NEWSLETTER_PROVIDER(email.sender)
+            );
+            if (cached?.logo) {
+              email.newsletterLogo = cached.logo;
+            }
+          }
+        });
+
+        return emails;
+      },
+      {
+        ttl: CACHE_TTL.SHORT,  // Short TTL for inbox (30 seconds)
+        persist: false,
+        forceRefresh,
+        staleWhileRevalidate: true,
       }
-      return email;
-    });
-
-    // Wait for all logo fetches to complete
-    await Promise.all(logoPromises);
-
-    return emails;
+    );
   }
 
   /**
@@ -422,10 +453,12 @@ class EmailService {
 
   async markEmailAsRead(emailId: string): Promise<void> {
     try {
-      // Re-enabled: Attempt to mark as read
+      // Mark as read
       await apiClient.patch(EMAIL_ENDPOINTS.MARK_READ.replace('{id}', emailId), {
         is_read: true
       });
+      // Invalidate inbox cache so next refresh shows updated read status
+      cacheManager.invalidatePrefix(CACHE_KEYS.INBOX);
     } catch (error: any) {
       // Backend known issue: often returns 500 even if successful or if just tracking progress
       // We swallow the error so the UI updates optimistically
@@ -454,6 +487,10 @@ class EmailService {
     await apiClient.patch(`/api/email/${emailId}/favorite/`, {
       isFavorite
     });
+    // Invalidate caches that might contain this email
+    cacheManager.invalidate(CACHE_KEYS.EMAIL_DETAIL(emailId));
+    cacheManager.invalidatePrefix(CACHE_KEYS.INBOX);
+    cacheManager.invalidatePrefix(CACHE_KEYS.FAVORITES);
   }
 
   /**
@@ -464,6 +501,10 @@ class EmailService {
     await apiClient.patch(`/api/email/${emailId}/readlater/`, {
       isReadLater
     });
+    // Invalidate caches that might contain this email
+    cacheManager.invalidate(CACHE_KEYS.EMAIL_DETAIL(emailId));
+    cacheManager.invalidatePrefix(CACHE_KEYS.INBOX);
+    cacheManager.invalidatePrefix(CACHE_KEYS.READ_LATER);
   }
 
   /**
@@ -472,6 +513,12 @@ class EmailService {
   async moveToTrash(emailId: string): Promise<void> {
     console.debug(`📤 Moving email to trash: ${emailId}`);
     await apiClient.patch(`/api/email/${emailId}/trash/`, {});
+    // Invalidate all caches since email moved
+    cacheManager.invalidate(CACHE_KEYS.EMAIL_DETAIL(emailId));
+    cacheManager.invalidatePrefix(CACHE_KEYS.INBOX);
+    cacheManager.invalidatePrefix(CACHE_KEYS.READ_LATER);
+    cacheManager.invalidatePrefix(CACHE_KEYS.FAVORITES);
+    cacheManager.invalidatePrefix(CACHE_KEYS.TRASH);
   }
 
   /**
@@ -480,22 +527,36 @@ class EmailService {
   async deleteEmail(emailId: string): Promise<void> {
     console.debug(`🗑️ Permanently deleting email: ${emailId}`);
     await apiClient.delete(`/api/email/${emailId}/delete/`);
+    // Invalidate all caches since email deleted
+    cacheManager.invalidate(CACHE_KEYS.EMAIL_DETAIL(emailId));
+    cacheManager.invalidatePrefix(CACHE_KEYS.INBOX);
+    cacheManager.invalidatePrefix(CACHE_KEYS.TRASH);
   }
 
   /**
    * Get email details by ID
+   * Uses caching with longer TTL since email content rarely changes
    */
-  async getEmailDetail(emailId: string): Promise<EmailDetail> {
-    try {
-      const response = await apiClient.get<EmailDetailApi>(
-        `/api/email/${emailId}/`
-      );
-      return normalizeEmailDetail(response.data);
-    } catch (error: any) {
-      console.error('Failed to fetch email detail:', error);
-      throw error;
-    }
+  async getEmailDetail(emailId: string, forceRefresh: boolean = false): Promise<EmailDetail> {
+    const cacheKey = CACHE_KEYS.EMAIL_DETAIL(emailId);
+
+    return cacheManager.fetchWithCache(
+      cacheKey,
+      async () => {
+        const response = await apiClient.get<EmailDetailApi>(
+          `/api/email/${emailId}/`
+        );
+        return normalizeEmailDetail(response.data);
+      },
+      {
+        ttl: CACHE_TTL.LONG,  // 10 minutes for email details
+        persist: true,        // Persist to localStorage for offline reading
+        forceRefresh,
+        staleWhileRevalidate: false,  // Email content should be fresh
+      }
+    );
   }
+
   /**
    * Add a highlight to an email
    */
@@ -505,8 +566,25 @@ class EmailService {
       selectionInfo,
       color
     });
+    // Invalidate the email detail cache since highlights changed
+    cacheManager.invalidate(CACHE_KEYS.EMAIL_DETAIL(emailId));
     return response.data;
+  }
+
+  /**
+   * Invalidate all inbox-related caches (useful for manual refresh)
+   */
+  invalidateInboxCache(): void {
+    cacheManager.invalidatePrefix(CACHE_KEYS.INBOX);
+  }
+
+  /**
+   * Invalidate all caches (useful for logout or major data changes)
+   */
+  invalidateAllCaches(): void {
+    cacheManager.invalidateAll();
   }
 }
 
 export default new EmailService();
+

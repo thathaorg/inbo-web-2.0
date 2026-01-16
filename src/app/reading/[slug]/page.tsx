@@ -432,13 +432,30 @@ export default function ReadingPage(props: PageProps) {
     }
   }, [slug]);
 
-  const handleToggleRead = async () => {
+  const handleToggleRead = async (forcedStatus?: boolean) => {
     if (!emailData) return;
-    const nextStatus = !emailData.isRead;
+    const nextStatus = forcedStatus !== undefined ? forcedStatus : !emailData.isRead;
+
+    // If we're forcing status and it already matches, skip
+    if (forcedStatus !== undefined && emailData.isRead === nextStatus) return;
+
     try {
+      // Use toggleReadStatus which handles both read and unread
       await emailService.toggleReadStatus(emailData.id, nextStatus);
       // Optimistically update UI
       setEmailData(prev => prev ? { ...prev, isRead: nextStatus } : null);
+      
+      // Broadcast to parent window/tabs so inbox updates immediately
+      if (typeof window !== 'undefined') {
+        const event = new CustomEvent('emailStatusChanged', {
+          detail: {
+            emailId: emailData.id,
+            isRead: nextStatus,
+            timestamp: new Date().toISOString()
+          }
+        });
+        window.dispatchEvent(event);
+      }
     } catch (e) {
       console.error("Failed to toggle read status", e);
     }
@@ -481,7 +498,7 @@ export default function ReadingPage(props: PageProps) {
 
   const handleShare = async () => {
     if (!emailData) return;
-    
+
     const shareUrl = `${window.location.origin}/reading/${emailData.id}`;
     const shareData = {
       title: title || 'Check out this article',
@@ -587,8 +604,16 @@ export default function ReadingPage(props: PageProps) {
     if (!el) return;
 
     const handleScroll = () => {
-      setAtTop(el.scrollTop <= 0);
-      setAtBottom(el.scrollTop + el.clientHeight >= el.scrollHeight - 1);
+      const atTopVal = el.scrollTop <= 5;
+      const atBottomVal = el.scrollTop + el.clientHeight >= el.scrollHeight - 5;
+
+      setAtTop(atTopVal);
+      setAtBottom(atBottomVal);
+
+      // Task 4: Auto-mark as read when bottom reached
+      if (atBottomVal && !emailData?.isRead) {
+        handleToggleRead(true);
+      }
 
       const progress = el.scrollTop / (el.scrollHeight - el.clientHeight);
       setScrollProgress(Math.min(100, Math.max(0, Math.round(progress * 100))));
@@ -828,8 +853,11 @@ export default function ReadingPage(props: PageProps) {
               <div className="absolute left-4 top-6 z-50 flex flex-col gap-2">
                 <button
                   disabled={atTop}
-                  onClick={() => contentRef.current?.scrollTo({ top: 0, behavior: "smooth" })}
-                  className={`h-9 w-9 rounded-xl flex items-center justify-center transition-all ${atTop ? "bg-gray-200 text-gray-400" : "bg-black text-white hover:scale-110"}`}
+                  onClick={() => {
+                    console.log("Scrolling to top...");
+                    contentRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                  className={`h-9 w-9 rounded-xl flex items-center justify-center transition-all ${atTop ? "bg-gray-200 text-gray-400 cursor-not-allowed" : "bg-black text-white hover:scale-110"}`}
                 >
                   <ArrowUp size={16} />
                 </button>
@@ -908,7 +936,7 @@ export default function ReadingPage(props: PageProps) {
               <img src="/icons/note-icon.png" alt="note" />
             </button>
             <div className="relative" data-share-popup>
-              <button 
+              <button
                 onClick={() => setShowSharePopup(v => !v)}
                 className={`p-3 hover:bg-gray-100 transition-colors ${showSharePopup ? 'bg-gray-100' : ''}`}
                 title="Share"

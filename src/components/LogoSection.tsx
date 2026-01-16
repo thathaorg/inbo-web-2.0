@@ -11,6 +11,8 @@ export default function LogoSection() {
         width={140}
         height={45}
         className="object-contain"
+        priority
+        loading="eager"
         // Avoid Next/Image warning when global CSS (suggested by Next) affects only one dimension.
         style={{ width: "auto", height: "auto" }}
       />

@@ -20,8 +20,8 @@ function CardCheckbox({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <button
-      type="button"
+    <div
+      role="button"
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -32,6 +32,7 @@ function CardCheckbox({
         flex items-center justify-center
         border
         transition-colors
+        cursor-pointer
         ${checked
           ? "bg-black border-black-500"
           : "bg-white border-gray-300"
@@ -52,7 +53,7 @@ function CardCheckbox({
           <polyline points="20 6 9 17 4 12" />
         </svg>
       )}
-    </button>
+    </div>
   );
 }
 
@@ -106,17 +107,38 @@ function InboxCardMobile({
       console.warn('Cannot navigate: slug is missing', { slug });
     }
   };
+
+  const Wrapper = ({ children }: any) => {
+    const className = "md:hidden py-4 border-b border-gray-300 cursor-pointer hover:bg-gray-50 transition-colors block text-left";
+
+    if (slug && !onClick) {
+      return (
+        <Link href={`/reading/${slug}`} className={className}>
+          {children}
+        </Link>
+      );
+    }
+
+    return (
+      <div
+        onClick={handleClick}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleClick();
+          }
+        }}
+        className={className}
+      >
+        {children}
+      </div>
+    );
+  };
+
   return (
-    <div onClick={handleClick}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          handleClick();
-        }
-      }}
-      className="md:hidden py-4 border-b border-gray-300 cursor-pointer hover:bg-gray-50 transition-colors">
+    <Wrapper>
       <div className="px-4 flex gap-3 items-start">
         {/* CHECKBOX */}
         {showCheckbox && (
@@ -165,45 +187,48 @@ function InboxCardMobile({
 
               {/* MORE ICON MOBILE */}
               <div className="relative ml-1" onClick={(e) => e.stopPropagation()}>
-                <button
+                <div
+                  role="button"
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     const next = !showMenu;
                     setShowMenu(next);
                   }}
-                  className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                  className="p-1 hover:bg-gray-100 rounded-full transition-colors cursor-pointer flex items-center justify-center"
                 >
                   <MoreHorizontal size={16} className="text-gray-400" />
-                </button>
+                </div>
 
                 {showMenu && (
                   <div
                     ref={menuRef}
                     className="absolute right-0 top-full mt-1 w-40 bg-white border rounded-lg shadow-xl z-50 p-1 animate-in fade-in zoom-in duration-150"
                   >
-                    <button
+                    <div
+                      role="button"
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
                         if (onToggleReadLater) onToggleReadLater(emailId, !isReadLater);
                         setShowMenu(false);
                       }}
-                      className="w-full text-left px-3 py-2 hover:bg-gray-50 rounded-md text-xs font-medium"
+                      className="w-full text-left px-3 py-2 hover:bg-gray-50 rounded-md text-xs font-medium cursor-pointer"
                     >
                       {isReadLater ? 'Remove Read Later' : 'Read Later'}
-                    </button>
-                    <button
+                    </div>
+                    <div
+                      role="button"
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
                         if (onMoveToTrash) onMoveToTrash(emailId);
                         setShowMenu(false);
                       }}
-                      className="w-full text-left px-3 py-2 hover:bg-red-50 rounded-md text-xs font-medium text-red-600"
+                      className="w-full text-left px-3 py-2 hover:bg-red-50 rounded-md text-xs font-medium text-red-600 cursor-pointer"
                     >
                       Move to Trash
-                    </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -216,7 +241,7 @@ function InboxCardMobile({
               {title}
             </h3>
 
-            <EmailThumbnail 
+            <EmailThumbnail
               emailId={emailId}
               sender={sender}
               thumbnail={thumbnail}
@@ -230,7 +255,7 @@ function InboxCardMobile({
           </span>
         </div>
       </div>
-    </div>
+    </Wrapper>
   );
 }
 
@@ -308,26 +333,44 @@ function NewsletterCardDesktop({
     setShowMenu(false);
   };
 
+  const Wrapper = ({ children }: any) => {
+    const className = `
+      hidden md:flex
+      bg-white border border-[#E5E7EB]
+      rounded-2xl p-4
+      gap-4 shadow-sm
+      cursor-pointer hover:shadow-md transition-all
+      relative block text-left
+    `;
+
+    if (slug && !onClick) {
+      return (
+        <Link href={`/reading/${slug}`} className={className}>
+          {children}
+        </Link>
+      );
+    }
+
+    return (
+      <div
+        onClick={handleClick}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleClick();
+          }
+        }}
+        className={className}
+      >
+        {children}
+      </div>
+    );
+  };
+
   return (
-    <div
-      onClick={handleClick}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          handleClick();
-        }
-      }}
-      className="
-          hidden md:flex
-          bg-white border border-[#E5E7EB]
-          rounded-2xl p-4
-          gap-4 shadow-sm
-          cursor-pointer hover:shadow-md transition-all
-          relative
-        "
-    >
+    <Wrapper>
       {/* CHECKBOX */}
       {showCheckbox && (
         <CardCheckbox
@@ -375,27 +418,30 @@ function NewsletterCardDesktop({
 
             {/* MORE ICON */}
             <div className="relative ml-2" ref={menuRef}>
-              <button
+              <div
+                role="button"
                 onClick={handleMoreClick}
-                className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                className="p-1 hover:bg-gray-100 rounded-full transition-colors cursor-pointer flex items-center justify-center"
               >
                 <MoreHorizontal size={18} className="text-gray-400" />
-              </button>
+              </div>
 
               {showMenu && (
                 <div className="absolute right-0 top-full mt-1 w-44 bg-white border rounded-xl shadow-xl z-50 p-1.5 animate-in fade-in zoom-in duration-200">
-                  <button
+                  <div
+                    role="button"
                     onClick={handleReadLater}
-                    className="w-full text-left px-3 py-2 hover:bg-gray-50 rounded-lg text-sm font-medium flex items-center justify-between"
+                    className="w-full text-left px-3 py-2 hover:bg-gray-50 rounded-lg text-sm font-medium flex items-center justify-between cursor-pointer"
                   >
                     {isReadLater ? 'Remove from Read Later' : 'Read Later'}
-                  </button>
-                  <button
+                  </div>
+                  <div
+                    role="button"
                     onClick={handleTrash}
-                    className="w-full text-left px-3 py-2 hover:bg-red-50 rounded-lg text-sm font-medium text-red-600 flex items-center justify-between"
+                    className="w-full text-left px-3 py-2 hover:bg-red-50 rounded-lg text-sm font-medium text-red-600 flex items-center justify-between cursor-pointer"
                   >
                     Move to Trash
-                  </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -423,7 +469,7 @@ function NewsletterCardDesktop({
             </div>
           </div>
 
-          <EmailThumbnail 
+          <EmailThumbnail
             emailId={emailId}
             sender={sender}
             thumbnail={thumbnail}
@@ -432,7 +478,7 @@ function NewsletterCardDesktop({
           />
         </div>
       </div>
-    </div>
+    </Wrapper>
   );
 }
 

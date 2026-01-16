@@ -6,7 +6,7 @@ import Image from "next/image";
 export function IntroStep({ onEmail }: { onEmail: () => void }) {
   return (
     <div className="relative max-h-screen overflow-hidden bg-[#C86E58] text-white">
-      
+
       {/* Help icon (same position as header) */}
       <div className="absolute top-0 right-0 z-20 h-[72px] px-6 flex items-center">
         <span className="flex h-8 w-8 items-center justify-center text-white/70">
@@ -26,7 +26,7 @@ export function IntroStep({ onEmail }: { onEmail: () => void }) {
 
       {/* Content */}
       <div className="relative z-10 flex min-h-screen flex-col items-center justify-end px-6 pb-20">
-        
+
         {/* Logo */}
         <Image
           src="/logos/intro-logo.png"
@@ -35,6 +35,7 @@ export function IntroStep({ onEmail }: { onEmail: () => void }) {
           alt="inbo"
           priority
           className="mb-10"
+          style={{ width: "auto", height: "auto" }}
         />
 
         {/* Headline */}

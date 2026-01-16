@@ -95,6 +95,7 @@ export default function AuthCarousel() {
                   fill
                   className="object-cover object-left-top"
                   priority
+                  sizes="(max-width: 768px) 100vw, 50vw"
                 />
               </div>
             </div>

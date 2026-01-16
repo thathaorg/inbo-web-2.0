@@ -22,6 +22,8 @@ export default function MobileInboxSection({
   filtered30Days,
   filteredOlder,
   unreadCount,
+  readCount,
+  allCount,
   hasMorePages,
   loadingMore,
   onRequestMore,
@@ -33,6 +35,8 @@ export default function MobileInboxSection({
   filtered30Days: any[];
   filteredOlder: any[];
   unreadCount: number;
+  readCount: number;
+  allCount: number;
   hasMorePages: boolean;
   loadingMore: boolean;
   onRequestMore?: () => void;

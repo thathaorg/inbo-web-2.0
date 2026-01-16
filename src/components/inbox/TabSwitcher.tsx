@@ -8,11 +8,15 @@ export default function TabSwitcher({
   tab,
   setTab,
   unreadCount,
+  readCount,
+  allCount,
   className = "",
 }: {
   tab: TabType;
   setTab: (value: TabType) => void;
   unreadCount: number;
+  readCount: number;
+  allCount: number;
   className?: string;
 }) {
   const items = [
@@ -25,8 +29,24 @@ export default function TabSwitcher({
         </div>
       ),
     },
-    { id: "read", label: "Read" },
-    { id: "all", label: "All" },
+    {
+      id: "read",
+      label: (
+        <div className="flex items-center gap-2">
+          <span>Read</span>
+          <CountBubble count={readCount} />
+        </div>
+      ),
+    },
+    {
+      id: "all",
+      label: (
+        <div className="flex items-center gap-2">
+          <span>All</span>
+          <CountBubble count={allCount} />
+        </div>
+      ),
+    },
   ];
 
   return (

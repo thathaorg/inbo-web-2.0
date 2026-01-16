@@ -9,191 +9,524 @@ import RefreshButton from "@/components/inbox/RefreshButton";
 import TabSwitcher from "@/components/inbox/TabSwitcher";
 import MobileInboxSection from "./MobileInboxSection";
 import EmptyState from "@/components/SearchNotFound";
+import emailService, { extractNewsletterName, extractFirstImage } from "@/services/email";
+import analyticsService from "@/services/analytics";
+import type { EmailListItem } from "@/services/email";
 
-/* --------------------- DUMMY NEWSLETTER GENERATOR --------------------- */
+/* --------------------- EMAIL TRANSFORMATION --------------------- */
+/**
+ * Transform API EmailListItem to component-compatible format
+ */
+function transformEmailToCard(email: EmailListItem) {
+  const dateReceived = email.dateReceived ? new Date(email.dateReceived) : new Date();
+  const now = new Date();
+  const diffMs = now.getTime() - dateReceived.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffMinutes = Math.floor(diffMs / (1000 * 60));
 
-function generate24Hours() {
-  return Array.from({ length: 15 }).map((_, i) => ({
-    badgeText: i % 2 === 0 ? "AI" : "BfM",
-    badgeColor: i % 2 === 0 ? "#E0F2FE" : "#FEF3C7",
-    badgeTextColor: i % 2 === 0 ? "#0369A1" : "#B45309",
-    author: i % 2 === 0 ? "ByteByteGo Newsletter" : "Built for Mars",
-    title:
-      `Extremely Long 24h Article Title Number ${i + 1}: ` +
-      "A Deep Exploration Into the Multi-Layered Architecture, Strategic Decision-Making Patterns, and Real-World Engineering Constraints That Shape Modern Software Systems in the Era of Distributed Computing, AI-Driven Workflows, and Overly Complex Frontend Tooling",
-    description:
-      "This is an intentionally long and verbose description designed to test UI truncation, overflow boundaries, and multi-line text behavior across various responsive breakpoints.",
-    date: "Oct 3rd",
-    time: "2 mins",
-    tag: i % 2 === 0 ? "Software" : "Design",
-    thumbnail: "/logos/forbes-sample.png",
-    read: Math.random() > 0.5,
-    slug: `24h-${i + 1}`,
-  }));
-}
+  // Calculate human-readable time (matching Figma: "2 mins")
+  let timeDisplay = "Just now";
+  if (diffDays > 0) {
+    timeDisplay = `${diffDays}d ago`;
+  } else if (diffHours > 0) {
+    timeDisplay = `${diffHours}h ago`;
+  } else if (diffMinutes > 0) {
+    timeDisplay = `${diffMinutes} min${diffMinutes > 1 ? 's' : ''}`;
+  }
 
-function generate7Days() {
-  return Array.from({ length: 15 }).map((_, i) => ({
-    badgeText: i % 2 === 0 ? "AI" : "BfM",
-    badgeColor: i % 2 === 0 ? "#E0F2FE" : "#FEF3C7",
-    badgeTextColor: i % 2 === 0 ? "#0369A1" : "#B45309",
-    author: i % 2 === 0 ? "ByteByteGo Newsletter" : "Built for Mars",
-    title:
-      `Extremely Long Past Week Article Title ${i + 1}: ` +
-      "Understanding the Evolution of User Experience Principles, Product Thinking, Behavioral Psychology Behind Interface Design",
-    description:
-      "This artificially long description pushes the layout to its limits by simulating a real-world scenario.",
-    date: "Sept 28",
-    time: "3 mins",
-    tag: i % 2 === 0 ? "Tech" : "UX",
-    thumbnail: "/logos/sample-img.png",
-    read: Math.random() > 0.5,
-    slug: `7d-${i + 1}`,
-  }));
+  // Extract newsletter name (use provided or extract from sender)
+  const newsletterName = email.newsletterName || extractNewsletterName(email.sender);
+
+  // Extract first image from content - only use placeholder if no image found
+  const extractedImage = email.firstImage || extractFirstImage(email.contentPreview || null);
+  const thumbnail = extractedImage || null; // Don't use placeholder, show no image if none found
+
+  // Format date like "Oct 3rd" (matching Figma)
+  const day = dateReceived.getDate();
+  const month = dateReceived.toLocaleDateString("en-US", { month: "short" });
+  const daySuffix = day === 1 || day === 21 || day === 31 ? 'st' :
+    day === 2 || day === 22 ? 'nd' :
+      day === 3 || day === 23 ? 'rd' : 'th';
+  const dateStr = `${month} ${day}${daySuffix}`;
+
+  return {
+    badgeText: newsletterName,
+    badgeColor: "#E0F2FE",
+    badgeTextColor: "#0369A1",
+    author: newsletterName, // Use newsletter name instead of sender email
+    title: email.subject || "No Subject",
+    description: email.contentPreview || "No preview available",
+    date: dateStr,
+    time: timeDisplay,
+    tag: "Email",
+    thumbnail: thumbnail,
+    read: email.isRead,
+    slug: email.id,
+    emailId: email.id,
+    isFavorite: email.isFavorite,
+    isReadLater: email.isReadLater,
+    wordsCount: email.wordsCount,
+    newsletterName: newsletterName,
+    newsletterLogo: email.newsletterLogo,
+  };
 }
 
 /* --------------------- PAGINATION CONSTANTS --------------------- */
-const INITIAL_VISIBLE = 2;
-const FIRST_EXPAND_TO = 10;
-const LOAD_MORE = 5;
+const EMAILS_PER_API_PAGE = 20; // Backend returns 20 emails per page
+const PAGES_TO_LOAD = 3; // Load 3 pages at once (60 emails)
+const INITIAL_VISIBLE = 10; // Show initial emails in each section
+const LOAD_MORE = 20; // Load 20 more when "view more" is clicked
 
 /* ---------------------------------------------------------------- */
 
 export default function InboxPage() {
   const [tab, setTab] = useState<"unread" | "read" | "all">("unread");
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const [last24Hours, setLast24Hours] = useState<any[]>([]);
-  const [last7Days, setLast7Days] = useState<any[]>([]);
+  // Email groups by time period
+  const [todayEmails, setTodayEmails] = useState<any[]>([]);
+  const [last7DaysEmails, setLast7DaysEmails] = useState<any[]>([]);
+  const [last30DaysEmails, setLast30DaysEmails] = useState<any[]>([]);
+  const [olderEmails, setOlderEmails] = useState<any[]>([]);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMorePages, setHasMorePages] = useState(true);
+  const [nextBatchStartPage, setNextBatchStartPage] = useState(1);
+  const [realUnreadCount, setRealUnreadCount] = useState(0);
+
+  // Reset pagination when tab changes
   useEffect(() => {
-    setLast24Hours(generate24Hours());
-    setLast7Days(generate7Days());
-  }, []);
+    setTodayEmails([]);
+    setLast7DaysEmails([]);
+    setLast30DaysEmails([]);
+    setOlderEmails([]);
+    setNextBatchStartPage(1);
+    setHasMorePages(true);
+    setCurrentPage(prev => prev === 1 ? 1.1 : 1); // Trigger refetch by changing a numeric dependency or just use tab
+  }, [tab]);
 
-  const [visible24, setVisible24] = useState(INITIAL_VISIBLE);
-  const [visible7, setVisible7] = useState(INITIAL_VISIBLE);
+  // Group emails by time periods
+  const groupEmailsByTime = (emails: EmailListItem[]) => {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    const today: any[] = [];
+    const last7Days: any[] = [];
+    const last30Days: any[] = [];
+    const older: any[] = [];
+
+    emails.forEach((email) => {
+      const dateReceived = email.dateReceived ? new Date(email.dateReceived) : null;
+      if (!dateReceived) {
+        older.push(transformEmailToCard(email));
+        return;
+      }
+
+      if (dateReceived >= todayStart) {
+        today.push(transformEmailToCard(email));
+      } else if (dateReceived >= sevenDaysAgo) {
+        last7Days.push(transformEmailToCard(email));
+      } else if (dateReceived >= thirtyDaysAgo) {
+        last30Days.push(transformEmailToCard(email));
+      } else {
+        older.push(transformEmailToCard(email));
+      }
+    });
+
+    return { today, last7Days, last30Days, older };
+  };
+
+  // Fetch unread count independently
+  const fetchUnreadCount = async () => {
+    try {
+      const snapshot = await analyticsService.getInboxSnapshot();
+      setRealUnreadCount(snapshot.unread);
+    } catch (e) {
+      console.error("Failed to fetch unread count", e);
+    }
+  };
+
+  // Fetch emails from API
+  useEffect(() => {
+    fetchUnreadCount(); // update unread count on tab change/refresh
+
+    const fetchEmails = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        console.log(`🔄 Fetching inbox emails [Tab: ${tab}] - Pages ${nextBatchStartPage} to ${nextBatchStartPage + PAGES_TO_LOAD - 1}...`);
+
+        // Define isRead filter based on tab
+        const isReadParam = tab === "unread" ? false : tab === "read" ? true : undefined;
+
+        // Fetch multiple pages in parallel since backend only returns 20 per page
+        const pagePromises = [];
+        for (let i = 0; i < PAGES_TO_LOAD; i++) {
+          const pageNum = nextBatchStartPage + i;
+          pagePromises.push(emailService.getInboxEmails("latest", isReadParam, pageNum));
+        }
+
+        const responses = await Promise.all(pagePromises);
+        console.log('📦 Raw API responses:', responses);
+
+        // Combine all responses
+        let allEmails: EmailListItem[] = [];
+        let hasData = false;
+
+        // Check if response is array of emails or empty response object
+        for (const response of responses) {
+          if (!Array.isArray(response) || response.length === 0) continue;
+
+          const isEmailArray = (arr: any[]): arr is EmailListItem[] => {
+            return arr.length > 0 && 'id' in arr[0];
+          };
+
+          if (!isEmailArray(response)) {
+            // Empty inbox response
+            const emptyResp = response[0] as any;
+            console.log('📭 Empty inbox - Pending newsletters:', emptyResp.pendingNewsletters);
+            break;
+          } else {
+            allEmails = [...allEmails, ...response];
+            hasData = true;
+          }
+        }
+
+        if (!hasData || allEmails.length === 0) {
+          console.log('📭 No more emails available');
+          if (nextBatchStartPage === 1) {
+            setTodayEmails([]);
+            setLast7DaysEmails([]);
+            setLast30DaysEmails([]);
+            setOlderEmails([]);
+          }
+          setHasMorePages(false);
+        } else {
+          // Process emails
+          console.log(`📬 Received ${allEmails.length} emails total`);
+          const grouped = groupEmailsByTime(allEmails);
+
+          if (nextBatchStartPage === 1) {
+            // First page - replace all
+            setTodayEmails(grouped.today);
+            setLast7DaysEmails(grouped.last7Days);
+            setLast30DaysEmails(grouped.last30Days);
+            setOlderEmails(grouped.older);
+          } else {
+            // Subsequent pages - append
+            setTodayEmails(prev => [...prev, ...grouped.today]);
+            setLast7DaysEmails(prev => [...prev, ...grouped.last7Days]);
+            setLast30DaysEmails(prev => [...prev, ...grouped.last30Days]);
+            setOlderEmails(prev => [...prev, ...grouped.older]);
+          }
+
+          const expectedTotal = PAGES_TO_LOAD * EMAILS_PER_API_PAGE;
+          setHasMorePages(allEmails.length >= expectedTotal);
+          setNextBatchStartPage(prev => prev + PAGES_TO_LOAD);
+        }
+      } catch (err: any) {
+        console.error('❌ Failed to fetch emails:', err);
+        console.error('Error details:', err.response?.data || err.message);
+        setError(`Failed to load emails: ${err.response?.data?.message || err.message}`);
+      } finally {
+        setLoading(false);
+        setLoadingMore(false);
+      }
+    };
+
+    fetchEmails();
+  }, [currentPage, tab]); // Fetch when page or tab changes
+
+  // Refresh when user returns to tab (e.g. after reading)
+  useEffect(() => {
+    const handleFocus = () => {
+      console.log("🪟 Window focused - refreshing unread count...");
+      fetchUnreadCount();
+      // Optionally refresh first page to see if items moved
+      // If we are in "unread" tab, it's very useful to refresh.
+      if (tab === "unread") {
+        refreshInbox();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [tab]);
+
+  // Visible counts for each section
+  const [visibleToday, setVisibleToday] = useState(INITIAL_VISIBLE);
+  const [visible7Days, setVisible7Days] = useState(INITIAL_VISIBLE);
+  const [visible30Days, setVisible30Days] = useState(INITIAL_VISIBLE);
+  const [visibleOlder, setVisibleOlder] = useState(INITIAL_VISIBLE);
+
+  // Trigger a new batch fetch (3 pages -> 60 emails)
+  const loadNextBatch = () => {
+    if (!hasMorePages || loadingMore) return;
+    setLoadingMore(true);
+    setCurrentPage(prev => prev + 1); // useEffect will fetch using nextBatchStartPage
+  };
 
   /* ---------------- FILTERING LOGIC ---------------- */
+  // The API already filters for unread/read if the tab is not 'all'
+  // But we keep this for consistency and handle any leftover logic
   const filterByTab = (items: any[]) => {
+    // If API already filtered, this is mostly a no-op except for 'all' tab if we wanted sub-filtering
+    // But since we catch everything in all, and specify unread/read in others, it's safe.
     if (tab === "unread") return items.filter((x) => !x.read);
     if (tab === "read") return items.filter((x) => x.read);
     return items;
   };
 
-  const filtered24 = filterByTab(last24Hours);
-  const filtered7 = filterByTab(last7Days);
+  const filteredToday = filterByTab(todayEmails);
+  const filtered7Days = filterByTab(last7DaysEmails);
+  const filtered30Days = filterByTab(last30DaysEmails);
+  const filteredOlder = filterByTab(olderEmails);
 
-  const unreadCount = [...last24Hours, ...last7Days].filter(
+  const unreadCountForSwitcher = realUnreadCount || [...todayEmails, ...last7DaysEmails, ...last30DaysEmails, ...olderEmails].filter(
     (i) => !i.read
   ).length;
 
   /* ---------------- REFRESH FEATURE ---------------- */
-  const refreshInbox = () => {
-    setLast24Hours(generate24Hours());
-    setLast7Days(generate7Days());
-    setVisible24(INITIAL_VISIBLE);
-    setVisible7(INITIAL_VISIBLE);
+  const refreshInbox = async () => {
+    setCurrentPage(1);
+    setHasMorePages(true);
+    setVisibleToday(INITIAL_VISIBLE);
+    setVisible7Days(INITIAL_VISIBLE);
+    setVisible30Days(INITIAL_VISIBLE);
+    setVisibleOlder(INITIAL_VISIBLE);
+    // The useEffect will trigger a refetch
   };
 
-  /* ---------------- PAGINATION ---------------- */
-  const loadMore24 = () => {
-    setVisible24((prev) =>
-      prev === INITIAL_VISIBLE
-        ? Math.min(FIRST_EXPAND_TO, filtered24.length)
-        : Math.min(prev + LOAD_MORE, filtered24.length)
-    );
+  /* ---------------- LOAD MORE PAGES ---------------- */
+  const loadMorePages = async () => {
+    if (!hasMorePages || loadingMore) return;
+
+    console.log(`📄 Loading next batch...`);
+    setLoadingMore(true);
+    setCurrentPage(prev => prev + 1);
   };
 
-  const loadMore7 = () => {
-    setVisible7((prev) =>
-      prev === INITIAL_VISIBLE
-        ? Math.min(FIRST_EXPAND_TO, filtered7.length)
-        : Math.min(prev + LOAD_MORE, filtered7.length)
-    );
+  /* ---------------- ACTION HANDLERS ---------------- */
+  const onMoveToTrash = async (emailId: string) => {
+    try {
+      await emailService.moveToTrash(emailId);
+      // Remove from all local lists immediately (optimistic UI)
+      setTodayEmails(prev => prev.filter(e => e.emailId !== emailId));
+      setLast7DaysEmails(prev => prev.filter(e => e.emailId !== emailId));
+      setLast30DaysEmails(prev => prev.filter(e => e.emailId !== emailId));
+      setOlderEmails(prev => prev.filter(e => e.emailId !== emailId));
+    } catch (err) {
+      console.error("Failed to move to trash", err);
+    }
   };
 
-  const showMore24 = visible24 < filtered24.length;
-  const showMore7 = visible7 < filtered7.length;
+  const onToggleReadLater = async (emailId: string, isReadLater: boolean) => {
+    try {
+      await emailService.toggleReadLater(emailId, isReadLater);
+      // Update local state isReadLater status in all lists
+      const updateList = (prev: any[]) => prev.map(e =>
+        e.emailId === emailId ? { ...e, isReadLater: isReadLater } : e
+      );
+      setTodayEmails(updateList);
+      setLast7DaysEmails(updateList);
+      setLast30DaysEmails(updateList);
+      setOlderEmails(updateList);
+    } catch (err) {
+      console.error("Failed to toggle read later", err);
+    }
+  };
 
-  const is24Empty = filtered24.length === 0;
-  const is7Empty = filtered7.length === 0;
+  /* ---------------- PAGINATION WITHIN SECTIONS ---------------- */
+  const loadMoreSection = (
+    visible: number,
+    total: number,
+    setter: React.Dispatch<React.SetStateAction<number>>
+  ) => {
+    if (visible < total) {
+      setter((prev) => Math.min(prev + LOAD_MORE, total));
+    } else if (hasMorePages && !loadingMore) {
+      loadNextBatch();
+    }
+  };
 
-  // 👉 Exactly one list empty
-  const showEmptyList = is24Empty !== is7Empty;
+  const loadMoreToday = () => loadMoreSection(visibleToday, filteredToday.length, setVisibleToday);
+  const loadMore7Days = () => loadMoreSection(visible7Days, filtered7Days.length, setVisible7Days);
+  const loadMore30Days = () => loadMoreSection(visible30Days, filtered30Days.length, setVisible30Days);
+  const loadMoreOlder = () => loadMoreSection(visibleOlder, filteredOlder.length, setVisibleOlder);
+
+  const showMoreToday = visibleToday < filteredToday.length;
+  const showMore7Days = visible7Days < filtered7Days.length;
+  const showMore30Days = visible30Days < filtered30Days.length;
+  const showMoreOlder = visibleOlder < filteredOlder.length;
+
+  const isTodayEmpty = filteredToday.length === 0;
+  const is7DaysEmpty = filtered7Days.length === 0;
+  const is30DaysEmpty = filtered30Days.length === 0;
+  const isOlderEmpty = filteredOlder.length === 0;
+
+  const allEmpty = isTodayEmpty && is7DaysEmpty && is30DaysEmpty && isOlderEmpty;
 
   return (
     <>
-      {/* ---------------- MOBILE RENDER ---------------- */}
-      <MobileInboxSection
-        tab={tab}
-        setTab={setTab}
-        filtered24={filtered24}
-        filtered7={filtered7}
-        unreadCount={unreadCount}
-      />
-
-      {/* ---------------- DESKTOP RENDER ---------------- */}
-      <div className="hidden md:flex w-full flex-col gap-8">
-        {/* HEADER */}
-        <div className="w-full">
-          <div className="w-full h-[78px] bg-white border border-[#E5E7E8] flex items-center justify-between px-5 shadow-sm">
-            <div className="flex items-center gap-3">
-              <h2 className="text-[26px] font-bold text-[#0C1014]">
-                Your Reads
-              </h2>
-              <RefreshButton onClick={refreshInbox} />
-            </div>
-
-            <div className="flex items-center gap-3 px-4 shrink-0">
-              {/* <FilterButton onClick={() => console.log("Filter opened")} /> */}
-              <TabSwitcher
-                tab={tab}
-                setTab={setTab}
-                unreadCount={unreadCount}
-              />
-            </div>
+      {/* Loading state */}
+      {loading && (
+        <div className="w-full h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading your emails...</p>
           </div>
         </div>
+      )}
 
-        {/* CONTENT */}
-        <div className="w-full flex flex-col gap-10 mt-6 px-6">
-          {/* BOTH EMPTY */}
-          {is24Empty && is7Empty && <EmptyInbox />}
-
-          {/* LAST 24 HOURS */}
-          {!is24Empty && (
-            <section>
-              <h3 className="text-[18px] font-semibold text-[#6F7680] mb-4">
-                Last 24 hours
-              </h3>
-
-              {filtered24.slice(0, visible24).map((item, i) => (
-                <div className="mb-2"><NewsletterCard key={item.slug} {...item} /></div>
-              ))}
-
-              {showMore24 && <CenterButton onClick={loadMore24} />}
-            </section>
-          )}
-
-          {/* LAST 7 DAYS */}
-          {!is7Empty && (
-            <section>
-              <h3 className="text-[18px] font-semibold text-[#6F7680] mb-4">
-                Last 7 days
-              </h3>
-
-              {filtered7.slice(0, visible7).map((item, i) => (
-                <div className="mb-2"><NewsletterCard key={item.slug} {...item} /></div>
-              ))}
-
-              {showMore7 && <CenterButton onClick={loadMore7} />}
-            </section>
-          )}
-
-          {/* ONE EMPTY → EMPTY LIST AT BOTTOM */}
-          {showEmptyList && <EmptyList />}
+      {/* Error state */}
+      {error && !loading && (
+        <div className="w-full p-6 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-red-800">{error}</p>
+          <button
+            onClick={refreshInbox}
+            className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+          >
+            Retry
+          </button>
         </div>
-      </div>
+      )}
+
+      {/* Content - only show if not loading */}
+      {!loading && !error && (
+        <>
+          {/* ---------------- MOBILE RENDER ---------------- */}
+          <MobileInboxSection
+            tab={tab}
+            setTab={setTab}
+            filteredToday={filteredToday}
+            filtered7Days={filtered7Days}
+            filtered30Days={filtered30Days}
+            filteredOlder={filteredOlder}
+            unreadCount={unreadCountForSwitcher}
+            hasMorePages={hasMorePages}
+            loadingMore={loadingMore}
+            onRequestMore={loadNextBatch}
+          />
+
+          {/* ---------------- DESKTOP RENDER ---------------- */}
+          <div className="hidden md:flex w-full flex-col gap-8">
+            {/* HEADER */}
+            <div className="w-full">
+              <div className="w-full h-[78px] bg-white border border-[#E5E7E8] flex items-center justify-between px-5 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <h2 className="text-[26px] font-bold text-[#0C1014]">
+                    Your Reads
+                  </h2>
+                  <RefreshButton onClick={refreshInbox} />
+                </div>
+
+                <div className="flex items-center gap-3 px-4 shrink-0">
+                  <TabSwitcher
+                    tab={tab}
+                    setTab={setTab}
+                    unreadCount={unreadCountForSwitcher}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* CONTENT */}
+            <div className="w-full flex flex-col gap-10 mt-6 px-6">
+              {/* ALL EMPTY */}
+              {allEmpty && <EmptyInbox />}
+
+              {/* TODAY */}
+              {!isTodayEmpty && (
+                <section>
+                  <h3 className="text-[18px] font-semibold text-[#6F7680] mb-4">
+                    Today
+                  </h3>
+                  {filteredToday.slice(0, visibleToday).map((item) => (
+                    <div key={item.slug} className="mb-2">
+                      <NewsletterCard
+                        {...item}
+                        onMoveToTrash={onMoveToTrash}
+                        onToggleReadLater={onToggleReadLater}
+                      />
+                    </div>
+                  ))}
+                  {showMoreToday && <CenterButton onClick={loadMoreToday} />}
+                </section>
+              )}
+
+              {/* LAST 7 DAYS */}
+              {!is7DaysEmpty && (
+                <section>
+                  <h3 className="text-[18px] font-semibold text-[#6F7680] mb-4">
+                    Last 7 days
+                  </h3>
+                  {filtered7Days.slice(0, visible7Days).map((item) => (
+                    <div key={item.slug} className="mb-2">
+                      <NewsletterCard
+                        {...item}
+                        onMoveToTrash={onMoveToTrash}
+                        onToggleReadLater={onToggleReadLater}
+                      />
+                    </div>
+                  ))}
+                  {showMore7Days && <CenterButton onClick={loadMore7Days} />}
+                </section>
+              )}
+
+              {/* LAST 30 DAYS */}
+              {!is30DaysEmpty && (
+                <section>
+                  <h3 className="text-[18px] font-semibold text-[#6F7680] mb-4">
+                    Last 30 days
+                  </h3>
+                  {filtered30Days.slice(0, visible30Days).map((item) => (
+                    <div key={item.slug} className="mb-2">
+                      <NewsletterCard
+                        {...item}
+                        onMoveToTrash={onMoveToTrash}
+                        onToggleReadLater={onToggleReadLater}
+                      />
+                    </div>
+                  ))}
+                  {showMore30Days && <CenterButton onClick={loadMore30Days} />}
+                </section>
+              )}
+
+              {/* OLDER */}
+              {!isOlderEmpty && (
+                <section>
+                  <h3 className="text-[18px] font-semibold text-[#6F7680] mb-4">
+                    Older
+                  </h3>
+                  {filteredOlder.slice(0, visibleOlder).map((item) => (
+                    <div key={item.slug} className="mb-2">
+                      <NewsletterCard
+                        {...item}
+                        onMoveToTrash={onMoveToTrash}
+                        onToggleReadLater={onToggleReadLater}
+                      />
+                    </div>
+                  ))}
+                  {showMoreOlder && <CenterButton onClick={loadMoreOlder} />}
+                </section>
+              )}
+
+              {loadingMore && (
+                <div className="flex justify-center mt-6">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
     </>
   );
 }

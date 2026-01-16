@@ -1,3 +1,8 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import analyticsService, { InboxSnapshotData } from "@/services/analytics";
+
 export default function InboxOverview() {
   return (
     <div className="relative rounded-3xl bg-white">
@@ -29,8 +34,8 @@ export default function InboxOverview() {
 /* ---------------- More like what you read ---------------- */
 
 function MoreLikeWhatYouRead() {
-  // Example dynamic data
-  const newsletters = Array.from({ length: 17 }); // can be any number
+  // Example dynamic data - kept as placeholder or can be updated later
+  const newsletters = Array.from({ length: 17 });
 
   return (
     <div
@@ -85,15 +90,31 @@ function MoreLikeWhatYouRead() {
 /* ---------------- Inbox Snapshot ---------------- */
 
 function InboxSnapshot() {
+  const [snapshot, setSnapshot] = useState<InboxSnapshotData | null>(null);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const data = await analyticsService.getInboxSnapshot();
+        setSnapshot(data);
+      } catch (e) {
+        console.error("Failed to load inbox snapshot", e);
+      }
+    }
+    load();
+  }, []);
+
+  const d = snapshot || { received_today: 0, read: 0, unread: 0, read_later: 0, favourite: 0 };
+
   const inboxData = [
-    { label: "Received Today", color: "#FF0033", count: 32 },
-    { label: "Read", color: "#64C800", count: 20 },
-    { label: "Unread", color: "#FFD400", count: 32 },
-    { label: "Read later", color: "#00A6FF", count: 8 },
-    { label: "Favourite", color: "#F59E0B", count: 8 },
+    { label: "Received Today", color: "#FF0033", count: d.received_today },
+    { label: "Read", color: "#64C800", count: d.read },
+    { label: "Unread", color: "#FFD400", count: d.unread },
+    { label: "Read later", color: "#00A6FF", count: d.read_later },
+    { label: "Favourite", color: "#F59E0B", count: d.favourite },
   ];
 
-  const total = inboxData.reduce((sum, item) => sum + item.count, 0);
+  const total = inboxData.reduce((sum, item) => sum + item.count, 0) || 1; // avoid divide by zero
 
   return (
     <div className="h-full flex items-center min-w-0 overflow-hidden">
@@ -129,7 +150,7 @@ function InboxSnapshot() {
             return (
               <div
                 key={label}
-                className="group relative h-full flex items-center justify-center shrink-0"
+                className="group relative h-full flex items-center justify-center shrink-0 transition-all duration-700"
                 style={{
                   width: `${width}%`,
                   backgroundColor: color,
@@ -144,8 +165,13 @@ function InboxSnapshot() {
                     pointer-events-none
                   "
                 >
-                  {count}
+                  {count > 0 ? count : ''}
                 </span>
+
+                {/* Tooltip on hover */}
+                <div className="absolute bottom-full mb-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black text-white text-[10px] px-2 py-1 rounded hidden md:block z-20">
+                  {label}: {count}
+                </div>
               </div>
             );
           })}
@@ -153,13 +179,15 @@ function InboxSnapshot() {
 
         {/* Legend */}
         <div className="flex flex-wrap gap-x-5 gap-y-2 md:gap-x-6 md:gap-y-3 text-[13px] md:text-[14px] text-[#111827] min-w-0">
-          {inboxData.map(({ label, color }) => (
+          {inboxData.map(({ label, color, count }) => (
             <div key={label} className="flex items-center gap-2 min-w-0">
               <span
                 className="w-3 h-3 rounded-full shrink-0"
                 style={{ backgroundColor: color }}
               />
               <span className="truncate">{label}</span>
+              {/* Optional: Show count in legend too just in case bars are small */}
+              {/* <span className="text-gray-400 text-xs">({count})</span> */}
             </div>
           ))}
         </div>

@@ -5,7 +5,7 @@ const nextConfig = {
 
   env: {
     CUSTOM_KEY: process.env.CUSTOM_KEY,
-    NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1',
+    NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL || 'https://inbo-django-api.azurewebsites.net',
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
     NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '',
     NEXT_PUBLIC_DEEP_LINK_SCHEME: process.env.NEXT_PUBLIC_DEEP_LINK_SCHEME || 'inbo://',

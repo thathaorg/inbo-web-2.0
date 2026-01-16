@@ -2,8 +2,7 @@
 
 import { useState, useRef } from "react";
 import MobileHeader from "@/components/layout/MobileHeader";
-import EmptyList from "@/components/inbox/EmptyList";
-import InboxCardMobile from "@/components/inbox/InboxCard";
+import NewsletterCard from "@/components/inbox/InboxCard";
 import {
   FilterValue,
   FILTER_LABELS,
@@ -12,73 +11,58 @@ import { ChevronDown, ListFilter } from "lucide-react";
 import EmptyInbox from "@/components/inbox/EmptyInbox";
 import BottomNav from "@/components/layout/BottomNav";
 
-const INITIAL_VISIBLE = 2;
-const LOAD_MORE = 5;
-
-// Long dummy title (4–5 lines)
-const longTitle =
-  "Breaking insights: Exploring the latest trends and deep-dive analysis shaping today’s digital landscape, uncovering powerful ideas and strategies redefining how creators, founders, and innovators build momentum in a rapidly evolving world.";
+const INITIAL_VISIBLE_MOBILE = 5;
+const LOAD_MORE_MOBILE = 10;
 
 export default function MobileInboxSection({
   tab,
   setTab,
-  filtered24,
-  filtered7,
+  filteredToday,
+  filtered7Days,
+  filtered30Days,
+  filteredOlder,
   unreadCount,
-}: any) {
-  const [visible24, setVisible24] = useState(INITIAL_VISIBLE);
-  const [visible7, setVisible7] = useState(INITIAL_VISIBLE);
+  hasMorePages,
+  loadingMore,
+  onRequestMore,
+}: {
+  tab: string;
+  setTab: (t: any) => void;
+  filteredToday: any[];
+  filtered7Days: any[];
+  filtered30Days: any[];
+  filteredOlder: any[];
+  unreadCount: number;
+  hasMorePages: boolean;
+  loadingMore: boolean;
+  onRequestMore?: () => void;
+}) {
+  const [visibleToday, setVisibleToday] = useState(INITIAL_VISIBLE_MOBILE);
+  const [visible7Days, setVisible7Days] = useState(INITIAL_VISIBLE_MOBILE);
+  const [visible30Days, setVisible30Days] = useState(INITIAL_VISIBLE_MOBILE);
+  const [visibleOlder, setVisibleOlder] = useState(INITIAL_VISIBLE_MOBILE);
 
-  // ✅ scroll container ref
+  const [filterOpen, setFilterOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
-  /* -------- FILTER STATE -------- */
-  const [filter, setFilter] = useState<FilterValue>("unread");
-  const [filterOpen, setFilterOpen] = useState(false);
-
-  /* -------- APPLY FILTER -------- */
-  const applyFilter = (items: any[]) => {
-    if (filter === "all") return items;
-    if (filter === "read") return items.filter(i => i.read);
-    return items.filter(i => !i.read);
-  };
-
-  const filtered24Final = applyFilter(filtered24);
-  const filtered7Final = applyFilter(filtered7);
-
-  const showMore24 = visible24 < filtered24Final.length;
-  const showMore7 = visible7 < filtered7Final.length;
-
-  const is24Empty = filtered24Final.length === 0;
-  const is7Empty = filtered7Final.length === 0;
-
-  const showEmptyList = is24Empty !== is7Empty;
-
-  /* -------- SHOW MORE (NO JUMP) -------- */
-  const handleShowMore24 = () => {
-    const container = scrollRef.current;
-    if (!container) {
-      setVisible24(v => v + LOAD_MORE);
-      return;
+  const handleShowMore = (
+    visible: number,
+    total: number,
+    setter: React.Dispatch<React.SetStateAction<number>>
+  ) => {
+    if (visible < total) {
+      setter(v => v + LOAD_MORE_MOBILE);
+    } else if (hasMorePages && !loadingMore) {
+      onRequestMore?.();
     }
-
-    const prevScrollHeight = container.scrollHeight;
-    const prevScrollTop = container.scrollTop;
-
-    setVisible24(v => v + LOAD_MORE);
-
-    requestAnimationFrame(() => {
-      const newScrollHeight = container.scrollHeight;
-      const heightDiff = newScrollHeight - prevScrollHeight;
-
-      container.scrollTop = prevScrollTop + heightDiff;
-    });
   };
+
+  const allEmpty = filteredToday.length === 0 && filtered7Days.length === 0 && filtered30Days.length === 0 && filteredOlder.length === 0;
 
   return (
     <div className="w-full md:hidden flex flex-col bg-[#F5F6FA] min-h-screen">
       {/* MOBILE HEADER */}
-      <MobileHeader title="Your Reads" onMenuClick={() => {}} />
+      <MobileHeader title="Your Reads" onMenuClick={() => { }} />
 
       {/* MAIN CONTENT */}
       <div
@@ -86,115 +70,147 @@ export default function MobileInboxSection({
         className="flex flex-col bg-white pt-4 rounded-t-3xl flex-1 pb-20 overflow-y-auto"
       >
         {/* FILTER TRIGGER */}
-        <div className="flex justify-end px-4">
+        <div className="flex justify-end px-4 mb-2">
           <button
             onClick={() => setFilterOpen(true)}
             className="flex items-center gap-2 px-4 py-2 bg-[#F6F7F8] border border-[#DFE2E6] rounded-full text-sm font-medium"
           >
             <ListFilter className="w-4 h-4" />
-            {FILTER_LABELS[filter]}
+            {FILTER_LABELS[tab as FilterValue] || tab}
           </button>
         </div>
 
-        {/* BOTH EMPTY */}
-        {is24Empty && is7Empty && (
-          <div className="flex-1 flex items-center justify-center">
+        {/* ALL EMPTY */}
+        {allEmpty && (
+          <div className="flex-1 flex items-center justify-center p-10">
             <EmptyInbox />
           </div>
         )}
 
-        {/* LAST 24 HOURS */}
-        {!is24Empty && (
-          <section>
-            <h3 className="text-[15px] font-semibold text-gray-600 mb-3 px-4">
-              Last 24 hours
-            </h3>
-
-            {filtered24Final
-              .slice(0, visible24)
-              .map((item: any, i: number) => (
-                <InboxCardMobile key={i} {...item} title={longTitle} />
-              ))}
-
-            {showMore24 && (
+        {/* TODAY */}
+        {filteredToday.length > 0 && (
+          <section className="mb-4">
+            <h3 className="text-[14px] font-bold text-gray-400 px-5 mb-3 uppercase tracking-wider">Today</h3>
+            {filteredToday.slice(0, visibleToday).map((item, i) => (
+              <NewsletterCard key={item.slug || i} {...item} />
+            ))}
+            {(visibleToday < filteredToday.length || (hasMorePages && !loadingMore)) && (
               <button
-                onClick={handleShowMore24}
-                className="w-full flex items-center justify-center py-3 mt-2 text-[#D95A33] font-medium text-[15px]"
+                onClick={() => handleShowMore(visibleToday, filteredToday.length, setVisibleToday)}
+                className="w-full py-4 text-[#D95A33] font-semibold text-sm flex items-center justify-center gap-1 border-t border-gray-50 bg-white"
               >
-                Show more <ChevronDown className="ml-1" />
+                {visibleToday < filteredToday.length ? "Show more" : "Load older"} <ChevronDown size={16} />
               </button>
             )}
           </section>
         )}
 
         {/* LAST 7 DAYS */}
-        {!is7Empty && (
-          <section className="pb-3 mt-4">
-            <h3 className="text-[15px] font-semibold text-gray-600 px-4 mb-3">
-              Last 7 days
-            </h3>
-
-            {filtered7Final
-              .slice(0, visible7)
-              .map((item: any, i: number) => (
-                <InboxCardMobile key={i} {...item} title={longTitle} />
-              ))}
-
-            {showMore7 && (
+        {filtered7Days.length > 0 && (
+          <section className="mb-4">
+            <h3 className="text-[14px] font-bold text-gray-400 px-5 mb-3 uppercase tracking-wider">Last 7 Days</h3>
+            {filtered7Days.slice(0, visible7Days).map((item, i) => (
+              <NewsletterCard key={item.slug || i} {...item} />
+            ))}
+            {(visible7Days < filtered7Days.length || (hasMorePages && !loadingMore)) && (
               <button
-                onClick={() => setVisible7(v => v + LOAD_MORE)}
-                className="w-full flex items-center justify-center py-3 mt-2 text-[#D95A33] font-medium text-[15px]"
+                onClick={() => handleShowMore(visible7Days, filtered7Days.length, setVisible7Days)}
+                className="w-full py-4 text-[#D95A33] font-semibold text-sm flex items-center justify-center gap-1 border-t border-gray-50 bg-white"
               >
-                Show more <ChevronDown className="ml-1" />
+                {visible7Days < filtered7Days.length ? "Show more" : "Load older"} <ChevronDown size={16} />
               </button>
             )}
           </section>
         )}
 
-        {showEmptyList && (
-          <div className="mt-6">
-            <EmptyList />
+        {/* LAST 30 DAYS */}
+        {filtered30Days.length > 0 && (
+          <section className="mb-4">
+            <h3 className="text-[14px] font-bold text-gray-400 px-5 mb-3 uppercase tracking-wider">Last 30 Days</h3>
+            {filtered30Days.slice(0, visible30Days).map((item, i) => (
+              <NewsletterCard key={item.slug || i} {...item} />
+            ))}
+            {(visible30Days < filtered30Days.length || (hasMorePages && !loadingMore)) && (
+              <button
+                onClick={() => handleShowMore(visible30Days, filtered30Days.length, setVisible30Days)}
+                className="w-full py-4 text-[#D95A33] font-semibold text-sm flex items-center justify-center gap-1 border-t border-gray-50 bg-white"
+              >
+                {visible30Days < filtered30Days.length ? "Show more" : "Load older"} <ChevronDown size={16} />
+              </button>
+            )}
+          </section>
+        )}
+
+        {/* OLDER */}
+        {filteredOlder.length > 0 && (
+          <section className="mb-4">
+            <h3 className="text-[14px] font-bold text-gray-400 px-5 mb-3 uppercase tracking-wider">Older</h3>
+            {filteredOlder.slice(0, visibleOlder).map((item, i) => (
+              <NewsletterCard key={item.slug || i} {...item} />
+            ))}
+            {(visibleOlder < filteredOlder.length || (hasMorePages && !loadingMore)) && (
+              <button
+                onClick={() => handleShowMore(visibleOlder, filteredOlder.length, setVisibleOlder)}
+                className="w-full py-4 text-[#D95A33] font-semibold text-sm flex items-center justify-center gap-1 border-t border-gray-50 bg-white"
+              >
+                {visibleOlder < filteredOlder.length ? "Show more" : "Load more"} <ChevronDown size={16} />
+              </button>
+            )}
+          </section>
+        )}
+
+        {loadingMore && (
+          <div className="flex justify-center p-4">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#D95A33]"></div>
           </div>
         )}
       </div>
-      {/* 👇 FIXED MOBILE BOTTOM NAV */}
-      <div className="absolute bottom-4 left-0 right-0 flex justify-center">
-        <BottomNav />
+
+      {/* FIXED BOTTOM NAV */}
+      <div className="fixed bottom-0 left-0 right-0 p-4 flex justify-center z-50 pointer-events-none">
+        <div className="pointer-events-auto">
+          <BottomNav />
+        </div>
       </div>
 
       {/* FILTER BOTTOM SHEET */}
       {filterOpen && (
-        <div className="fixed inset-0 z-50">
+        <div className="fixed inset-0 z-[100]">
           <div
-            className="absolute inset-0 bg-black/40"
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             onClick={() => setFilterOpen(false)}
           />
 
-          <div className="absolute bottom-0 w-full rounded-t-2xl bg-white p-6">
-            <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-gray-300" />
+          <div className="absolute bottom-0 w-full rounded-t-[32px] bg-white p-8 animate-in slide-in-from-bottom duration-300 shadow-2xl">
+            <div className="mx-auto mb-6 h-1.5 w-12 rounded-full bg-gray-200" />
+
+            <h4 className="text-lg font-bold mb-4 px-1">Filter your reads</h4>
 
             {(Object.keys(FILTER_LABELS) as FilterValue[]).map(key => (
               <button
                 key={key}
                 onClick={() => {
-                  setFilter(key);
+                  setTab(key);
                   setFilterOpen(false);
                 }}
-                className="flex w-full items-center justify-between py-4 text-lg"
+                className="flex w-full items-center justify-between py-5 border-b border-gray-50 last:border-0"
               >
-                <span>{FILTER_LABELS[key]}</span>
+                <div className="flex flex-col items-start">
+                  <span className={`text-base font-semibold ${tab === key ? "text-black" : "text-gray-600"}`}>
+                    {FILTER_LABELS[key]}
+                  </span>
+                </div>
 
-                <span
-                  className={`h-6 w-6 rounded-full border flex items-center justify-center ${
-                    filter === key
-                      ? "border-[#C95C3A]"
-                      : "border-gray-300"
-                  }`}
+                <div
+                  className={`h-6 w-6 rounded-full border-2 flex items-center justify-center transition-colors ${tab === key
+                    ? "border-black bg-black"
+                    : "border-gray-200"
+                    }`}
                 >
-                  {filter === key && (
-                    <span className="h-3.5 w-3.5 rounded-full bg-[#C95C3A]" />
+                  {tab === key && (
+                    <div className="h-2 w-2 rounded-full bg-white" />
                   )}
-                </span>
+                </div>
               </button>
             ))}
           </div>

@@ -80,6 +80,8 @@ export default function MobileProfileSection({
   appearance,
   setAppearance,
   copyToClipboard,
+  loadingProfile,
+  profileError,
 }: any) {
   const router = useRouter();
   const { logout } = useAuth();
@@ -105,6 +107,24 @@ export default function MobileProfileSection({
     }
   };
 
+  if (loadingProfile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F5F6FA]">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-black" />
+      </div>
+    );
+  }
+
+  if (profileError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F5F6FA] p-6">
+        <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 text-center">
+          {profileError}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#F5F6FA] pb-20">
       {/* HEADER */}
@@ -128,7 +148,7 @@ export default function MobileProfileSection({
       <div className="p-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <div className="relative">
-            <ProgressRing percent={user.completeness} />
+            <ProgressRing percent={user?.completeness || 0} />
             <div className="absolute inset-0 flex items-center justify-center text-[14px] font-bold">
               {getInitials(user.name)}
             </div>
@@ -137,7 +157,7 @@ export default function MobileProfileSection({
           <div>
             <p className="text-[18px] font-semibold">{user.name}</p>
             <p className="text-[14px] text-[#6F7680]">
-              Joined {user.joined}
+                {user.joined ? `Joined ${user.joined}` : ""}
             </p>
           </div>
         </div>
@@ -199,7 +219,7 @@ export default function MobileProfileSection({
             <div>
               <p className="text-[13px] text-[#6F7680]">Inbo Mailbox</p>
               <p className="text-[15px] font-semibold">
-                example@inbo.club
+                {user.inboxEmail || "Not created"}
               </p>
             </div>
           </div>

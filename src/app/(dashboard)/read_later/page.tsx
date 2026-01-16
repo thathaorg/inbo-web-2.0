@@ -12,27 +12,37 @@ import FilterButton, {
 import SortButton, { SortValue } from "@/components/SortButton";
 import EmptyReadLater from "@/components/EmptyReadLater";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
+import emailService, { EmailListItem } from "@/services/email";
 
-/* --------------------- DUMMY DATA --------------------- */
+/* --------------------- HELPERS --------------------- */
 
-function generateReadLater() {
-  return Array.from({ length: 16 }).map((_, i) => ({
-    badgeText: i % 2 === 0 ? "AI" : "BfM",
-    badgeColor: i % 2 === 0 ? "#E0F2FE" : "#FEF3C7",
-    badgeTextColor: i % 2 === 0 ? "#0369A1" : "#B45309",
-    author: i % 2 === 0 ? "ByteByteGo Newsletter" : "Built for Mars",
-    title:
-      `Saved Article ${i + 1}: ` +
-      "A Deep Exploration Into Modern Software Systems and Design Thinking",
-    description:
-      "This description is intentionally long to test truncation and layout behavior.",
-    date: "Oct 3rd",
-    time: "2 mins",
-    tag: i % 2 === 0 ? "Software" : "Design",
-    thumbnail: "/logos/forbes-sample.png",
-    read: Math.random() > 0.5,
-    slug: `read-later-${i + 1}`,
-  }));
+function transformEmailToCard(email: EmailListItem) {
+  const dateReceived = email.dateReceived ? new Date(email.dateReceived) : new Date();
+
+  // Format date like "Oct 3rd"
+  const day = dateReceived.getDate();
+  const month = dateReceived.toLocaleDateString("en-US", { month: "short" });
+  const daySuffix = day === 1 || day === 21 || day === 31 ? 'st' :
+    day === 2 || day === 22 ? 'nd' :
+      day === 3 || day === 23 ? 'rd' : 'th';
+  const dateStr = `${month} ${day}${daySuffix}`;
+
+  return {
+    badgeText: email.newsletterName || "Newsletter",
+    badgeColor: "#E0F2FE",
+    badgeTextColor: "#0369A1",
+    author: email.newsletterName || email.sender || "Unknown",
+    title: email.subject || "No Subject",
+    description: email.contentPreview || "No preview available",
+    date: dateStr,
+    time: "2 mins", // Placeholder or calculate if needed
+    tag: "Email",
+    thumbnail: email.newsletterLogo || null,
+    read: email.isRead,
+    slug: email.id,
+    emailId: email.id,
+    isReadLater: email.isReadLater,
+  };
 }
 
 /* --------------------- PAGINATION --------------------- */
@@ -48,6 +58,7 @@ export default function ReadLaterPage() {
 
   const [items, setItems] = useState<any[]>([]);
   const [visible, setVisible] = useState(INITIAL_VISIBLE);
+  const [loading, setLoading] = useState(true);
 
   /* -------- FILTER STATE -------- */
   const [filter, setFilter] = useState<FilterValue>("unread");
@@ -57,8 +68,21 @@ export default function ReadLaterPage() {
   const [sortBy, setSortBy] = useState<SortValue>("recent");
 
   useEffect(() => {
-    setItems(generateReadLater());
-  }, []);
+    async function fetchEmails() {
+      try {
+        setLoading(true);
+        const data = await emailService.getReadLaterEmails(
+          sortBy === 'oldest' ? 'oldest' : 'latest'
+        );
+        setItems(data.map(transformEmailToCard));
+      } catch (err) {
+        console.error("Failed to fetch read later emails:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchEmails();
+  }, [sortBy]);
 
   /* -------- FILTERED ITEMS -------- */
   const filteredItems = items.filter((item) => {
@@ -142,7 +166,7 @@ export default function ReadLaterPage() {
                   <NewsletterCard
                     key={item.slug}
                     {...item}
-                    onClick={() => {}}
+                    onClick={() => { }}
                   />
                 ))}
               </div>
@@ -175,10 +199,9 @@ export default function ReadLaterPage() {
 
                     <span
                       className={`h-5 w-5 rounded-full border flex items-center justify-center
-                        ${
-                          filter === key
-                            ? "border-[#C95C3A]"
-                            : "border-gray-300"
+                        ${filter === key
+                          ? "border-[#C95C3A]"
+                          : "border-gray-300"
                         }
                       `}
                     >
@@ -224,7 +247,7 @@ export default function ReadLaterPage() {
           <div className="w-full flex flex-col mt-2">
             {sortedItems.slice(0, visible).map((item) => (
               <div key={item.slug} className="mb-3">
-                <NewsletterCard {...item} onClick={() => {}} />
+                <NewsletterCard {...item} onClick={() => { }} />
               </div>
             ))}
 

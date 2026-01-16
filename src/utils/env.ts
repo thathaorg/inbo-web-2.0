@@ -3,7 +3,7 @@
  */
 export const env = {
   // API Configuration
-  API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1',
+  API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL || 'https://inbo-django-api.azurewebsites.net',
   
   // App Configuration
   APP_URL: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',

@@ -6,4 +6,6 @@ node_modules/
 dist/
 *.yaml
 *.yml
+!api/*.yaml
+!api/*.yml
 

@@ -1,12 +1,12 @@
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
 import Cookies from 'js-cookie';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://inbo-django-api.azurewebsites.net/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://inbo-django-api.azurewebsites.net';
 
 // Create axios instance
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 30000,
+  timeout: 10000, // Reduced from 30s to 10s to prevent long hangs
   headers: {
     'Content-Type': 'application/json',
   },
@@ -18,6 +18,9 @@ apiClient.interceptors.request.use(
     const token = Cookies.get('access_token');
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
+      console.debug(`🔒 Auth token added to request: ${config.url?.substring(0, 50)}...`);
+    } else if (config.url && !config.url.includes('/auth/send-otp') && !config.url.includes('/auth/verify-otp')) {
+      console.warn(`⚠️ No auth token for: ${config.url}`);
     }
     return config;
   },
@@ -39,7 +42,7 @@ apiClient.interceptors.response.use(
       try {
         const refreshToken = Cookies.get('refresh_token');
         if (refreshToken) {
-          const response = await axios.post(`${API_BASE_URL}/auth/refresh/`, {
+          const response = await axios.post(`${API_BASE_URL}/api/auth/refresh/`, {
             refreshToken: refreshToken,
           });
 

@@ -1,17 +1,18 @@
 import apiClient from '@/utils/api';
 
 const USER_ENDPOINTS = {
-  CHECK_INBOX_AVAILABILITY: '/user/check-inbox-availability/',
-  GET_SUGGESTED_USERNAMES: '/user/get-suggested-usernames/',
-  CREATE_INBOX: '/user/create-inbox/',
-  COMPLETE_DATA: '/user/complete-data/',
-  GLOBAL_STATS: '/user/global-stats/',
-  ONBOARDING: '/user/onboarding/',
-  ONBOARDING_STATUS: '/user/onboarding/status/',
+  CHECK_INBOX_AVAILABILITY: '/api/user/check-inbox-availability/',
+  GET_SUGGESTED_USERNAMES: '/api/user/get-suggested-usernames/',
+  CREATE_INBOX: '/api/user/create-inbox/',
+  COMPLETE_DATA: '/api/user/complete-data/',
+  PROFILE: '/api/user/profile/',
+  GLOBAL_STATS: '/api/user/global-stats/',
+  ONBOARDING: '/api/user/onboarding/',
+  ONBOARDING_STATUS: '/api/user/onboarding/status/',
 } as const;
 
 const DIRECTORY_ENDPOINTS = {
-  CATEGORIES: '/directory/categories/',
+  CATEGORIES: '/api/directory/categories/',
 } as const;
 
 // Helper to log detailed error info
@@ -86,6 +87,25 @@ export interface OnboardingStatusResponse {
   hasUsername: boolean;
   hasCategories: boolean;
   categoryCount: number;
+}
+
+export interface UserProfileResponse {
+  id: string;
+  email: string;
+  username: string | null;
+  name: string | null;
+  birthYear: string | null;
+  gender: string | null;
+  isVerified: boolean;
+  isInboxCreated: boolean;
+  inboxEmail: string | null;
+  createdAt: string;
+}
+
+export interface ProfileUpdateRequest {
+  name?: string;
+  birthYear?: string;
+  gender?: string;
 }
 
 class UserService {
@@ -193,6 +213,32 @@ class UserService {
       return response.data;
     } catch (error: any) {
       logApiError('ONBOARDING_STATUS', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get authenticated user's profile (name, birthYear, gender, inbox info)
+   */
+  async getProfile(): Promise<UserProfileResponse> {
+    try {
+      const response = await apiClient.get<UserProfileResponse>(USER_ENDPOINTS.PROFILE);
+      return response.data;
+    } catch (error: any) {
+      logApiError('PROFILE_GET', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update authenticated user's profile (PATCH /api/user/profile/)
+   */
+  async updateProfile(payload: ProfileUpdateRequest): Promise<UserProfileResponse> {
+    try {
+      const response = await apiClient.patch<UserProfileResponse>(USER_ENDPOINTS.PROFILE, payload);
+      return response.data;
+    } catch (error: any) {
+      logApiError('PROFILE_UPDATE', error);
       throw error;
     }
   }

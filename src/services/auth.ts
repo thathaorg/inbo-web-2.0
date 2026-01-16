@@ -6,15 +6,15 @@ import type {
 } from '@/types/auth';
 
 const AUTH_ENDPOINTS = {
-  SEND_OTP: '/auth/send-otp/',
-  VERIFY_OTP: '/auth/verify-otp/',
-  LOGOUT: '/auth/logout/',
-  REFRESH: '/auth/refresh/',
-  CHECK_EMAIL: '/auth/check-email/',
-  VALIDATE_SESSION: '/auth/validate-session/',
-  USER_PROFILE: '/user/complete-data/',
-  GOOGLE_AUTH: '/auth/google',
-  APPLE_AUTH: '/auth/apple',
+  SEND_OTP: '/api/auth/send-otp/',
+  VERIFY_OTP: '/api/auth/verify-otp/',
+  LOGOUT: '/api/auth/logout/',
+  REFRESH: '/api/auth/refresh/',
+  CHECK_EMAIL: '/api/auth/check-email/',
+  VALIDATE_SESSION: '/api/auth/validate-session/',
+  USER_PROFILE: '/api/user/complete-data/',
+  GOOGLE_AUTH: '/api/auth/google',
+  APPLE_AUTH: '/api/auth/apple',
 } as const;
 
 // Response types matching Inbo Backend API
@@ -77,13 +77,20 @@ class AuthService {
       },
     };
     
-    console.log("Verify OTP Request:", { email, otp: otp, deviceInfo: payload.deviceInfo });
+    console.log("🔐 Verify OTP Request:", { email, otp: otp, deviceInfo: payload.deviceInfo });
     
     const response = await apiClient.post<VerifyOTPResponse>(AUTH_ENDPOINTS.VERIFY_OTP, payload);
     
-    console.log("Verify OTP Response:", response.data);
+    console.log("✅ Verify OTP Response:", response.data);
+    console.log("🎫 Access Token:", response.data.accessToken?.substring(0, 20) + '...');
+    console.log("🔄 Refresh Token:", response.data.refreshToken?.substring(0, 20) + '...');
     
     this.setTokens(response.data.accessToken, response.data.refreshToken);
+    
+    // Verify tokens were saved
+    const savedToken = Cookies.get('access_token');
+    console.log("💾 Token saved:", savedToken ? "✓ YES" : "✗ NO");
+    
     return response.data;
   }
 

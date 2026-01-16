@@ -4,8 +4,42 @@ import { useState } from "react";
 import NewsletterCard from "@/components/inbox/InboxCard"; // ✅ adjust path if needed
 import MobileDeleteSection from "./MobileDeleteSection";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
+import emailService, { EmailListItem } from "@/services/email";
+import { useEffect } from "react";
 type SortType = "latest" | "oldest";
 
+
+/* -------------------------------------------------
+   HELPERS
+-------------------------------------------------- */
+function transformEmailToCard(email: EmailListItem) {
+  const dateReceived = email.dateReceived ? new Date(email.dateReceived) : new Date();
+
+  // Format date like "Oct 3rd"
+  const day = dateReceived.getDate();
+  const month = dateReceived.toLocaleDateString("en-US", { month: "short" });
+  const daySuffix = day === 1 || day === 21 || day === 31 ? 'st' :
+    day === 2 || day === 22 ? 'nd' :
+      day === 3 || day === 23 ? 'rd' : 'th';
+  const dateStr = `${month} ${day}${daySuffix}`;
+
+  return {
+    badgeText: email.newsletterName || "Newsletter",
+    badgeColor: "#E0F2FE",
+    badgeTextColor: "#0369A1",
+    author: email.newsletterName || email.sender || "Unknown",
+    title: email.subject || "No Subject",
+    description: email.contentPreview || "No preview available",
+    date: `Deleted on ${dateStr}`,
+    time: "2 mins",
+    tag: "Email",
+    thumbnail: email.newsletterLogo || null,
+    read: email.isRead,
+    slug: email.id,
+    emailId: email.id,
+    isReadLater: email.isReadLater,
+  };
+}
 
 export default function DeletePage() {
   const isMobile = useMediaQuery("(max-width: 768px)");
@@ -13,6 +47,8 @@ export default function DeletePage() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showToast, setShowToast] = useState(false);
+  const [newsletters, setNewsletters] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const isSelected = selectedIds.length > 0;
 
@@ -34,48 +70,23 @@ export default function DeletePage() {
     setTimeout(() => setShowToast(false), 3000);
   };
 
-  /* -------------------------------------------------
-     MOCK DATA (replace with API later)
-  -------------------------------------------------- */
-  const newsletters = [
-    {
-      id: "1",
-      badgeText: "BBG",
-      badgeColor: "#F97316",
-      badgeTextColor: "#FFFFFF",
-      author: "ByteByteGo",
-      title:
-        "How Tinder Decomposed Its iOS Monolith App Handling 70M Users",
-      description:
-        "In Tinder’s case, deep inter-dependencies between those targets stretched what engineers call the critical path…",
-      date: "Deleted on Dec 12 • 11 Days",
-      time: "2 mins",
-      tag: "Engineering",
-      thumbnail: "/thumb.jpg",
-      slug: "tinder-ios-monolith",
-      read: true,
-    },
-    {
-      id: "4",
-      badgeText: "BBG",
-      badgeColor: "#F97316",
-      badgeTextColor: "#FFFFFF",
-      author: "ByteByteGo",
-      title:
-        "How Tinder Decomposed Its iOS Monolith App Handling 70M Users",
-      description:
-        "In Tinder’s case, deep inter-dependencies between those targets stretched what engineers call the critical path…",
-      date: "Deleted on Dec 12 • 11 Days",
-      time: "2 mins",
-      tag: "Engineering",
-      thumbnail: "/thumb.jpg",
-      slug: "tinder-ios-monolith",
-      read: true,
-    },
-  ];
+  useEffect(() => {
+    async function fetchTrash() {
+      try {
+        setLoading(true);
+        const data = await emailService.getTrashEmails(sortBy);
+        setNewsletters(data.map(transformEmailToCard));
+      } catch (err) {
+        console.error("Failed to fetch trash:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchTrash();
+  }, [sortBy]);
 
-  if(isMobile){
-    return <MobileDeleteSection/>
+  if (isMobile) {
+    return <MobileDeleteSection />
   }
 
   return (

@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { ChevronRight } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
+import userService, { type UserProfileResponse } from "@/services/user";
 
 // Sub Pages
 import { useMediaQuery } from "@/hooks/useMediaQuery";
@@ -135,10 +136,33 @@ export default function ProfileSection() {
   const { logout } = useAuth();
   const [appearance, setAppearance] =
     useState<"light" | "dark" | "system">("system");
+  const [profile, setProfile] = useState<UserProfileResponse | null>(null);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [profileError, setProfileError] = useState<string | null>(null);
 
   const copyToClipboard = () => {
-    navigator.clipboard.writeText("example@inbo.club");
+    const emailToCopy = profile?.inboxEmail || (profile?.username ? `${profile.username}@inbo.club` : "");
+    if (!emailToCopy) return;
+    navigator.clipboard.writeText(emailToCopy);
   };
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        setLoadingProfile(true);
+        setProfileError(null);
+        const data = await userService.getProfile();
+        setProfile(data);
+      } catch (err: any) {
+        console.error("Failed to load profile", err);
+        setProfileError(err?.response?.data?.message || err?.message || "Failed to load profile");
+      } finally {
+        setLoadingProfile(false);
+      }
+    };
+
+    loadProfile();
+  }, []);
 
   // Handle logout
   const handleLogout = async () => {
@@ -164,11 +188,51 @@ export default function ProfileSection() {
 
   const [showEditModal, setShowEditModal] = useState(false);
 
-  const user = {
-    name: "Sarah Mitchell",
-    email: "example@email.com",
-    joined: "August 17, 2025",
-    completeness: 72,
+  const user = useMemo(() => {
+    const displayName = profile?.name || profile?.username || "Your name";
+    const email = profile?.email || "";
+    const joined = profile?.createdAt
+      ? new Date(profile.createdAt).toLocaleDateString("en-US", {
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+        })
+      : "";
+
+    const completenessFields = [
+      profile?.name,
+      profile?.username,
+      profile?.birthYear,
+      profile?.gender,
+      profile?.inboxEmail || (profile?.isInboxCreated ? "yes" : null),
+    ];
+    const filled = completenessFields.filter(Boolean).length;
+    const completeness = completenessFields.length
+      ? Math.round((filled / completenessFields.length) * 100)
+      : 0;
+
+    const inboxEmail = profile?.inboxEmail || (profile?.username ? `${profile.username}@inbo.club` : "");
+
+    return {
+      name: displayName,
+      email,
+      joined,
+      completeness,
+      inboxEmail,
+    };
+  }, [profile]);
+
+  const handleSaveProfile = async (data: { name?: string; birthYear?: string; gender?: string }) => {
+    setProfileError(null);
+    try {
+      const updated = await userService.updateProfile(data);
+      setProfile(updated);
+      setShowEditModal(false);
+    } catch (err: any) {
+      console.error("Failed to update profile", err);
+      setProfileError(err?.response?.data?.message || err?.message || "Failed to update profile");
+      throw err;
+    }
   };
 
   /* ---------------------------------------
@@ -195,19 +259,41 @@ export default function ProfileSection() {
     );
   }
   if (isMobile) {
-    return <MobileProfileSection
-      activePage={activePage}
-      setActivePage={setActivePage}
-      user={user}
-      appearance={appearance}
-      setAppearance={setAppearance}
-      copyToClipboard={copyToClipboard}
-    />
+    return (
+      <MobileProfileSection
+        activePage={activePage}
+        setActivePage={setActivePage}
+        user={user}
+        appearance={appearance}
+        setAppearance={setAppearance}
+        copyToClipboard={copyToClipboard}
+        loadingProfile={loadingProfile}
+        profileError={profileError}
+        onEdit={() => setShowEditModal(true)}
+      />
+    );
   }
 
   /* ---------------------------------------
      MAIN PAGE
   ---------------------------------------- */
+  if (loadingProfile) {
+    return (
+      <div className="flex items-center justify-center w-full h-full py-24">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-black" />
+      </div>
+    );
+  }
+
+  if (profileError) {
+    return (
+      <div className="w-full p-6">
+        <div className="bg-red-50 border border-red-200 text-red-800 rounded-xl p-4">
+          {profileError}
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="flex flex-col w-full">
 
@@ -226,7 +312,7 @@ export default function ProfileSection() {
           <div className="flex justify-between items-center">
 
             <div className="flex items-center gap-3">
-              <ProgressRing percent={user.completeness}>
+              <ProgressRing percent={user.completeness || 0}>
                 {getInitials(user.name)}
               </ProgressRing>
 
@@ -282,7 +368,7 @@ export default function ProfileSection() {
                     Inbo Mailbox
                   </p>
                   <p className="text-[18px] font-medium text-[#0C1014] font">
-                    example@inbo.club
+                    {user.inboxEmail || "Not created"}
                   </p>
                 </div>
               </div>
@@ -534,7 +620,12 @@ export default function ProfileSection() {
         </div>
       </div>
 
-      <EditProfileModal isOpen={showEditModal} onClose={() => setShowEditModal(false)} />
+      <EditProfileModal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        profile={profile}
+        onSave={handleSaveProfile}
+      />
     </div>
   );
 }

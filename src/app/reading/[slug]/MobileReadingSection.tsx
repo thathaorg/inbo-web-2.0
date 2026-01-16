@@ -7,20 +7,28 @@ import MobileReadingHeader from "@/components/reading/MobileReadingHeader";
 import ReadModeSettings from "@/components/reading/ReadModeSettings";
 
 interface MobileReadingSectionProps {
+  id: string;
   title: string;
   author: string;
   readTime: string;
   published: string;
   content: string[];
+  isReadLater?: boolean;
+  isFavorite?: boolean;
+  isRead?: boolean;
   onBack?: () => void;
 }
 
 export default function MobileReadingSection({
+  id,
   title,
   author,
   readTime,
   published,
   content,
+  isReadLater,
+  isFavorite,
+  isRead,
   onBack,
 }: MobileReadingSectionProps) {
   const contentRef = useRef<HTMLDivElement>(null);
@@ -48,7 +56,7 @@ export default function MobileReadingSection({
       {/* ================= HEADER ================= */}
       {atTop && (
         <MobileReadingHeader
-          title="ByteByteGo Newsletter"
+          title={author}
           onBack={onBack}
         />
       )}
@@ -91,7 +99,13 @@ export default function MobileReadingSection({
 
       {/* ================= READING MENU ================= */}
       {showMenu && (
-        <MobileReadingMenu onClose={() => setShowMenu(false)} />
+        <MobileReadingMenu
+          onClose={() => setShowMenu(false)}
+          emailId={id}
+          isReadLater={isReadLater}
+          isFavorite={isFavorite}
+          isRead={isRead}
+        />
       )}
 
       {/* ================= READ MODE SETTINGS (ROOT) ================= */}

@@ -54,7 +54,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const refreshUser = useCallback(async () => {
     try {
       if (authService.isAuthenticated()) {
-        const userProfile = await authService.getCurrentUser();
+        // Add timeout to prevent infinite loading
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Request timeout')), 10000)
+        );
+        
+        const userProfilePromise = authService.getCurrentUser();
+        const userProfile = await Promise.race([userProfilePromise, timeoutPromise]) as any;
+        
         const user: User = {
           id: userProfile.id,
           email: userProfile.email,
@@ -82,11 +89,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
       }
     } catch (error: any) {
+      console.warn('Auth check failed:', error);
+      // On error, assume not authenticated and stop loading
       setState({
         user: null,
         isAuthenticated: false,
         isLoading: false,
-        error: error?.response?.data?.message || 'Failed to fetch user',
+        error: null, // Don't show error on initial load
       });
     }
   }, []);

@@ -17,6 +17,8 @@ export default function FlameBadge({ streak = 5 }: { streak?: number }) {
         width={22}
         height={22}
         className="pointer-events-none select-none"
+        // Avoid Next/Image warning when CSS affects only one dimension.
+        style={{ width: "auto", height: "auto" }}
       />
     </div>
   );

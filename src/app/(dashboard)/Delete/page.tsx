@@ -1,5 +1,5 @@
 "use client";
-export const dynamic = "force-dynamic";
+
 import { useState } from "react";
 import NewsletterCard from "@/components/inbox/InboxCard"; // ✅ adjust path if needed
 import MobileDeleteSection from "./MobileDeleteSection";

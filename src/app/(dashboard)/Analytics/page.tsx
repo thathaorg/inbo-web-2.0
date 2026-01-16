@@ -3,9 +3,6 @@
 import { useState } from "react";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useRouter } from "next/navigation";
-
-// Force dynamic rendering to fix 404
-export const dynamic = 'force-dynamic';
  
 import ReadingInsightsCard from "@/components/analytics/ReadingInsightsCard";
 import InboxOverview from "@/components/analytics/MoreLikeYouRead";

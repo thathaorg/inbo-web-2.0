@@ -231,18 +231,29 @@ function ReadingStylePopover({
           <p className="text-xs font-semibold text-gray-500">Size</p>
           <div className="flex gap-4">
             <button
-              onClick={() => setFontSize(Math.max(14, fontSize - 2))}
-              className="flex-1 h-10 rounded-lg border hover:bg-gray-50 flex items-center justify-center font-medium"
+              onClick={(e) => {
+                e.stopPropagation();
+                const newSize = Math.max(14, fontSize - 2);
+                setFontSize(newSize);
+              }}
+              disabled={fontSize <= 14}
+              className={`flex-1 h-10 rounded-lg border flex items-center justify-center font-medium transition ${fontSize <= 14 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}`}
             >
               A -
             </button>
             <button
-              onClick={() => setFontSize(Math.min(32, fontSize + 2))}
-              className="flex-1 h-10 rounded-lg border hover:bg-gray-50 flex items-center justify-center font-medium"
+              onClick={(e) => {
+                e.stopPropagation();
+                const newSize = Math.min(32, fontSize + 2);
+                setFontSize(newSize);
+              }}
+              disabled={fontSize >= 32}
+              className={`flex-1 h-10 rounded-lg border flex items-center justify-center font-medium transition ${fontSize >= 32 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}`}
             >
               A +
             </button>
           </div>
+          <p className="text-xs text-center text-gray-400">{fontSize}px</p>
         </div>
 
         {/* 4. Page Color */}
@@ -373,6 +384,8 @@ export default function ReadingPage(props: PageProps) {
   const [scrollProgress, setScrollProgress] = useState(0);
 
   const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [showSharePopup, setShowSharePopup] = useState(false);
+  const [copySuccess, setCopySuccess] = useState(false);
 
   const typeBtnRef = useRef<HTMLButtonElement>(null);
   const moreBtnRef = useRef<HTMLButtonElement>(null);
@@ -419,14 +432,15 @@ export default function ReadingPage(props: PageProps) {
     }
   }, [slug]);
 
-  const handleMarkAsRead = async () => {
+  const handleToggleRead = async () => {
     if (!emailData) return;
+    const nextStatus = !emailData.isRead;
     try {
-      await emailService.markEmailAsRead(emailData.id);
+      await emailService.toggleReadStatus(emailData.id, nextStatus);
       // Optimistically update UI
-      setEmailData(prev => prev ? { ...prev, isRead: true } : null);
+      setEmailData(prev => prev ? { ...prev, isRead: nextStatus } : null);
     } catch (e) {
-      console.error("Failed to mark as read", e);
+      console.error("Failed to toggle read status", e);
     }
   };
 
@@ -465,11 +479,84 @@ export default function ReadingPage(props: PageProps) {
     }
   };
 
-  // Close menu when clicking outside
+  const handleShare = async () => {
+    if (!emailData) return;
+    
+    const shareUrl = `${window.location.origin}/reading/${emailData.id}`;
+    const shareData = {
+      title: title || 'Check out this article',
+      text: title || 'Check out this article on Inbo',
+      url: shareUrl,
+    };
+
+    try {
+      if (navigator.share && navigator.canShare(shareData)) {
+        await navigator.share(shareData);
+      } else {
+        // Fallback: copy to clipboard
+        await navigator.clipboard.writeText(shareUrl);
+        alert('Link copied to clipboard!');
+      }
+    } catch (err) {
+      // User cancelled or error
+      if ((err as Error).name !== 'AbortError') {
+        console.error('Failed to share:', err);
+        // Fallback: copy to clipboard
+        try {
+          await navigator.clipboard.writeText(shareUrl);
+          alert('Link copied to clipboard!');
+        } catch {
+          alert('Failed to share');
+        }
+      }
+    }
+  };
+
+  const handleCopyLink = async () => {
+    if (!emailData) return;
+    const shareUrl = `${window.location.origin}/reading/${emailData.id}`;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopySuccess(true);
+      setTimeout(() => {
+        setCopySuccess(false);
+        setShowSharePopup(false);
+      }, 1500);
+    } catch {
+      alert('Failed to copy link');
+    }
+  };
+
+  const handleNativeShare = async () => {
+    if (!emailData) return;
+    const shareUrl = `${window.location.origin}/reading/${emailData.id}`;
+    const shareData = {
+      title: title || 'Check out this article',
+      text: title || 'Check out this article on Inbo',
+      url: shareUrl,
+    };
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+        setShowSharePopup(false);
+      }
+    } catch (err) {
+      if ((err as Error).name !== 'AbortError') {
+        console.error('Failed to share:', err);
+      }
+    }
+  };
+
+  // Close menus when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (moreBtnRef.current && !moreBtnRef.current.contains(event.target as Node)) {
         setShowMoreMenu(false);
+      }
+      // Close share popup when clicking outside (except when clicking inside the popup)
+      const target = event.target as HTMLElement;
+      if (!target.closest('[data-share-popup]')) {
+        setShowSharePopup(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -621,6 +708,15 @@ export default function ReadingPage(props: PageProps) {
         isFavorite={emailData.isFavorite}
         isRead={emailData.isRead}
         onBack={() => router.back()}
+        // Shared appearance state
+        themeMode={themeMode}
+        setThemeMode={setThemeMode}
+        fontSize={fontSize}
+        setFontSize={setFontSize}
+        pageColor={pageColor}
+        setPageColor={setPageColor}
+        fontFamily={fontFamily}
+        setFontFamily={setFontFamily}
       />
     );
   }
@@ -651,22 +747,27 @@ export default function ReadingPage(props: PageProps) {
               </IconButton>
 
               <div className="relative group">
-                <IconButton>
-                  <img src="/icons/read-timer-icon.png" alt="timer" />
+                <IconButton onClick={handleToggleReadLater}>
+                  <img src="/icons/read-timer-icon.png" alt="read later" />
+                </IconButton>
+                <div className="absolute top-full mt-1 left-1/2 -translate-x-1/2 bg-black text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition whitespace-nowrap z-50">
+                  {emailData.isReadLater ? 'Remove from Read Later' : 'Add to Read Later'}
+                </div>
+              </div>
+
+              <div className="relative group">
+                <IconButton onClick={handleToggleRead}>
+                  <div className="relative">
+                    <img src="/icons/read-check-icon.png" alt="check" />
+                    {emailData.isRead && (
+                      <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white" />
+                    )}
+                  </div>
                 </IconButton>
                 <div className="absolute top-full mt-1 left-1/2 -translate-x-1/2 bg-black text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition whitespace-nowrap z-50">
                   {scrollProgress}% read
                 </div>
               </div>
-
-              <IconButton onClick={handleMarkAsRead}>
-                <div className="relative">
-                  <img src="/icons/read-check-icon.png" alt="check" />
-                  {emailData.isRead && (
-                    <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white" />
-                  )}
-                </div>
-              </IconButton>
 
               <div className="relative">
                 <IconButton
@@ -691,6 +792,13 @@ export default function ReadingPage(props: PageProps) {
                     >
                       <Star size={16} className={emailData.isFavorite ? 'fill-current text-yellow-500' : 'text-gray-500'} />
                       {emailData.isFavorite ? 'Favorite' : 'Add to Favorite'}
+                    </button>
+                    <button
+                      onClick={handleShare}
+                      className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-lg text-sm font-medium flex items-center gap-2"
+                    >
+                      <Share2 size={16} className="text-gray-500" />
+                      Share
                     </button>
                     <div className="h-px bg-gray-100 my-1"></div>
                     <button
@@ -741,7 +849,6 @@ export default function ReadingPage(props: PageProps) {
             >
               <div
                 className={`mx-auto max-w-[760px] px-10 transition-all duration-300 ${getFontFamily()}`}
-                style={{ fontSize: `${fontSize}px` }}
               >
                 <h1 className="text-[34px] font-bold mb-8">{title}</h1>
 
@@ -760,7 +867,7 @@ export default function ReadingPage(props: PageProps) {
 
                 {/* CONDITIONAL RENDERING */}
                 {isReadingMode ? (
-                  <article className="prose prose-lg max-w-none">
+                  <article className="max-w-none" style={{ fontSize: `${fontSize}px`, lineHeight: 1.7 }}>
                     {content.map((p, i) => (
                       <p key={i} className="mb-4 leading-relaxed">
                         {applyHighlights(p, emailData?.highlights)}
@@ -769,7 +876,8 @@ export default function ReadingPage(props: PageProps) {
                   </article>
                 ) : (
                   <div
-                    className="prose prose-lg max-w-none"
+                    className="prose prose-lg max-w-none [&_*]:!text-inherit"
+                    style={{ fontSize: `${fontSize}px` }}
                     dangerouslySetInnerHTML={{ __html: htmlContent }}
                   />
                 )}
@@ -799,9 +907,37 @@ export default function ReadingPage(props: PageProps) {
             <button className="p-3 hover:bg-gray-100">
               <img src="/icons/note-icon.png" alt="note" />
             </button>
-            <button className="p-3 hover:bg-gray-100">
-              <Link2 size={24} />
-            </button>
+            <div className="relative" data-share-popup>
+              <button 
+                onClick={() => setShowSharePopup(v => !v)}
+                className={`p-3 hover:bg-gray-100 transition-colors ${showSharePopup ? 'bg-gray-100' : ''}`}
+                title="Share"
+              >
+                <Link2 size={24} />
+              </button>
+
+              {showSharePopup && (
+                <div className="absolute left-full ml-2 top-0 w-52 bg-white rounded-xl shadow-lg border p-2 z-50">
+                  <p className="text-xs font-semibold text-gray-500 px-3 py-1">Share</p>
+                  <button
+                    onClick={handleCopyLink}
+                    className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-lg text-sm font-medium flex items-center gap-2"
+                  >
+                    <Link2 size={16} className="text-gray-500" />
+                    {copySuccess ? 'Copied!' : 'Copy Link'}
+                  </button>
+                  {typeof window !== 'undefined' && 'share' in navigator && (
+                    <button
+                      onClick={handleNativeShare}
+                      className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-lg text-sm font-medium flex items-center gap-2"
+                    >
+                      <Share2 size={16} className="text-gray-500" />
+                      Share via...
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
             <div className="relative">
               <button
                 onClick={() => setShowMoreMenu(v => !v)}
@@ -848,6 +984,14 @@ export default function ReadingPage(props: PageProps) {
         </div>
       )}
 
+      {/* READ MODE SETTINGS MODAL */}
+      {showReadSettings && (
+        <ReadModeSettings
+          isOpen={showReadSettings}
+          onClose={() => setShowReadSettings(false)}
+        />
+      )}
+
       {showReadingStyle && (
         <ReadingStylePopover
           anchorRef={typeBtnRef}
@@ -865,7 +1009,7 @@ export default function ReadingPage(props: PageProps) {
           isReaderMode={isReadingMode}
           onEnableReader={() => {
             setIsReadingMode(true);
-            // Don't close popover immediately so they can adjust settings
+            setShowReadingStyle(false); // Close popover when reader mode is enabled
           }}
         />
       )}

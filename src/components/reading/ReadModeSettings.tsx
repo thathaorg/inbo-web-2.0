@@ -8,6 +8,7 @@ import { Sun, Moon, Laptop, ChevronRight } from "lucide-react";
 /* ------------------------------------------------------------------ */
 type ThemeMode = "light" | "dark" | "system";
 type PageColor = "white" | "paper" | "calm";
+type FontFamily = "sans" | "serif" | "mono";
 type FontType =
   | "Default"
   | "Helvetica Neue"
@@ -18,6 +19,15 @@ type FontType =
 interface ReadModeSettingsProps {
   isOpen: boolean;
   onClose: () => void;
+  // Optional external state props for controlled mode
+  themeMode?: ThemeMode;
+  setThemeMode?: (v: ThemeMode) => void;
+  fontSize?: number;
+  setFontSize?: (v: number) => void;
+  pageColor?: PageColor;
+  setPageColor?: (v: PageColor) => void;
+  fontFamily?: FontFamily;
+  setFontFamily?: (v: FontFamily) => void;
 }
 
 /* ------------------------------------------------------------------ */
@@ -26,11 +36,32 @@ interface ReadModeSettingsProps {
 export default function ReadModeSettings({
   isOpen,
   onClose,
+  themeMode: externalTheme,
+  setThemeMode: externalSetTheme,
+  fontSize: externalFontSize,
+  setFontSize: externalSetFontSize,
+  pageColor: externalPageColor,
+  setPageColor: externalSetPageColor,
+  fontFamily: externalFontFamily,
+  setFontFamily: externalSetFontFamily,
 }: ReadModeSettingsProps) {
-  const [theme, setTheme] = useState<ThemeMode>("system");
-  const [pageColor, setPageColor] = useState<PageColor>("white");
+  // Internal state (used when no external state is provided)
+  const [internalTheme, setInternalTheme] = useState<ThemeMode>("system");
+  const [internalPageColor, setInternalPageColor] = useState<PageColor>("white");
+  const [internalFontSize, setInternalFontSize] = useState(17);
+  const [internalFontFamily, setInternalFontFamily] = useState<FontFamily>("sans");
   const [font, setFont] = useState<FontType>("Helvetica Neue");
   const [showFonts, setShowFonts] = useState(false);
+
+  // Use external state if provided, otherwise use internal state
+  const theme = externalTheme ?? internalTheme;
+  const setTheme = externalSetTheme ?? setInternalTheme;
+  const currentPageColor = externalPageColor ?? internalPageColor;
+  const setCurrentPageColor = externalSetPageColor ?? setInternalPageColor;
+  const fontSize = externalFontSize ?? internalFontSize;
+  const setFontSize = externalSetFontSize ?? setInternalFontSize;
+  const fontFamily = externalFontFamily ?? internalFontFamily;
+  const setFontFamilyState = externalSetFontFamily ?? setInternalFontFamily;
 
   const panelRef = useRef<HTMLDivElement>(null);
   const fontRef = useRef<HTMLDivElement>(null);
@@ -151,9 +182,28 @@ export default function ReadModeSettings({
           <div className="flex flex-col gap-2">
             <p className="text-sm font-medium text-[#0C1014]">Size</p>
             <div className="flex gap-3">
-              <SizeButton label="A -" />
-              <SizeButton label="A +" />
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setFontSize(Math.max(14, fontSize - 2));
+                }}
+                disabled={fontSize <= 14}
+                className={`flex-1 h-11 rounded-xl border flex items-center justify-center font-medium transition ${fontSize <= 14 ? 'opacity-50 cursor-not-allowed bg-gray-100' : 'bg-white hover:bg-gray-50'}`}
+              >
+                A -
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setFontSize(Math.min(32, fontSize + 2));
+                }}
+                disabled={fontSize >= 32}
+                className={`flex-1 h-11 rounded-xl border flex items-center justify-center font-medium transition ${fontSize >= 32 ? 'opacity-50 cursor-not-allowed bg-gray-100' : 'bg-white hover:bg-gray-50'}`}
+              >
+                A +
+              </button>
             </div>
+            <p className="text-xs text-center text-gray-400">{fontSize}px</p>
           </div>
 
           {/* PAGE COLOR */}
@@ -165,20 +215,20 @@ export default function ReadModeSettings({
               <PageColorCard
                 label="White"
                 bg="/icons/read-page-white.png"
-                active={pageColor === "white"}
-                onClick={() => setPageColor("white")}
+                active={currentPageColor === "white"}
+                onClick={() => setCurrentPageColor("white")}
               />
               <PageColorCard
                 label="Paper"
                 bg="/icons/read-page-paper.png"
-                active={pageColor === "paper"}
-                onClick={() => setPageColor("paper")}
+                active={currentPageColor === "paper"}
+                onClick={() => setCurrentPageColor("paper")}
               />
               <PageColorCard
                 label="Calm"
                 bg="/icons/read-page-calm.png"
-                active={pageColor === "calm"}
-                onClick={() => setPageColor("calm")}
+                active={currentPageColor === "calm"}
+                onClick={() => setCurrentPageColor("calm")}
               />
             </div>
           </div>

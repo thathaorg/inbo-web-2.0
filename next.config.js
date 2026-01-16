@@ -3,6 +3,19 @@
 const nextConfig = {
   reactStrictMode: true,
 
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**',
+      },
+      {
+        protocol: 'http',
+        hostname: '**',
+      },
+    ],
+  },
+
   env: {
     CUSTOM_KEY: process.env.CUSTOM_KEY,
     NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL || 'https://inbo-django-api.azurewebsites.net',

@@ -6,6 +6,10 @@ import MobileReadingMenu from "@/components/reading/MobileReadingMenu";
 import MobileReadingHeader from "@/components/reading/MobileReadingHeader";
 import ReadModeSettings from "@/components/reading/ReadModeSettings";
 
+type ThemeMode = "light" | "dark" | "system";
+type PageColor = "white" | "paper" | "calm";
+type FontFamily = "sans" | "serif" | "mono";
+
 interface MobileReadingSectionProps {
   id: string;
   title: string;
@@ -17,6 +21,15 @@ interface MobileReadingSectionProps {
   isFavorite?: boolean;
   isRead?: boolean;
   onBack?: () => void;
+  // Shared appearance state
+  themeMode: ThemeMode;
+  setThemeMode: (v: ThemeMode) => void;
+  fontSize: number;
+  setFontSize: (v: number) => void;
+  pageColor: PageColor;
+  setPageColor: (v: PageColor) => void;
+  fontFamily: FontFamily;
+  setFontFamily: (v: FontFamily) => void;
 }
 
 export default function MobileReadingSection({
@@ -26,16 +39,30 @@ export default function MobileReadingSection({
   readTime,
   published,
   content,
-  isReadLater,
-  isFavorite,
-  isRead,
+  isReadLater: initialReadLater,
+  isFavorite: initialFavorite,
+  isRead: initialRead,
   onBack,
+  // Shared appearance state from parent
+  themeMode,
+  setThemeMode,
+  fontSize,
+  setFontSize,
+  pageColor,
+  setPageColor,
+  fontFamily,
+  setFontFamily,
 }: MobileReadingSectionProps) {
   const contentRef = useRef<HTMLDivElement>(null);
 
   const [atTop, setAtTop] = useState(true);
   const [showMenu, setShowMenu] = useState(false);
   const [showReadSettings, setShowReadSettings] = useState(false);
+
+  // Local state for email status (for optimistic UI updates)
+  const [isReadLater, setIsReadLater] = useState(initialReadLater);
+  const [isFavorite, setIsFavorite] = useState(initialFavorite);
+  const [isRead, setIsRead] = useState(initialRead);
 
   /* ---------------- SCROLL HANDLER ---------------- */
   useEffect(() => {
@@ -51,8 +78,26 @@ export default function MobileReadingSection({
     return () => el.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // Background classes based on theme and page color
+  const getBackgroundClass = () => {
+    if (themeMode === 'dark') return 'bg-[#1C1C1E] text-white';
+    switch (pageColor) {
+      case 'paper': return 'bg-[#F5F5F3] text-black';
+      case 'calm': return 'bg-[#E8F1F5] text-black';
+      default: return 'bg-[#F5F5F5] text-black';
+    }
+  };
+
+  const getFontFamilyClass = () => {
+    switch (fontFamily) {
+      case 'serif': return 'font-serif';
+      case 'mono': return 'font-mono';
+      default: return 'font-sans';
+    }
+  };
+
   return (
-    <div className="relative h-screen bg-[#F5F5F5] text-black overflow-hidden">
+    <div className={`relative h-screen overflow-hidden transition-colors duration-300 ${getBackgroundClass()}`}>
       {/* ================= HEADER ================= */}
       {atTop && (
         <MobileReadingHeader
@@ -79,8 +124,11 @@ export default function MobileReadingSection({
 
         {/* ARTICLE BODY */}
         <div>
-          <div className="bg-white rounded-2xl px-5 py-6 shadow-sm">
-            <article className="space-y-6 text-[17px] leading-relaxed text-gray-900">
+          <div className={`rounded-2xl px-5 py-6 shadow-sm ${themeMode === 'dark' ? 'bg-[#2C2C2E]' : 'bg-white'}`}>
+            <article 
+              className={`space-y-6 leading-relaxed ${getFontFamilyClass()} ${themeMode === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}
+              style={{ fontSize: `${fontSize}px` }}
+            >
               {content.map((p, i) => (
                 <p key={i}>{p}</p>
               ))}
@@ -102,9 +150,14 @@ export default function MobileReadingSection({
         <MobileReadingMenu
           onClose={() => setShowMenu(false)}
           emailId={id}
+          title={title}
           isReadLater={isReadLater}
           isFavorite={isFavorite}
           isRead={isRead}
+          onReadLaterChange={setIsReadLater}
+          onFavoriteChange={setIsFavorite}
+          onReadChange={setIsRead}
+          onOpenAppearance={() => setShowReadSettings(true)}
         />
       )}
 
@@ -113,6 +166,14 @@ export default function MobileReadingSection({
         <ReadModeSettings
           isOpen={showReadSettings}
           onClose={() => setShowReadSettings(false)}
+          themeMode={themeMode}
+          setThemeMode={setThemeMode}
+          fontSize={fontSize}
+          setFontSize={setFontSize}
+          pageColor={pageColor}
+          setPageColor={setPageColor}
+          fontFamily={fontFamily}
+          setFontFamily={setFontFamily}
         />
       )}
 

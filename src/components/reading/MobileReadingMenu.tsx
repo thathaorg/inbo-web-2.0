@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import {
   Type,
   ArrowRight,
@@ -13,27 +12,68 @@ import {
   Bot,
   Bookmark,
 } from "lucide-react";
-import ReadModeSettings from "./ReadModeSettings";
 import emailService from "@/services/email";
 import { useRouter } from "next/navigation";
 
 interface MobileReadingMenuProps {
   onClose: () => void;
   emailId: string;
+  title?: string;
   isReadLater?: boolean;
   isFavorite?: boolean;
   isRead?: boolean;
+  onReadLaterChange?: (value: boolean) => void;
+  onFavoriteChange?: (value: boolean) => void;
+  onReadChange?: (value: boolean) => void;
+  onOpenAppearance?: () => void;
 }
 
 export default function MobileReadingMenu({
   onClose,
   emailId,
+  title,
   isReadLater,
   isFavorite,
   isRead,
+  onReadLaterChange,
+  onFavoriteChange,
+  onReadChange,
+  onOpenAppearance,
 }: MobileReadingMenuProps) {
-  const [showReadSettings, setShowReadSettings] = useState(false);
   const router = useRouter();
+
+  const handleShare = async () => {
+    const shareUrl = `${window.location.origin}/reading/${emailId}`;
+    const shareData = {
+      title: title || 'Check out this article',
+      text: title || 'Check out this article on Inbo',
+      url: shareUrl,
+    };
+
+    try {
+      if (navigator.share && navigator.canShare(shareData)) {
+        await navigator.share(shareData);
+      } else {
+        // Fallback: copy to clipboard
+        await navigator.clipboard.writeText(shareUrl);
+        alert('Link copied to clipboard!');
+      }
+      onClose();
+    } catch (err) {
+      // User cancelled or error
+      if ((err as Error).name !== 'AbortError') {
+        console.error('Failed to share:', err);
+        // Fallback: copy to clipboard
+        try {
+          await navigator.clipboard.writeText(shareUrl);
+          alert('Link copied to clipboard!');
+          onClose();
+        } catch {
+          alert('Failed to share');
+        }
+      }
+    }
+  };
 
   const handleMoveToTrash = async () => {
     if (confirm("Are you sure you want to move this to trash?")) {
@@ -47,8 +87,10 @@ export default function MobileReadingMenu({
   };
 
   const handleToggleReadLater = async () => {
+    const nextStatus = !isReadLater;
     try {
-      await emailService.toggleReadLater(emailId, !isReadLater);
+      await emailService.toggleReadLater(emailId, nextStatus);
+      onReadLaterChange?.(nextStatus);
       onClose();
     } catch (err) {
       console.error("Failed to toggle read later", err);
@@ -56,20 +98,24 @@ export default function MobileReadingMenu({
   };
 
   const handleToggleFavorite = async () => {
+    const nextStatus = !isFavorite;
     try {
-      await emailService.toggleFavorite(emailId, !isFavorite);
+      await emailService.toggleFavorite(emailId, nextStatus);
+      onFavoriteChange?.(nextStatus);
       onClose();
     } catch (err) {
       console.error("Failed to toggle favorite", err);
     }
   };
 
-  const handleMarkRead = async () => {
+  const handleToggleRead = async () => {
+    const nextStatus = !isRead;
     try {
-      await emailService.markEmailAsRead(emailId);
+      await emailService.toggleReadStatus(emailId, nextStatus);
+      onReadChange?.(nextStatus);
       onClose();
     } catch (err) {
-      console.error("Failed to mark read", err);
+      console.error("Failed to toggle read status", err);
     }
   };
 
@@ -91,10 +137,17 @@ export default function MobileReadingMenu({
           <SheetAction
             icon={<Type size={20} />}
             label="Appearance"
-            onClick={() => setShowReadSettings(true)}
+            onClick={() => {
+              onClose();
+              onOpenAppearance?.();
+            }}
           />
           <SheetAction icon={<ArrowRight size={20} />} label="Open" />
-          <SheetAction icon={<Share2 size={20} />} label="Share" />
+          <SheetAction 
+            icon={<Share2 size={20} />} 
+            label="Share" 
+            onClick={handleShare}
+          />
         </div>
 
         {/* List */}
@@ -102,7 +155,7 @@ export default function MobileReadingMenu({
           <ListItem
             label={isRead ? "Mark Unread" : "Mark Read"}
             icon={<Check className={isRead ? "text-green-500" : "text-gray-400"} />}
-            onClick={handleMarkRead}
+            onClick={handleToggleRead}
           />
           <ListItem
             label={isReadLater ? "Remove Read Later" : "Read Later"}
@@ -128,11 +181,6 @@ export default function MobileReadingMenu({
           Move to Trash
         </button>
       </div>
-
-      <ReadModeSettings
-        isOpen={showReadSettings}
-        onClose={() => setShowReadSettings(false)}
-      />
     </>
   );
 }

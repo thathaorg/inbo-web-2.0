@@ -54,11 +54,12 @@ function VerifyOTPContent() {
 
   /* ================= AUTH REDIRECT ================= */
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      router.push("/inbox");
-    }
-  }, [isAuthenticated, router]);
+  // Disabled to prevent race condition with handleVerifyOTP redirect
+  // useEffect(() => {
+  //   if (isAuthenticated) {
+  //     router.push("/inbox");
+  //   }
+  // }, [isAuthenticated, router]);
 
   /* ================= MOBILE REDIRECT ================= */
 

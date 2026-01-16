@@ -8,8 +8,8 @@ export default function EmailBubble() {
   const { user, isLoading } = useAuth();
   const [copied, setCopied] = useState(false);
 
-  // Get email directly from user context (already cached)
-  const email = user?.inboxEmail || (user?.isInboxCreated ? "Loading..." : "Create inbox");
+  // Construct email as username@inbo.me
+  const email = user?.username ? `${user.username}@inbo.me` : (user?.isInboxCreated ? "Loading..." : "Create inbox");
 
   const handleCopy = async () => {
     if (!email || email === "Create inbox" || email === "Loading...") return;

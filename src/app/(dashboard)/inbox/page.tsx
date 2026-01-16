@@ -563,10 +563,6 @@ export default function InboxPage() {
                 </div>
 
                 <div className="flex items-center gap-4 px-4 shrink-0">
-                  <div className="flex items-center gap-3 bg-white border border-[#DBDFE4] rounded-full px-3 py-2 shadow-sm">
-                    <FlameBadge />
-                    <ThemeToggle />
-                  </div>
                   <TabSwitcher
                     tab={tab}
                     setTab={setTab}

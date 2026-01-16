@@ -28,8 +28,12 @@ export default function Navbar() {
             "
           >
             <EmailBubble />
-            <FlameBadge />
-            <ThemeToggle />
+            <div className="flex items-center gap-3">
+              <div className="scale-125">
+                <FlameBadge />
+              </div>
+              <ThemeToggle />
+            </div>
           </div>
         </div>
 

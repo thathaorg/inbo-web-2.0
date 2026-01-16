@@ -1,10 +1,11 @@
 "use client";
 
 import type { Step } from "@/app/auth/register/page";
-import { CircleQuestionMark,ArrowLeftIcon } from "lucide-react";
+import { CircleQuestionMark, ArrowLeftIcon } from "lucide-react";
 // Steps
 import EmailStep from "@/components/auth/register/EmailStep";
 import VerifyCodePage from "@/components/auth/register/VerifyCode";
+import UserDetailsStep from "@/components/auth/register/UserDetailsStep";
 import UsernameStep from "@/components/auth/register/UsernameStep";
 import CategoriesStep from "@/components/auth/register/CategoriesStep";
 import ReminderStep from "@/components/auth/register/ReminderStep";
@@ -20,6 +21,7 @@ const STEP_ORDER: Step[] = [
   "intro",
   "email",
   "check-email",
+  "user-details",
   "username",
   "categories",
   "reminder",
@@ -78,60 +80,58 @@ export default function MobileSignupSection(props: any) {
       {/* FIXED HEADER */}
       {step !== "intro" && (
         <div
-        className={`
+          className={`
             fixed top-0 left-0 right-0 z-40
             ${HEADER_HEIGHT}
             flex items-center justify-between
             px-6
-            ${
-            isIntroFlow
-                ? "text-white bg-transparent"
-                : "text-black bg-white"
+            ${isIntroFlow
+              ? "text-white bg-transparent"
+              : "text-black bg-white"
             }
         `}
         >
-        {/* Back */}
-        <button
+          {/* Back */}
+          <button
             onClick={onBack}
             className="flex h-8 w-8 items-center justify-center"
-        >
+          >
             <ArrowLeftIcon className="h-5 w-5" />
-        </button>
+          </button>
 
-        {/* Progress pills */}
-        <div className="flex items-center gap-1.5">
+          {/* Progress pills */}
+          <div className="flex items-center gap-1.5">
             {STEP_ORDER.map((s) => {
-            const isActive = s === step;
+              const isActive = s === step;
 
-            return (
+              return (
                 <span
-                key={s}
-                className={`
+                  key={s}
+                  className={`
                     h-2 rounded-full transition-all duration-300
                     ${isActive ? "w-6" : "w-2"}
-                    ${
-                    isIntroFlow
-                        ? isActive
+                    ${isIntroFlow
+                      ? isActive
                         ? "bg-white"
                         : "bg-white/40"
-                        : isActive
+                      : isActive
                         ? "bg-[#C76B55]"
                         : "bg-gray-300"
                     }
                 `}
                 />
-            );
+              );
             })}
-        </div>
+          </div>
 
-        {/* Help icon */}
-        {showHelpIcon ? (
+          {/* Help icon */}
+          {showHelpIcon ? (
             <span className="flex h-8 w-8 items-center justify-center text-white/70">
-            <CircleQuestionMark className="h-6 w-6" />
+              <CircleQuestionMark className="h-6 w-6" />
             </span>
-        ) : (
+          ) : (
             <span className="w-8" />
-        )}
+          )}
         </div>
 
       )}
@@ -168,7 +168,7 @@ export default function MobileSignupSection(props: any) {
                 formData={formData}
                 setFormData={setFormData}
                 onContinue={onEmailContinue}
-                googleLogin={() => {}}
+                googleLogin={() => { }}
                 isLoading={isLoading}
                 devMode={devMode}
               />
@@ -190,6 +190,15 @@ export default function MobileSignupSection(props: any) {
         {!isIntroFlow && (
           <div className="flex-1 bg-white">
             <div className="flex-1 overflow-y-auto px-6 pt-10">
+              {step === "user-details" && (
+                <UserDetailsStep
+                  formData={formData}
+                  setFormData={setFormData}
+                  onContinue={() => setStep("username")}
+                  onBack={onBack}
+                />
+              )}
+
               {step === "username" && (
                 <UsernameStep
                   ref={usernameInputRef}

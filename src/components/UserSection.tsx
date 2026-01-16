@@ -3,11 +3,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function UserSection({ collapsed }: { collapsed: boolean }) {
+  const { user } = useAuth();
 
-  // Default user values – replace later with fetch
-  const userName = "Robbi Darwis";
+  // Use real user data or fallback to defaults
+  const userName = user?.name || user?.username || "User";
   const userImage = "/icons/account-icon.png";
 
   return (

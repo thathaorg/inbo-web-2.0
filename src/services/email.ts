@@ -138,32 +138,66 @@ export function extractFirstImage(htmlContent: string | null | undefined): strin
   if (!htmlContent) return null;
 
   try {
-    // Match img tags with src attribute (most common)
+    const images: string[] = [];
+
+    // Match img tags with src attribute
     const imgMatches = htmlContent.matchAll(/<img[^>]+src=["']([^"']+)["'][^>]*>/gi);
     for (const match of imgMatches) {
       if (match[1]) {
         const url = match[1].trim();
-        // Skip data URIs and very small images (likely icons)
-        if (!url.startsWith('data:') && !url.includes('icon') && !url.includes('logo')) {
-          // Prefer larger images (check for common image dimensions in URL or attributes)
-          return url;
+        const fullMatch = match[0];
+
+        // Skip data URIs, tracking pixels, and empty src
+        if (!url || url.startsWith('data:') || url.includes('1x1') || url.length < 15) {
+          continue;
         }
+
+        // Skip common header/footer/profile images by checking the img tag context
+        const lowerUrl = url.toLowerCase();
+        const lowerMatch = fullMatch.toLowerCase();
+
+        // Skip if URL contains these patterns
+        if (lowerUrl.includes('/icon') ||
+          lowerUrl.includes('/logo') ||
+          lowerUrl.includes('favicon') ||
+          lowerUrl.includes('/avatar') ||
+          lowerUrl.includes('/profile') ||
+          lowerUrl.includes('/badge') ||
+          lowerUrl.includes('header') ||
+          lowerUrl.includes('footer') ||
+          lowerUrl.includes('social') ||
+          lowerUrl.includes('button')) {
+          continue;
+        }
+
+        // Skip if img tag has class/id suggesting it's not article content
+        if (lowerMatch.includes('class="logo') ||
+          lowerMatch.includes('class="icon') ||
+          lowerMatch.includes('class="avatar') ||
+          lowerMatch.includes('class="profile') ||
+          lowerMatch.includes('class="header') ||
+          lowerMatch.includes('class="footer') ||
+          lowerMatch.includes('id="logo') ||
+          lowerMatch.includes('id="header')) {
+          continue;
+        }
+
+        images.push(url);
       }
     }
 
-    // If no good img tag found, try background-image
+    // Return first valid content image
+    if (images.length > 0) {
+      return images[0];
+    }
+
+    // Try background-image as fallback
     const bgMatch = htmlContent.match(/background-image:\s*url\(["']?([^"')]+)["']?\)/i);
     if (bgMatch && bgMatch[1]) {
       const url = bgMatch[1].trim();
-      if (!url.startsWith('data:')) {
+      if (url && !url.startsWith('data:')) {
         return url;
       }
-    }
-
-    // Last resort: get any img src
-    const anyImgMatch = htmlContent.match(/<img[^>]+src=["']([^"']+)["'][^>]*>/i);
-    if (anyImgMatch && anyImgMatch[1]) {
-      return anyImgMatch[1].trim();
     }
   } catch (error) {
     console.warn('Error extracting image from content:', error);
@@ -197,13 +231,22 @@ async function fetchNewsletterProviderLogo(sender: string): Promise<string | nul
     params.append('q', searchQuery);
     params.append('page_size', '5');
 
-    // Disabled due to backend 500 errors
-    // const response = await apiClient.get(`/api/search/providers/search/?${params.toString()}`);
+    const response = await apiClient.get(`/api/search/providers/search/?${params.toString()}`);
+
+    if (response.data?.results && response.data.results.length > 0) {
+      const provider = response.data.results[0];
+      const logo = provider.logo || provider.image || null;
+      const name = provider.name || null;
+
+      // Cache the result
+      newsletterProviderCache.set(cacheKey, { logo, name });
+      return logo;
+    }
 
     // Cache null result to avoid repeated failed requests
     newsletterProviderCache.set(cacheKey, { logo: null, name: null });
   } catch (error) {
-    console.debug(`Skipped provider logo fetch for ${sender}`);
+    // Silently fail - newsletter logos are optional, backend endpoint has issues
     // Cache null result to avoid repeated failed requests
     newsletterProviderCache.set(cacheKey, { logo: null, name: null });
   }
@@ -289,13 +332,15 @@ class EmailService {
     }
     params.append('page', page.toString());
 
-    const response = await apiClient.get<(EmailListItemApi | EmptyInboxResponse)[]>(
+    const response = await apiClient.get<any>(
       `${EMAIL_ENDPOINTS.INBOX}?${params.toString()}`
     );
-    console.log('📧 Inbox API Response:', response.data);
 
-    const data = response.data ?? [];
-    if (Array.isArray(data) && data.length > 0 && 'pendingNewsletters' in (data[0] as any)) {
+    // Handle paginated response structure: {data: Array, page, limit, total, hasNext}
+    const responseData = response.data?.data ?? response.data ?? [];
+    const data = Array.isArray(responseData) ? responseData : [];
+
+    if (data.length > 0 && 'pendingNewsletters' in (data[0] as any)) {
       return data as unknown as EmptyInboxResponse[];
     }
 
@@ -329,10 +374,12 @@ class EmailService {
     params.append('filter', filter);
     params.append('page', page.toString());
 
-    const response = await apiClient.get<EmailListItemApi[]>(
+    const response = await apiClient.get<any>(
       `${EMAIL_ENDPOINTS.READ_LATER_LIST}?${params.toString()}`
     );
-    return (response.data ?? []).map(normalizeEmailListItem);
+    const responseData = response.data?.data ?? response.data ?? [];
+    const data = Array.isArray(responseData) ? responseData : [];
+    return (data as EmailListItemApi[]).map(normalizeEmailListItem);
   }
 
   /**
@@ -346,10 +393,12 @@ class EmailService {
     params.append('filter', filter);
     params.append('page', page.toString());
 
-    const response = await apiClient.get<EmailListItemApi[]>(
+    const response = await apiClient.get<any>(
       `${EMAIL_ENDPOINTS.FAVORITES}?${params.toString()}`
     );
-    return (response.data ?? []).map(normalizeEmailListItem);
+    const responseData = response.data?.data ?? response.data ?? [];
+    const data = Array.isArray(responseData) ? responseData : [];
+    return (data as EmailListItemApi[]).map(normalizeEmailListItem);
   }
 
   /**
@@ -363,10 +412,12 @@ class EmailService {
     params.append('filter', filter);
     params.append('page', page.toString());
 
-    const response = await apiClient.get<EmailListItemApi[]>(
+    const response = await apiClient.get<any>(
       `${EMAIL_ENDPOINTS.TRASH}?${params.toString()}`
     );
-    return (response.data ?? []).map(normalizeEmailListItem);
+    const responseData = response.data?.data ?? response.data ?? [];
+    const data = Array.isArray(responseData) ? responseData : [];
+    return (data as EmailListItemApi[]).map(normalizeEmailListItem);
   }
 
   async markEmailAsRead(emailId: string): Promise<void> {

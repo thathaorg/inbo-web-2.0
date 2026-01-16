@@ -1,48 +1,19 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
-import userService from "@/services/user";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function EmailBubble() {
-  const [email, setEmail] = useState<string>("");
-  const [loading, setLoading] = useState(true);
+  const { user, isLoading } = useAuth();
   const [copied, setCopied] = useState(false);
 
-  useEffect(() => {
-    const fetchInboxEmail = async () => {
-      try {
-        setLoading(true);
-        // Add timeout to prevent hanging
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Request timeout')), 5000)
-        );
-        
-        const userDataPromise = userService.getCompleteData();
-        const userData = await Promise.race([userDataPromise, timeoutPromise]) as any;
-        
-        if (userData?.inboxEmail) {
-          setEmail(userData.inboxEmail);
-        } else {
-          // Fallback if inbox not created yet
-          setEmail("Create inbox");
-        }
-      } catch (error: any) {
-        console.warn("Failed to fetch inbox email:", error);
-        // Try to get from cookies or use placeholder
-        setEmail("Loading...");
-        // Don't show error state, just use placeholder
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchInboxEmail();
-  }, []);
+  // Get email directly from user context (already cached)
+  const email = user?.inboxEmail || (user?.isInboxCreated ? "Loading..." : "Create inbox");
 
   const handleCopy = async () => {
-    if (!email || email === "Create inbox") return;
-    
+    if (!email || email === "Create inbox" || email === "Loading...") return;
+
     try {
       await navigator.clipboard.writeText(email);
       setCopied(true);
@@ -54,34 +25,31 @@ export default function EmailBubble() {
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="flex items-center gap-2 px-2 py-1 bg-[#F3F4F6] rounded-full">
-        <Image src="/icons/mail-icon.png" width={20} height={20} alt="Mail" />
-        <span className="text-[16px] text-[#C46A54] font-medium">
-          Loading...
-        </span>
+      <div className="flex items-center gap-2">
+        <Image src="/icons/mail-icon.png" width={22} height={22} alt="Mail" />
+        <span className="text-[16px] text-[#C46A54] font-semibold min-w-[100px]">Loading...</span>
       </div>
     );
   }
 
-  return (
-    <div className="flex items-center gap-2 px-2 py-1 bg-[#F3F4F6] rounded-full">
-      <Image src="/icons/mail-icon.png" width={20} height={20} alt="Mail" />
+  const isReady = email && email !== "Loading..." && email !== "Create inbox";
 
-      <span className="text-[16px] text-[#C46A54] font-medium">
+  return (
+    <div className="flex items-center gap-2">
+      <Image src="/icons/mail-icon.png" width={22} height={22} alt="Mail" />
+
+      <span className="text-[17px] text-[#C46A54] font-semibold whitespace-nowrap">
         {email}
       </span>
 
-      {email && email !== "Create inbox" && (
+      {isReady && (
         <button
           onClick={handleCopy}
-          className="
-            px-3 py-[2px] bg-black rounded-full text-white text-[14px] 
-            cursor-pointer transition-all hover:bg-gray-800
-          "
+          className="ml-2 px-4 py-1 bg-[#0C1014] text-white text-[14px] font-medium rounded-full hover:bg-black transition-colors"
         >
-          {copied ? "Copied!" : "Copy"}
+          {copied ? "Copied" : "Copy"}
         </button>
       )}
     </div>

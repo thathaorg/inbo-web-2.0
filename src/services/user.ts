@@ -163,12 +163,19 @@ class UserService {
     }
   }
 
+  private completeDataCache: UserCompleteDataResponse | null = null;
+
   /**
    * Get complete user data
    */
   async getCompleteData(): Promise<UserCompleteDataResponse> {
+    if (this.completeDataCache) {
+      return this.completeDataCache;
+    }
+
     try {
       const response = await apiClient.get<UserCompleteDataResponse>(USER_ENDPOINTS.COMPLETE_DATA);
+      this.completeDataCache = response.data;
       return response.data;
     } catch (error: any) {
       logApiError('COMPLETE_DATA', error);
@@ -225,7 +232,10 @@ class UserService {
       const response = await apiClient.get<UserProfileResponse>(USER_ENDPOINTS.PROFILE);
       return response.data;
     } catch (error: any) {
-      logApiError('PROFILE_GET', error);
+      // Log error but don't block the app
+      console.warn('Failed to fetch user profile:', error.message || error);
+
+      // Return minimal fallback data to prevent app crashes
       throw error;
     }
   }

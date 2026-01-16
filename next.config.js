@@ -3,6 +3,79 @@
 const nextConfig = {
   reactStrictMode: true,
 
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**.substackcdn.com',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.substack.com',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.medium.com',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.ghost.io',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.cloudfront.net',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.amazonaws.com',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.imgur.com',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.googleusercontent.com',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.join1440.com',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.morning-brew.net',
+      },
+      {
+        protocol: 'https',
+        hostname: 'link.morningbrew.com',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.convertkit-mail.com',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.beehiiv.com',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.mailchimp.com',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.mcsv.net',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.sendgrid.net',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.awstrack.me',
+      },
+    ],
+  },
+
   env: {
     CUSTOM_KEY: process.env.CUSTOM_KEY,
     NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL || 'https://inbo-django-api.azurewebsites.net',

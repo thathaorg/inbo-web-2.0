@@ -56,7 +56,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (authService.isAuthenticated()) {
         // Add timeout to prevent infinite loading
         const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Request timeout')), 10000)
+          setTimeout(() => reject(new Error('Request timeout')), 35000)
         );
         
         const userProfilePromise = authService.getCurrentUser();
@@ -74,6 +74,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           gender: userProfile.gender,
           createdAt: userProfile.createdAt,
         };
+        
+        // Cache user data in localStorage for offline/slow connection resilience
+        try {
+          localStorage.setItem('user_cache', JSON.stringify(user));
+        } catch (e) {
+          console.warn('Failed to cache user data:', e);
+        }
+        
         setState({
           user,
           isAuthenticated: true,
@@ -89,13 +97,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
       }
     } catch (error: any) {
-      console.warn('Auth check failed:', error);
-      // On error, assume not authenticated and stop loading
+      console.warn('Auth check failed - using cached/partial data:', error.message);
+      // On error, try to load cached user data from localStorage
+      try {
+        const cachedUser = localStorage.getItem('user_cache');
+        if (cachedUser && authService.isAuthenticated()) {
+          const user = JSON.parse(cachedUser) as User;
+          console.log('✅ Using cached user data');
+          setState({
+            user,
+            isAuthenticated: true,
+            isLoading: false,
+            error: null,
+          });
+          return;
+        }
+      } catch (e) {
+        console.warn('Failed to load cached user:', e);
+      }
+      
+      // No cache available, set to unauthenticated
       setState({
         user: null,
         isAuthenticated: false,
         isLoading: false,
-        error: null, // Don't show error on initial load
+        error: null,
       });
     }
   }, []);

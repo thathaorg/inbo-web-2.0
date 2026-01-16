@@ -6,7 +6,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://inbo-djang
 // Create axios instance
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000, // Reduced from 30s to 10s to prevent long hangs
+  timeout: 30000, // 30 seconds - increased for slow backend responses
   headers: {
     'Content-Type': 'application/json',
   },

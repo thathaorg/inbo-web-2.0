@@ -8,6 +8,7 @@ import { SEOHead } from "@/components/seo/SEOHead";
 import AuthCarousel from "@/components/auth/AuthCarousel";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useAuth } from "@/contexts/AuthContext";
+import { userService } from "@/services/user";
 
 // Mobile section
 import MobileSignupSection from "@/app/auth/register/MobileSignupSection";
@@ -15,6 +16,7 @@ import MobileSignupSection from "@/app/auth/register/MobileSignupSection";
 // Steps
 import EmailStep from "@/components/auth/register/EmailStep";
 import VerifyCodePage from "@/components/auth/register/VerifyCode";
+import UserDetailsStep from "@/components/auth/register/UserDetailsStep";
 import UsernameStep from "@/components/auth/register/UsernameStep";
 import CategoriesStep from "@/components/auth/register/CategoriesStep";
 import ReminderStep from "@/components/auth/register/ReminderStep";
@@ -24,6 +26,7 @@ export type Step =
   | "intro"
   | "email"
   | "check-email"
+  | "user-details"
   | "username"
   | "categories"
   | "reminder"
@@ -45,6 +48,9 @@ export default function SignupPage() {
   const [formData, setFormData] = useState({
     email: "",
     username: "",
+    name: "",
+    birthYear: "",
+    gender: "",
   });
 
   const [categories, setCategories] = useState<string[]>([]);
@@ -86,11 +92,12 @@ export default function SignupPage() {
 
     try {
       const response = await verifyOTP(formData.email, code);
-      
+
       // Check if this is a new user or existing user
       if (response.isNewUser || !response.user.isInboxCreated) {
         // New user - continue with signup flow
-        setStep("username");
+        // Step 1 of onboarding: User Details
+        setStep("user-details");
       } else {
         // Existing user with inbox - redirect to inbox
         router.push("/inbox");
@@ -113,12 +120,42 @@ export default function SignupPage() {
     }
   };
 
-  const handleFinalSubmit = () => {
+  /* ---------------- API: COMPLETE ONBOARDING ---------------- */
+  const handleFinalSubmit = async () => {
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      // 1. Submit onboarding data
+      await userService.completeOnboarding({
+        username: formData.username,
+        categories: categories,
+        reminder: reminder,
+        reminderTime: reminderTime,
+        whereHeard: whereHeard,
+      });
+
+      // 2. Retry updating profile (in case it failed earlier or was skipped)
+      // This ensures name/gender/birthYear are saved if the user record is now fully established.
+      if (formData.name || formData.birthYear || formData.gender) {
+        try {
+          await userService.updateProfile({
+            name: formData.name,
+            birthYear: formData.birthYear,
+            gender: formData.gender,
+          });
+        } catch (profileErr) {
+          console.warn("Final profile update attempt failed:", profileErr);
+          // Ignore error and proceed to inbox
+        }
+      }
+
       router.push("/inbox");
-    }, 800);
+    } catch (err: any) {
+      console.error("Onboarding failed:", err);
+      // Even if it fails, try to go to inbox as user is created
+      router.push("/inbox");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleBack = () => {
@@ -128,12 +165,13 @@ export default function SignupPage() {
     }
 
     if (step === "check-email") setStep("email");
-    else if (step === "username") setStep("check-email");
+    else if (step === "user-details") setStep("check-email"); // Back to verify? Or email? Maybe verify is weird if already authenticated.
+    else if (step === "username") setStep("user-details");
     else if (step === "categories") setStep("username");
     else if (step === "reminder") setStep("categories");
-    else if (step === "where") setStep("reminder"); // ✅ added
+    else if (step === "where") setStep("reminder");
     else if (step === "notify") {
-      setStep("where"); // ✅ mobile-only
+      setStep("where");
     }
   };
 
@@ -142,6 +180,21 @@ export default function SignupPage() {
   /* ---------------- MOBILE ---------------- */
 
   if (isMobile) {
+    // If we are in user-details step on mobile, we render it directly
+    // This assumes MobileSignupSection handles other steps, we need to inject it or modify MobileSignupSection.
+    // Ideally MobileSignupSection should handle all steps. 
+    // For now, let's render UserDetailsStep conditionally here if step matches
+    if (step === "user-details") {
+      return (
+        <UserDetailsStep
+          formData={formData}
+          setFormData={setFormData}
+          onContinue={() => setStep("username")}
+          onBack={handleBack}
+        />
+      );
+    }
+
     return (
       <>
         <SEOHead title="Sign up" description="Create an account" />
@@ -214,7 +267,7 @@ export default function SignupPage() {
                   formData={formData}
                   setFormData={setFormData}
                   onContinue={handleEmailContinue}
-                  googleLogin={() => {}}
+                  googleLogin={() => { }}
                   isLoading={isLoading}
                   devMode={DEV_MODE}
                 />
@@ -225,8 +278,20 @@ export default function SignupPage() {
                   email={formData.email}
                   onResend={handleResendOTP}
                   onVerify={handleVerifyOTP}
-                  onSimulateOpen={() => setStep("username")}
+                  onSimulateOpen={() => {
+                    // For Dev Mode Simulation
+                    setStep("user-details");
+                  }}
                   devMode={DEV_MODE}
+                />
+              )}
+
+              {step === "user-details" && (
+                <UserDetailsStep
+                  formData={formData}
+                  setFormData={setFormData}
+                  onContinue={() => setStep("username")}
+                  onBack={handleBack}
                 />
               )}
 

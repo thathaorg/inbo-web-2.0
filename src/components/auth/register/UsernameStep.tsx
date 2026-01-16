@@ -22,78 +22,77 @@ function useDebounce<T>(value: T, delay: number): T {
 ========================== */
 
 const UsernameInput = ({
-    formData,
-    setFormData,
-    setSelectedSuggestion,
-    inputRef,
-    isMobile,
-    isChecking,
-    isAvailable,
-    availabilityMessage,
-  }: any) => (
-    <>
-      <label className="text-[16px] md:text-[18px] text-[#6F7680]">
-        Enter username
-      </label>
+  formData,
+  setFormData,
+  setSelectedSuggestion,
+  inputRef,
+  isMobile,
+  isChecking,
+  isAvailable,
+  availabilityMessage,
+}: any) => (
+  <>
+    <label className="text-[16px] md:text-[18px] text-[#6F7680]">
+      Enter username
+    </label>
 
-      <div
-        className={`
+    <div
+      className={`
           mt-2 flex items-center border border-[#E5E7EB] bg-white
           overflow-hidden transition focus-within:border-[#C46A54]
           ${isMobile ? "rounded-2xl" : "rounded-full"}
         `}
-      >
-        <input
-          ref={inputRef}
-          type="text"
-          placeholder="example34"
-          value={formData.username}
-          onChange={(e) => {
-            const v = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '');
-            setFormData((p: any) => ({ ...p, username: v }));
-            setSelectedSuggestion?.(null);
-          }}
-          className="flex-1 px-4 py-3.5 text-[15px] outline-none placeholder:text-[#A2AAB4]"
-        />
+    >
+      <input
+        ref={inputRef}
+        type="text"
+        placeholder="example34"
+        value={formData.username}
+        onChange={(e) => {
+          const v = e.target.value.toLowerCase().replace(/[^a-z0-9.]/g, '');
+          setFormData((p: any) => ({ ...p, username: v }));
+          setSelectedSuggestion?.(null);
+        }}
+        className="flex-1 px-4 py-3.5 text-[15px] outline-none placeholder:text-[#A2AAB4]"
+      />
 
-        {/* suffix */}
-        <div
-          className={`
+      {/* suffix */}
+      <div
+        className={`
             p-2 text-md
-            ${
-              isMobile
-                ? "bg-black text-white p-2 mr-2 border-black rounded-2xl"
-                : "text-black px-4"
-            }
+            ${isMobile
+            ? "bg-black text-white p-2 mr-2 border-black rounded-2xl"
+            : "text-black px-4"
+          }
           `}
-        >
-          @inbo.me
-        </div>
+      >
+        @inbo.me
       </div>
+    </div>
 
-      <div className="mt-2 ml-2 h-[20px]">
-        {isChecking ? (
-          <p className="text-[#6F7680] text-sm flex items-center gap-1">
-            <Loader2 size={16} className="animate-spin" /> Checking...
+    <div className="mt-2 ml-2 h-[20px]">
+      {isChecking ? (
+        <p className="text-[#6F7680] text-sm flex items-center gap-1">
+          <Loader2 size={16} className="animate-spin" /> Checking...
+        </p>
+      ) : formData.username && formData.username.length >= 2 ? (
+        isAvailable ? (
+          <p className="text-green-600 text-sm flex items-center gap-1">
+            <CheckCircle2 size={16} /> {availabilityMessage || "Available"}
           </p>
-        ) : formData.username && formData.username.length >= 2 ? (
-          isAvailable ? (
-            <p className="text-green-600 text-sm flex items-center gap-1">
-              <CheckCircle2 size={16} /> {availabilityMessage || "Available"}
-            </p>
-          ) : (
-            <p className="text-red-500 text-sm flex items-center gap-1">
-              <XCircle size={16} /> {availabilityMessage || "Not available"}
-            </p>
-          )
-        ) : formData.username ? (
-          <p className="text-red-500 text-xs">
-            Enter at least 2 characters
+        ) : (
+          <p className="text-red-500 text-sm flex items-center gap-1">
+            <XCircle size={16} /> {availabilityMessage || "Not available"}
           </p>
-        ) : null}
-      </div>
-    </>
-  );
+        )
+      ) : formData.username ? (
+        <p className="text-red-500 text-xs">
+          Enter at least 2 characters
+        </p>
+      ) : null}
+    </div>
+  </>
+);
 
 
 const Suggestions = ({ list, selectedSuggestion, setSelectedSuggestion, setFormData }: any) => (
@@ -151,7 +150,7 @@ const MobileWarning = () => (
 ========================== */
 
 interface UsernameStepProps {
-  formData: { username: string; [key: string]: any };
+  formData: { username: string;[key: string]: any };
   setFormData: React.Dispatch<React.SetStateAction<any>>;
   onContinue: () => Promise<void> | void;
   onBack: () => void;
@@ -167,7 +166,7 @@ const UsernameStep = forwardRef(function UsernameStep(
   ref: any
 ) {
   const isMobile = useMediaQuery("(max-width: 768px)");
-  
+
   // State for suggestions, availability, and loading
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [selectedSuggestion, setSelectedSuggestion] = useState<string | null>(null);
@@ -186,14 +185,36 @@ const UsernameStep = forwardRef(function UsernameStep(
     const fetchSuggestions = async () => {
       setLoadingSuggestions(true);
       try {
-        const response = await userService.getSuggestedUsernames();
-        if (response.success && response.suggestions) {
+        const name = formData.name || "";
+        const email = formData.email || "";
+        const emailPrefix = email.split('@')[0];
+
+        // Pass name and email prefix to help backend generate relevant suggestions
+        const response = await userService.getSuggestedUsernames(name, emailPrefix);
+
+        if (response.suggestions && response.suggestions.length > 0) {
           setSuggestions(response.suggestions);
+        } else {
+          // If API returns success but empty list (or failure), use intelligent fallback
+          // Generate simpler fallbacks based on inputs or random
+          const base = emailPrefix || "user";
+          const fallbacks = [
+            `${base}${new Date().getFullYear().toString().slice(-2)}`,
+            `${base}${Math.floor(Math.random() * 99)}`,
+            `${base}.inbo`
+          ];
+          setSuggestions(fallbacks);
         }
       } catch (err) {
         console.error("Failed to fetch suggestions:", err);
-        // Use fallback suggestions
-        setSuggestions(["user123", "reader456", "inbox789"]);
+        // Use fallback suggestions on error
+        const email = formData.email || "";
+        const base = email.split('@')[0] || "user";
+        setSuggestions([
+          `${base}123`,
+          `${base}reader`,
+          `im.${base}`
+        ]);
       } finally {
         setLoadingSuggestions(false);
       }
@@ -242,23 +263,9 @@ const UsernameStep = forwardRef(function UsernameStep(
       return;
     }
 
-    setIsCreating(true);
-    setError("");
-
-    try {
-      const response = await userService.createInbox(formData.username);
-      if (response.success) {
-        // Inbox created successfully, proceed to next step
-        await onContinue();
-      } else {
-        setError(response.message || "Failed to create inbox");
-      }
-    } catch (err: any) {
-      console.error("Inbox creation failed:", err);
-      setError(err?.response?.data?.message || "Failed to create inbox. Please try again.");
-    } finally {
-      setIsCreating(false);
-    }
+    // We proceed without creating inbox explicitly here.
+    // The final completeOnboarding call will handle inbox creation and profile setup atomically.
+    await onContinue();
   };
 
   // Handle suggestion click
@@ -301,7 +308,7 @@ const UsernameStep = forwardRef(function UsernameStep(
             isAvailable={isAvailable}
             availabilityMessage={availabilityMessage}
           />
-          
+
           {loadingSuggestions ? (
             <div className="flex items-center justify-center py-4">
               <Loader2 className="animate-spin text-[#6F7680]" size={24} />
@@ -379,7 +386,7 @@ const UsernameStep = forwardRef(function UsernameStep(
             isAvailable={isAvailable}
             availabilityMessage={availabilityMessage}
           />
-          
+
           {loadingSuggestions ? (
             <div className="flex items-center justify-center py-4">
               <Loader2 className="animate-spin text-[#6F7680]" size={24} />
@@ -392,7 +399,7 @@ const UsernameStep = forwardRef(function UsernameStep(
               setFormData={setFormData}
             />
           )}
-          
+
           <DesktopWarning />
 
           {error && (

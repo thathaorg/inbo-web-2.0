@@ -23,7 +23,7 @@ export default function Navbar() {
             className="
               flex items-center gap-4 flex-shrink-0
               bg-white border border-[#DBDFE4]
-              rounded-full py-1 px-3 shadow-sm
+              rounded-full py-2 px-3 shadow-sm
               self-end md:self-auto
             "
           >

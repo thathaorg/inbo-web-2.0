@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 
 import { useState, useRef, useEffect } from "react";
 import { MoreHorizontal } from "lucide-react";
+import EmailThumbnail from "./EmailThumbnail";
 
 /* --------------------------------------------
    CUSTOM CHECKBOX (shared)
@@ -78,6 +79,7 @@ function InboxCardMobile({
   newsletterLogo,
   onMoveToTrash,
   onToggleReadLater,
+  sender,
 }: any) {
   const router = useRouter();
   const [showMenu, setShowMenu] = useState(false);
@@ -214,20 +216,13 @@ function InboxCardMobile({
               {title}
             </h3>
 
-            {thumbnail ? (
-              <Image
-                src={thumbnail}
-                alt={title || 'Email thumbnail'}
-                width={65}
-                height={65}
-                className="rounded-lg object-cover shrink-0"
-                style={{ width: "auto", height: "auto" }}
-              />
-            ) : (
-              <div className="w-[65px] h-[65px] rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
-                <span className="text-gray-400 text-[10px]">No image</span>
-              </div>
-            )}
+            <EmailThumbnail 
+              emailId={emailId}
+              sender={sender}
+              thumbnail={thumbnail}
+              title={title || 'Email thumbnail'}
+              size="small"
+            />
           </div>
 
           <span className="text-[12px] text-gray-500">
@@ -265,6 +260,7 @@ function NewsletterCardDesktop({
   newsletterLogo,
   onMoveToTrash,
   onToggleReadLater,
+  sender,
 }: any) {
   const router = useRouter();
   const [showMenu, setShowMenu] = useState(false);
@@ -427,20 +423,13 @@ function NewsletterCardDesktop({
             </div>
           </div>
 
-          {thumbnail ? (
-            <Image
-              src={thumbnail}
-              alt={title || "Email thumbnail"}
-              width={110}
-              height={70}
-              className="rounded-xl object-cover shrink-0"
-              style={{ width: "auto", height: "auto" }}
-            />
-          ) : (
-            <div className="w-[110px] h-[70px] rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
-              <span className="text-gray-400 text-xs">No image</span>
-            </div>
-          )}
+          <EmailThumbnail 
+            emailId={emailId}
+            sender={sender}
+            thumbnail={thumbnail}
+            title={title || "Email thumbnail"}
+            size="large"
+          />
         </div>
       </div>
     </div>

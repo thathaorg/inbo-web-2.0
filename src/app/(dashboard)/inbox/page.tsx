@@ -12,6 +12,10 @@ import EmptyState from "@/components/SearchNotFound";
 import emailService, { extractNewsletterName, extractFirstImage } from "@/services/email";
 import analyticsService from "@/services/analytics";
 import type { EmailListItem } from "@/services/email";
+import InboxSkeleton from "@/components/inbox/InboxSkeleton";
+import EmailBubble from "@/components/EmailBubble";
+import FlameBadge from "@/components/FlameBadge";
+import ThemeToggle from "@/components/ThemeToggle";
 
 /* --------------------- EMAIL TRANSFORMATION --------------------- */
 /**
@@ -69,14 +73,24 @@ function transformEmailToCard(email: EmailListItem) {
     wordsCount: email.wordsCount,
     newsletterName: newsletterName,
     newsletterLogo: email.newsletterLogo,
+    sender: email.sender,
   };
 }
 
 /* --------------------- PAGINATION CONSTANTS --------------------- */
 const EMAILS_PER_API_PAGE = 20; // Backend returns 20 emails per page
-const PAGES_TO_LOAD = 3; // Load 3 pages at once (60 emails)
-const INITIAL_VISIBLE = 10; // Show initial emails in each section
-const LOAD_MORE = 20; // Load 20 more when "view more" is clicked
+const PAGES_TO_LOAD = 3; // Load 3 API pages at once (60 emails total)
+const INITIAL_VISIBLE = 50; // Show 50 emails initially per section
+const LOAD_MORE = 50; // Load 50 more when "view more" is clicked
+const REQUEST_TIMEOUT_MS = 60000; // Increased to 60s for slow backend
+
+// Small helper to wrap API calls with a fast timeout so UI can respond quickly
+async function withTimeout<T>(promise: Promise<T>, label: string, timeoutMs = REQUEST_TIMEOUT_MS): Promise<T> {
+  return await Promise.race([
+    promise,
+    new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`${label} timed out`)), timeoutMs)),
+  ]);
+}
 
 /* ---------------------------------------------------------------- */
 
@@ -93,9 +107,8 @@ export default function InboxPage() {
   const [olderEmails, setOlderEmails] = useState<any[]>([]);
 
   // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
+  const [nextPageToFetch, setNextPageToFetch] = useState(1); // Track next API page to fetch
   const [hasMorePages, setHasMorePages] = useState(true);
-  const [nextBatchStartPage, setNextBatchStartPage] = useState(1);
   const [realUnreadCount, setRealUnreadCount] = useState(0);
 
   // Reset pagination when tab changes
@@ -104,15 +117,18 @@ export default function InboxPage() {
     setLast7DaysEmails([]);
     setLast30DaysEmails([]);
     setOlderEmails([]);
-    setNextBatchStartPage(1);
+    setNextPageToFetch(1);
     setHasMorePages(true);
-    setCurrentPage(prev => prev === 1 ? 1.1 : 1); // Trigger refetch by changing a numeric dependency or just use tab
   }, [tab]);
 
   // Group emails by time periods
   const groupEmailsByTime = (emails: EmailListItem[]) => {
     const now = new Date();
+    // Get today's start in local timezone
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    todayStart.setHours(0, 0, 0, 0);
+
+    // Calculate time boundaries
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
@@ -128,7 +144,8 @@ export default function InboxPage() {
         return;
       }
 
-      if (dateReceived >= todayStart) {
+      // Check if email is from today (using robust local date string comparison)
+      if (dateReceived.toDateString() === now.toDateString()) {
         today.push(transformEmailToCard(email));
       } else if (dateReceived >= sevenDaysAgo) {
         last7Days.push(transformEmailToCard(email));
@@ -145,10 +162,13 @@ export default function InboxPage() {
   // Fetch unread count independently
   const fetchUnreadCount = async () => {
     try {
-      const snapshot = await analyticsService.getInboxSnapshot();
+      const snapshot = await withTimeout(
+        analyticsService.getInboxSnapshot(),
+        "Inbox snapshot"
+      );
       setRealUnreadCount(snapshot.unread);
     } catch (e) {
-      console.error("Failed to fetch unread count", e);
+      console.warn("Failed to fetch unread count", e);
     }
   };
 
@@ -161,19 +181,22 @@ export default function InboxPage() {
         setLoading(true);
         setError(null);
 
-        console.log(`🔄 Fetching inbox emails [Tab: ${tab}] - Pages ${nextBatchStartPage} to ${nextBatchStartPage + PAGES_TO_LOAD - 1}...`);
+        console.log(`🔄 Fetching inbox emails [Tab: ${tab}] - Pages ${nextPageToFetch} to ${nextPageToFetch + PAGES_TO_LOAD - 1}...`);
 
         // Define isRead filter based on tab
         const isReadParam = tab === "unread" ? false : tab === "read" ? true : undefined;
 
-        // Fetch multiple pages in parallel since backend only returns 20 per page
+        // Fetch multiple pages in parallel (API returns 20 items per page)
         const pagePromises = [];
         for (let i = 0; i < PAGES_TO_LOAD; i++) {
-          const pageNum = nextBatchStartPage + i;
+          const pageNum = nextPageToFetch + i;
           pagePromises.push(emailService.getInboxEmails("latest", isReadParam, pageNum));
         }
 
-        const responses = await Promise.all(pagePromises);
+        const responses = await withTimeout(
+          Promise.all(pagePromises),
+          "Inbox emails"
+        );
         console.log('📦 Raw API responses:', responses);
 
         // Combine all responses
@@ -201,7 +224,7 @@ export default function InboxPage() {
 
         if (!hasData || allEmails.length === 0) {
           console.log('📭 No more emails available');
-          if (nextBatchStartPage === 1) {
+          if (nextPageToFetch === 1) {
             setTodayEmails([]);
             setLast7DaysEmails([]);
             setLast30DaysEmails([]);
@@ -213,28 +236,33 @@ export default function InboxPage() {
           console.log(`📬 Received ${allEmails.length} emails total`);
           const grouped = groupEmailsByTime(allEmails);
 
-          if (nextBatchStartPage === 1) {
-            // First page - replace all
+          if (nextPageToFetch === 1) {
+            // First batch - replace all
             setTodayEmails(grouped.today);
             setLast7DaysEmails(grouped.last7Days);
             setLast30DaysEmails(grouped.last30Days);
             setOlderEmails(grouped.older);
           } else {
-            // Subsequent pages - append
+            // Subsequent batches - append
             setTodayEmails(prev => [...prev, ...grouped.today]);
             setLast7DaysEmails(prev => [...prev, ...grouped.last7Days]);
             setLast30DaysEmails(prev => [...prev, ...grouped.last30Days]);
             setOlderEmails(prev => [...prev, ...grouped.older]);
           }
 
-          const expectedTotal = PAGES_TO_LOAD * EMAILS_PER_API_PAGE;
-          setHasMorePages(allEmails.length >= expectedTotal);
-          setNextBatchStartPage(prev => prev + PAGES_TO_LOAD);
+          // Only stop pagination when we receive 0 emails
+          // Don't stop just because we got less than expected - there might be more!
+          setHasMorePages(allEmails.length > 0);
+
+          // Increment page counter for next batch
+          setNextPageToFetch(prev => prev + PAGES_TO_LOAD);
         }
       } catch (err: any) {
         console.error('❌ Failed to fetch emails:', err);
-        console.error('Error details:', err.response?.data || err.message);
-        setError(`Failed to load emails: ${err.response?.data?.message || err.message}`);
+        const message = err?.message?.includes('timed out')
+          ? 'The server is slow right now (timeout). Please retry in a moment.'
+          : err.response?.data?.message || err.message || 'Failed to load emails.';
+        setError(message);
       } finally {
         setLoading(false);
         setLoadingMore(false);
@@ -242,7 +270,7 @@ export default function InboxPage() {
     };
 
     fetchEmails();
-  }, [currentPage, tab]); // Fetch when page or tab changes
+  }, [tab]); // Fetch when tab changes (nextPageToFetch is managed internally)
 
   // Refresh when user returns to tab (e.g. after reading)
   useEffect(() => {
@@ -266,11 +294,59 @@ export default function InboxPage() {
   const [visible30Days, setVisible30Days] = useState(INITIAL_VISIBLE);
   const [visibleOlder, setVisibleOlder] = useState(INITIAL_VISIBLE);
 
-  // Trigger a new batch fetch (3 pages -> 60 emails)
-  const loadNextBatch = () => {
+  // Trigger a new batch fetch (3 API pages -> 60 emails)
+  const loadNextBatch = async () => {
     if (!hasMorePages || loadingMore) return;
     setLoadingMore(true);
-    setCurrentPage(prev => prev + 1); // useEffect will fetch using nextBatchStartPage
+
+    try {
+      const isReadParam = tab === "unread" ? false : tab === "read" ? true : undefined;
+
+      // Fetch next 3 pages
+      const pagePromises = [];
+      for (let i = 0; i < PAGES_TO_LOAD; i++) {
+        const pageNum = nextPageToFetch + i;
+        pagePromises.push(emailService.getInboxEmails("latest", isReadParam, pageNum));
+      }
+
+      const responses = await withTimeout(
+        Promise.all(pagePromises),
+        "Load more emails"
+      );
+
+      // Combine responses
+      let allEmails: EmailListItem[] = [];
+      for (const response of responses) {
+        if (!Array.isArray(response) || response.length === 0) continue;
+
+        // Check if it's an empty inbox response
+        const firstItem = response[0];
+        if ('pendingNewsletters' in firstItem) {
+          break;
+        }
+
+        // It's a valid email list, add to allEmails
+        allEmails = [...allEmails, ...(response as EmailListItem[])];
+      }
+
+      if (allEmails.length === 0) {
+        setHasMorePages(false);
+      } else {
+        const grouped = groupEmailsByTime(allEmails);
+        setTodayEmails(prev => [...prev, ...grouped.today]);
+        setLast7DaysEmails(prev => [...prev, ...grouped.last7Days]);
+        setLast30DaysEmails(prev => [...prev, ...grouped.last30Days]);
+        setOlderEmails(prev => [...prev, ...grouped.older]);
+
+        // Continue loading as long as we're getting emails
+        setHasMorePages(allEmails.length > 0);
+        setNextPageToFetch(prev => prev + PAGES_TO_LOAD);
+      }
+    } catch (err) {
+      console.error('Failed to load more emails:', err);
+    } finally {
+      setLoadingMore(false);
+    }
   };
 
   /* ---------------- FILTERING LOGIC ---------------- */
@@ -295,22 +371,25 @@ export default function InboxPage() {
 
   /* ---------------- REFRESH FEATURE ---------------- */
   const refreshInbox = async () => {
-    setCurrentPage(1);
+    setNextPageToFetch(1);
     setHasMorePages(true);
     setVisibleToday(INITIAL_VISIBLE);
     setVisible7Days(INITIAL_VISIBLE);
     setVisible30Days(INITIAL_VISIBLE);
     setVisibleOlder(INITIAL_VISIBLE);
-    // The useEffect will trigger a refetch
+    setTodayEmails([]);
+    setLast7DaysEmails([]);
+    setLast30DaysEmails([]);
+    setOlderEmails([]);
+    // Trigger refetch by resetting state
+    window.location.reload();
   };
 
   /* ---------------- LOAD MORE PAGES ---------------- */
   const loadMorePages = async () => {
     if (!hasMorePages || loadingMore) return;
-
     console.log(`📄 Loading next batch...`);
-    setLoadingMore(true);
-    setCurrentPage(prev => prev + 1);
+    await loadNextBatch();
   };
 
   /* ---------------- ACTION HANDLERS ---------------- */
@@ -343,7 +422,8 @@ export default function InboxPage() {
     }
   };
 
-  /* ---------------- PAGINATION WITHIN SECTIONS ---------------- */
+  /* ---------------- PAGINATION ---------------- */
+  // Load more within sections (local data)
   const loadMoreSection = (
     visible: number,
     total: number,
@@ -351,8 +431,6 @@ export default function InboxPage() {
   ) => {
     if (visible < total) {
       setter((prev) => Math.min(prev + LOAD_MORE, total));
-    } else if (hasMorePages && !loadingMore) {
-      loadNextBatch();
     }
   };
 
@@ -376,14 +454,7 @@ export default function InboxPage() {
   return (
     <>
       {/* Loading state */}
-      {loading && (
-        <div className="w-full h-screen flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading your emails...</p>
-          </div>
-        </div>
-      )}
+      {loading && <InboxSkeleton />}
 
       {/* Error state */}
       {error && !loading && (
@@ -427,7 +498,12 @@ export default function InboxPage() {
                   <RefreshButton onClick={refreshInbox} />
                 </div>
 
-                <div className="flex items-center gap-3 px-4 shrink-0">
+                <div className="flex items-center gap-4 px-4 shrink-0">
+                  <div className="flex items-center gap-3 bg-white border border-[#DBDFE4] rounded-full px-3 py-2 shadow-sm">
+                    <EmailBubble />
+                    <FlameBadge />
+                    <ThemeToggle />
+                  </div>
                   <TabSwitcher
                     tab={tab}
                     setTab={setTab}
@@ -524,6 +600,24 @@ export default function InboxPage() {
                 </div>
               )}
             </div>
+
+            {/* GLOBAL LOAD MORE BUTTON (Desktop) */}
+            {hasMorePages && !loadingMore && (
+              <div className="w-full flex justify-center pb-12">
+                <button
+                  onClick={loadMorePages}
+                  className="px-6 py-2 border border-gray-300 rounded-full text-black font-medium hover:bg-gray-50 transition shadow-sm"
+                >
+                  Load more emails
+                </button>
+              </div>
+            )}
+
+            {loadingMore && (
+              <div className="flex justify-center pb-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              </div>
+            )}
           </div>
         </>
       )}

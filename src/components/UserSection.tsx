@@ -27,11 +27,11 @@ const getAvatarColor = (name: string): string => {
 };
 
 export default function UserSection({ collapsed }: { collapsed: boolean }) {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const { t } = useTranslation("common");
 
   // Use real user data or fallback to defaults
-  const userName = user?.name || user?.username || "User";
+  const userName = user?.name || user?.username || (isLoading ? "Loading..." : "User");
   const userPicture = user?.picture;
   const initials = getInitials(userName);
   const avatarColor = getAvatarColor(userName);

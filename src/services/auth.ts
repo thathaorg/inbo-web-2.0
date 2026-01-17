@@ -113,8 +113,10 @@ class AuthService {
    * Get current user profile
    */
   async getCurrentUser(): Promise<UserProfileResponse> {
-    const response = await apiClient.get<UserProfileResponse>(AUTH_ENDPOINTS.USER_PROFILE);
-    return response.data;
+    const response = await apiClient.get<{ profile: UserProfileResponse }>(AUTH_ENDPOINTS.USER_PROFILE);
+    // API returns { profile: { ...userData } }, so extract the profile
+    const profileData = response.data.profile || response.data;
+    return profileData as UserProfileResponse;
   }
 
   /**

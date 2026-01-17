@@ -11,8 +11,8 @@ export default function EmailBubble() {
   // Use inboxEmail from API, fallback to constructing from username
   const email = user?.inboxEmail || (user?.username ? `${user.username}@inbo.me` : "");
 
-  // Show loading placeholder while fetching user
-  if (isLoading) {
+  // Show loading placeholder while fetching user or if no email yet
+  if (isLoading || !email) {
     return (
       <div className="flex items-center gap-2 animate-pulse">
         <div className="w-[22px] h-[22px] bg-gray-200 rounded-full" />
@@ -21,9 +21,6 @@ export default function EmailBubble() {
       </div>
     );
   }
-
-  // Don't show if no email available after loading
-  if (!email) return null;
 
   const handleCopy = async () => {
     try {

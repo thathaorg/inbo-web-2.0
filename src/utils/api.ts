@@ -5,6 +5,23 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://inbo-djang
 const IS_BROWSER = typeof window !== 'undefined';
 const APP_URL = IS_BROWSER ? window.location.origin : '';
 
+// Auth endpoints that should NOT trigger token refresh on 401
+// These endpoints return 401 for invalid credentials, not expired tokens
+const AUTH_ENDPOINTS = [
+  '/api/auth/send-otp',
+  '/api/auth/verify-otp',
+  '/api/auth/check-email',
+  '/api/auth/refresh',
+  '/api/auth/google',
+  '/api/auth/apple',
+];
+
+// Check if URL is an auth endpoint
+const isAuthEndpoint = (url: string | undefined): boolean => {
+  if (!url) return false;
+  return AUTH_ENDPOINTS.some(endpoint => url.includes(endpoint));
+};
+
 // Create axios instance - ALL requests go through local proxy to bypass CORS
 const apiClient: AxiosInstance = axios.create({
   baseURL: APP_URL || API_BASE_URL, // Use local proxy if in browser
@@ -41,12 +58,18 @@ apiClient.interceptors.response.use(
       console.error('❌ 401 Unauthorized Error:', {
         url: originalRequest.url,
         method: originalRequest.method,
-        data: originalRequest.data,
         responseData: error.response?.data,
       });
     }
 
-    // Handle 401 Unauthorized
+    // IMPORTANT: Don't try to refresh tokens for auth endpoints
+    // Auth endpoints (verify-otp, send-otp, etc.) return 401 for invalid credentials
+    // We should NOT redirect to login or try to refresh on these
+    if (isAuthEndpoint(originalRequest.url)) {
+      return Promise.reject(error);
+    }
+
+    // Handle 401 Unauthorized for protected endpoints only
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
@@ -58,7 +81,7 @@ apiClient.interceptors.response.use(
           });
 
           const { accessToken } = response.data;
-          Cookies.set('access_token', accessToken, { expires: 7 });
+          Cookies.set('access_token', accessToken, { expires: 7, sameSite: 'strict' });
 
           if (originalRequest.headers) {
             originalRequest.headers.Authorization = `Bearer ${accessToken}`;
@@ -67,10 +90,12 @@ apiClient.interceptors.response.use(
           return apiClient(originalRequest);
         }
       } catch (refreshError) {
-        // Refresh token expired or invalid
+        // Refresh token expired or invalid - clear tokens and redirect
+        console.error('🔄 Token refresh failed:', refreshError);
         Cookies.remove('access_token');
         Cookies.remove('refresh_token');
-        if (IS_BROWSER) {
+        localStorage.removeItem('user_cache');
+        if (IS_BROWSER && !window.location.pathname.startsWith('/auth')) {
           window.location.href = '/auth/login';
         }
         return Promise.reject(refreshError);

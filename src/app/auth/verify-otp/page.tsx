@@ -168,8 +168,6 @@ function VerifyOTPContent() {
       return;
     }
 
-    // Set verifying flag FIRST before any async operations
-    isVerifyingRef.current = true;
     setError(null);
     setIsLoading(true);
 
@@ -210,8 +208,6 @@ function VerifyOTPContent() {
       inputRefs[0]?.current?.focus();
     } finally {
       setIsLoading(false);
-      // Always reset verifying flag to allow retry
-      isVerifyingRef.current = false;
     }
   };
 

@@ -91,16 +91,25 @@ function VerifyOTPContent() {
     // 1. OTP is complete (4 digits)
     // 2. Not already loading/verifying
     // 3. Email is present
-    if (otpString.length === 4 && !isLoading && !isVerifyingRef.current && email) {
+    // 4. Not already verified (no error shown means we're in initial state)
+    if (otpString.length === 4 && !isLoading && !isVerifyingRef.current && email && !error) {
+      // Mark as verifying immediately to prevent duplicate calls
+      isVerifyingRef.current = true;
+      
       // Small delay to ensure state is stable and prevent race conditions
       const timer = setTimeout(() => {
-        if (!isVerifyingRef.current) {
+        // Double-check we're still not verifying before proceeding
+        if (isVerifyingRef.current) {
           handleVerifyOTP();
         }
       }, 100);
-      return () => clearTimeout(timer);
+      
+      return () => {
+        clearTimeout(timer);
+      };
     }
-  }, [otp, isLoading, email]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [otp, isLoading, email, error]); // Don't include handleVerifyOTP to prevent loops
 
   /* ================= HANDLE OTP INPUT CHANGE ================= */
 
@@ -168,9 +177,10 @@ function VerifyOTPContent() {
       return;
     }
 
+    // Set verifying flag FIRST before any async operations
+    isVerifyingRef.current = true;
     setError(null);
     setIsLoading(true);
-    isVerifyingRef.current = true;
 
     try {
       console.log("🔐 Verifying OTP for:", email, "OTP:", otpString);
@@ -204,12 +214,17 @@ function VerifyOTPContent() {
         err?.message ||
         "Invalid or expired OTP. Please try again.";
       setError(errorMessage);
-      // Clear OTP on error
+      // Clear OTP on error to allow retry
       setOtp(["", "", "", ""]);
       inputRefs[0]?.current?.focus();
+      // Reset verifying flag on error so user can retry
+      isVerifyingRef.current = false;
     } finally {
       setIsLoading(false);
-      isVerifyingRef.current = false;
+      // Only reset flag if not already reset in catch block
+      if (!error) {
+        isVerifyingRef.current = false;
+      }
     }
   };
 

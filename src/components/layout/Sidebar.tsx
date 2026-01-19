@@ -64,7 +64,7 @@ export default function Sidebar({ openMobile, onClose }: any) {
     bg-white/80 backdrop-blur-xl
     border border-[#E5E7EB]
     rounded-[20px]
-    shadow-sm p-6 transition-all duration-300
+    shadow-sm p-4 transition-all duration-300
     ${collapsed ? "w-[90px]" : "w-[280px]"}
   `;
 
@@ -135,47 +135,46 @@ export default function Sidebar({ openMobile, onClose }: any) {
 
             {/* PROMO */}
             {!collapsed && showPromo && (
-              <div className="mt-4 mb-4">
-                <div className="relative bg-gradient-to-br from-[#98FBB2] to-[#A6F5E6] rounded-2xl px-2 pt-2 pb-1 overflow-hidden">
+              <div className="mt-2 mb-4">
+                <div className="relative bg-gradient-to-br from-[#98FBB2] to-[#A6F5E6] rounded-2xl px-4 py-3 overflow-hidden">
 
-                  {/* Close Button */}
-                  <button
-                    onClick={() => setShowPromo(false)}
-                    className="absolute right-3 top-2 text-[20px] font-bold text-black hover:opacity-70 z-10"
-                  >
-                    ×
-                  </button>
+                  {/* Header with title and close button */}
+                  <div className="flex justify-between items-center mb-2">
+                    <p className="text-[14px] font-semibold text-black">
+                      Inbo for ios & Android
+                    </p>
+                    <button
+                      onClick={() => setShowPromo(false)}
+                      className="text-[18px] font-bold text-black hover:opacity-70"
+                    >
+                      ×
+                    </button>
+                  </div>
 
-                  <p className="text-[14px] font-semibold text-center mb-1">
-                    Inbo for iOS & Android
-                  </p>
-
-                  <div className="flex justify-between items-end">
+                  {/* Content: Phone image and store badges */}
+                  <div className="flex b-0 items-end justify-between">
                     <Image
-                      src="/badges/promo-badge.png"
+                      src="/badges/promo-badge0.png"
                       alt="Phone"
-                      width={110}
-                      height={110}
-                      className="object-contain"
-                      style={{ width: "auto", height: "auto" }}
+                      width={120}
+                      height={140}
+                      className="object-contain -mb-3 -ml-2"
                     />
 
-                    <div className="flex flex-col gap-1 mb-6">
+                    <div className="flex flex-col gap-2 mb-2">
                       <Image
                         src="/badges/play-store.png"
                         alt="Google Play"
-                        width={70}
-                        height={30}
+                        width={90}
+                        height={28}
                         className="object-contain"
-                        style={{ width: "auto", height: "auto" }}
                       />
                       <Image
                         src="/badges/apple-store.png"
                         alt="App Store"
-                        width={70}
-                        height={30}
+                        width={90}
+                        height={28}
                         className="object-contain"
-                        style={{ width: "auto", height: "auto" }}
                       />
                     </div>
                   </div>
@@ -185,7 +184,7 @@ export default function Sidebar({ openMobile, onClose }: any) {
 
             {/* LANGUAGE SELECTOR */}
             {!collapsed && (
-              <div className="mb-4">
+              <div className="mb-4 ml-1">
                 <LanguageSelector variant="compact" showLabel={false} />
               </div>
             )}

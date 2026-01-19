@@ -28,9 +28,9 @@ export default function FlameBadge({ streak: initialStreak }: { streak?: number 
   }, [initialStreak]);
 
   return (
-    <div className="relative flex items-center justify-center w-[28px] h-[28px]">
+    <div className="relative flex items-center justify-center w-[32px] h-[32px]">
       {/* Centered streak number */}
-      <span className="absolute text-black bottom-[2px] fontFamily: 'Helvetica Neue' font-semibold text-[18px] leading-none">
+      <span className="absolute text-black bottom-[4px] fontFamily: 'Helvetica Neue' font-semibold text-[18px] leading-none">
         {loading ? "—" : streak}
       </span>
 
@@ -38,11 +38,11 @@ export default function FlameBadge({ streak: initialStreak }: { streak?: number 
       <Image
         src="/badges/flame-badge.png"
         alt="Flame Badge"
-        width={22}
-        height={22}
+        width={24}
+        height={28}
         className="pointer-events-none select-none"
         // Avoid Next/Image warning when CSS affects only one dimension.
-        style={{ width: "auto", height: "auto" }}
+        style={{ width: "24px", height: "28px" }}
       />
     </div>
   );

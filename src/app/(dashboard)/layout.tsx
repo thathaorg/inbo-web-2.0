@@ -88,7 +88,7 @@ export default function DashboardLayout({ children }: Props) {
       </div>
 
       {/* Main area */}
-      <div className="flex flex-1 overflow-hidden p-4 gap-4 min-h-0">
+      <div className="flex flex-1 overflow-hidden p-2 gap-4 min-h-0">
         {/* Sidebar (drawer for mobile, fixed for desktop) */}
         <Sidebar openMobile={menuOpen} onClose={() => setMenuOpen(false)} />
 

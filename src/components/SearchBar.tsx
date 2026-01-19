@@ -58,10 +58,10 @@ export default function SearchBar() {
       <div
         className="
           flex items-center bg-white
-          w-full md:w-[380px] h-[40px]
+          w-full sm:w-full md:w-[300px] lg:w-[380px] h-[36px] sm:h-[38px] md:h-[40px]
           rounded-full border border-[#DBDFE4]
           shadow-[0_4px_12px_rgba(0,0,0,0.05)]
-          pl-5 pr-2
+          pl-3 sm:pl-4 md:pl-5 pr-1 sm:pr-2
         "
       >
         <input
@@ -69,14 +69,14 @@ export default function SearchBar() {
           placeholder={t("common.searchPlaceholder")}
           value={query}
           onChange={(e) => handleChange(e.target.value)}
-          className="flex-1 bg-transparent outline-none text-[14px] text-black"
+          className="flex-1 bg-transparent outline-none text-[13px] sm:text-[14px] text-black"
         />
 
         <button
           type="button"
-          className="w-[34px] h-[34px] bg-black rounded-full flex items-center justify-center"
+          className="w-[30px] h-[30px] sm:w-[32px] sm:h-[32px] md:w-[34px] md:h-[34px] bg-black rounded-full flex items-center justify-center flex-shrink-0"
         >
-          <Search size={16} className="text-white" />
+          <Search size={14} className="text-white sm:w-4 sm:h-4" />
         </button>
       </div>
     </div>

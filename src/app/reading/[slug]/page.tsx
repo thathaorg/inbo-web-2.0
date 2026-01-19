@@ -183,7 +183,10 @@ function IconButton({
       className="h-9 w-9 rounded-full flex items-center justify-center border border-gray-200 hover:bg-gray-50 transition-colors shadow-sm"
       style={{ backgroundColor: '#ffffff' }}
     >
-      {children}
+      <span className="absolute inset-0 rounded-[10px] pointer-events-none transition-all duration-150" />
+      <span className="relative z-10 flex items-center justify-center w-full h-full">
+        {children}
+      </span>
     </button>
   );
 }
@@ -1112,16 +1115,16 @@ export default function ReadingPage(props: PageProps) {
               <IconButton
                 onClick={() => setIsReadingMode(true)}
               >
-                <img src="/icons/read-style-icon.png" alt="style" />
+                <img src="/icons/read-style-icon1.png" alt="style"/>
               </IconButton>
 
               <IconButton onClick={() => setTtsOpen(prev => !prev)}>
-                <img src="/icons/read-tts-icon.png" alt="tts" />
+                <img src="/icons/read-tts-icon1.png" alt="tts" />
               </IconButton>
 
               <div className="relative group">
                 <IconButton onClick={handleToggleReadLater}>
-                  <img src="/icons/read-timer-icon.png" alt="read later" />
+                  <img src="/icons/read-later-icon1.png" alt="read later" />
                 </IconButton>
                 <div className="absolute top-full mt-1 left-1/2 -translate-x-1/2 bg-black text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition whitespace-nowrap z-50">
                   {emailData.isReadLater ? 'Remove from Read Later' : 'Add to Read Later'}
@@ -1131,7 +1134,7 @@ export default function ReadingPage(props: PageProps) {
               <div className="relative group">
                 <IconButton onClick={handleToggleRead}>
                   <div className="relative">
-                    <img src="/icons/read-check-icon.png" alt="check" />
+                    <img src="/icons/read-check-icon1.png" alt="check" />
                     {emailData.isRead && (
                       <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white" />
                     )}
@@ -1147,7 +1150,7 @@ export default function ReadingPage(props: PageProps) {
                   buttonRef={moreBtnRef}
                   onClick={() => setShowMoreMenu(v => !v)}
                 >
-                  <img src="/icons/read-more-icon.png" alt="more" />
+                  <img src="/icons/read-more-icon1.png" alt="more" />
                 </IconButton>
 
                 {showMoreMenu && (

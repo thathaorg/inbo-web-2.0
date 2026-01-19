@@ -10,11 +10,9 @@ export default function LogoSection() {
         alt="Inbo Logo"
         width={110}
         height={36}
-        className="object-contain"
+        className="object-contain w-[80px] sm:w-[100px] md:w-[120px] lg:w-[140px] h-auto"
         priority
         loading="eager"
-        // Avoid Next/Image warning when global CSS (suggested by Next) affects only one dimension.
-        style={{ width: "auto", height: "auto" }}
       />
     </div>
   );

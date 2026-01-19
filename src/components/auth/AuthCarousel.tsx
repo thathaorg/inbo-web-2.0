@@ -139,7 +139,7 @@ export default function AuthCarousel() {
           <Image
             src="/badges/play-store.png"
             alt="Google Play"
-            width={120}
+            width={130}
             height={40}
             className="rounded-lg border border-black transition-transform duration-300 hover:scale-110 hover:shadow-lg"
           />
@@ -147,7 +147,7 @@ export default function AuthCarousel() {
           <Image
             src="/badges/apple-store.png"
             alt="App Store"
-            width={120}
+            width={130}
             height={40}
             className="rounded-lg border border-black transition-transform duration-300 hover:scale-110 hover:shadow-lg"
           />

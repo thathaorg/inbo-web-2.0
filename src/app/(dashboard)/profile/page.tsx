@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 import userService, { type UserProfileResponse } from "@/services/user";
 
 // Sub Pages
-import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { useMediaQuery } from "@/hooks/useMediaQuery"; 
 import AccountPage from "@/components/profile/AccountPage";
 import HelpCenterPage from "@/components/profile/HelpCenterPage";
 import FeedbackPage from "@/components/profile/FeedbackPage";
@@ -419,7 +419,7 @@ export default function ProfileSection() {
 
               {/* PHONE IMAGE — LEFT END */}
               <Image
-                src="/badges/profile-inbo-mobile-app.png"
+                src="/badges/profile-inbo-mobile-app00.png"
                 alt="Mobile App"
                 width={320}
                 height={300}

@@ -59,8 +59,8 @@ export default function EmailCopyBox({ isVisible, onClose }: EmailCopyBoxProps) 
   const displayEmail = inboEmail || "Loading...";
 
   const content = (
-    <div 
-      className="fixed right-6 top-1/2 -translate-y-1/2 z-[999999] animate-in slide-in-from-right-4 duration-300"
+    <div
+      className="fixed inset-0 z-[999999] flex items-center justify-center animate-in fade-in duration-200"
       style={{ pointerEvents: 'auto' }}
     >
       <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 p-4 min-w-[320px] max-w-[400px]">

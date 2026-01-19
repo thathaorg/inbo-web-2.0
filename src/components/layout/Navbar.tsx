@@ -13,10 +13,12 @@ export default function Navbar() {
 
         <LogoSection />
 
-        <div className="flex-1 flex flex-col md:flex-row md:items-center md:justify-between gap-2.5">
+        <div className="flex-1 flex flex-col md:flex-row md:items-center md:justify-center gap-2.5">
 
-          {/* Search */}
-          <SearchBar />
+          {/* Search - centered with left offset */}
+          <div className="md:ml-16 lg:ml-24">
+            <SearchBar />
+          </div>
 
           {/* Right Items */}
           <div

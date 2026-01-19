@@ -79,11 +79,9 @@ export default function DiscoverPage() {
         {/* DESKTOP/TABLET VERSION */}
         {/* ======================= */}
         <div className="hidden md:block w-full">
-          {/* ========== CONTAINER 1: HEADER ========== */}
-          <div className="w-full">
-            <div className="w-full h-[78px] bg-white border border-[#E5E7EB] flex items-center justify-between px-6 shadow-sm">
-              <h2 className="text-[26px] font-bold text-[#0C1014]">{t("discover.title")}</h2>
-            </div>
+          {/* ========== CONTAINER 1: HEADER - Sticky ========== */}
+          <div className="sticky top-0 z-50 w-full h-[78px] bg-white border border-[#E5E7EB] flex items-center justify-between px-6 shadow-sm">
+            <h2 className="text-[26px] font-bold text-[#0C1014]">{t("discover.title")}</h2>
           </div>
 
           {/* ========== CONTAINER 2: MAIN CONTENT ========== */}

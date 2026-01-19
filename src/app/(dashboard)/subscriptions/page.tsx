@@ -134,8 +134,8 @@ export default function SubscriptionsPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-[#F6F7F9]">
-      {/* ================= HEADER (ALWAYS) ================= */}
-      <header className="h-[78px] bg-white border-b border-[#E5E7EB] flex items-center px-6">
+      {/* ================= HEADER (ALWAYS) - Sticky ================= */}
+      <header className="sticky top-0 z-50 h-[78px] bg-white border-b border-[#E5E7EB] flex items-center px-6 shadow-sm">
         <h1 className="text-[26px] font-bold text-[#0C1014]">
           {t("subscriptions.title")}
         </h1>
@@ -278,9 +278,9 @@ function PublisherGrid({
           : "flex flex-col gap-3"
       }
     >
-      {data.map((p) => (
+      {data.map((p, index) => (
         <button
-          key={p.id}
+          key={`${p.id}-${index}`}
           onClick={() => onSelect(p)}
           className="flex items-center gap-4 p-4 rounded-xl border border-[#F3F4F6] bg-white text-left"
         >

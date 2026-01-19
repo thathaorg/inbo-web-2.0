@@ -158,8 +158,8 @@ export default function HighlightsPage() {
   // Desktop Layout
   return (
     <div className="flex flex-col w-full">
-      {/* Header */}
-      <div className="w-full h-[78px] bg-white border border-[#E5E7EB] flex items-center justify-between px-6 shadow-sm">
+      {/* Header - Sticky */}
+      <div className="sticky top-0 z-10 w-full h-[78px] bg-white border border-[#E5E7EB] flex items-center justify-between px-6 shadow-sm">
         <div className="flex items-center gap-3">
           <Highlighter size={24} className="text-yellow-500" />
           <h2 className="text-[26px] font-bold text-[#0C1014]">Highlights</h2>

@@ -109,7 +109,7 @@ export default function MobileInboxSection({
                 {...item}
                 onMoveToTrash={onMoveToTrash}
                 onToggleReadLater={onToggleReadLater}
-                onToggleFavorite={onToggleFavorite ? () => onToggleFavorite(item.emailId || item.slug, !item.isFavorite) : undefined}
+                onToggleFavorite={onToggleFavorite}
                 isFavorite={item.isFavorite}
               />
             ))}
@@ -134,7 +134,7 @@ export default function MobileInboxSection({
                 {...item}
                 onMoveToTrash={onMoveToTrash}
                 onToggleReadLater={onToggleReadLater}
-                onToggleFavorite={onToggleFavorite ? () => onToggleFavorite(item.emailId || item.slug, !item.isFavorite) : undefined}
+                onToggleFavorite={onToggleFavorite}
                 isFavorite={item.isFavorite}
               />
             ))}
@@ -159,7 +159,7 @@ export default function MobileInboxSection({
                 {...item}
                 onMoveToTrash={onMoveToTrash}
                 onToggleReadLater={onToggleReadLater}
-                onToggleFavorite={onToggleFavorite ? () => onToggleFavorite(item.emailId || item.slug, !item.isFavorite) : undefined}
+                onToggleFavorite={onToggleFavorite}
                 isFavorite={item.isFavorite}
               />
             ))}
@@ -184,7 +184,7 @@ export default function MobileInboxSection({
                 {...item}
                 onMoveToTrash={onMoveToTrash}
                 onToggleReadLater={onToggleReadLater}
-                onToggleFavorite={onToggleFavorite ? () => onToggleFavorite(item.emailId || item.slug, !item.isFavorite) : undefined}
+                onToggleFavorite={onToggleFavorite}
                 isFavorite={item.isFavorite}
               />
             ))}

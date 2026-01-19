@@ -25,7 +25,7 @@ const isAuthEndpoint = (url: string | undefined): boolean => {
 // Create axios instance - ALL requests go through local proxy to bypass CORS
 const apiClient: AxiosInstance = axios.create({
   baseURL: APP_URL || API_BASE_URL, // Use local proxy if in browser
-  timeout: 30000, // 30 seconds - increased for slow backend responses
+  timeout: 60000, // 60 seconds - increased for slow backend responses
   headers: {
     'Content-Type': 'application/json',
   },

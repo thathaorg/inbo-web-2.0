@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { toast } from "sonner";
 import NewsletterCard from "@/components/inbox/InboxCard"; // ✅ adjust path if needed
 import MobileDeleteSection from "./MobileDeleteSection";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
@@ -46,8 +47,6 @@ export default function DeletePage() {
   const [sortBy, setSortBy] = useState<SortType>("latest");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showToast, setShowToast] = useState(false);
-  const [toastMessage, setToastMessage] = useState("");
   const [newsletters, setNewsletters] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isRestoring, setIsRestoring] = useState(false);
@@ -63,12 +62,6 @@ export default function DeletePage() {
     );
   };
 
-  const showToastMessage = (message: string) => {
-    setToastMessage(message);
-    setShowToast(true);
-    setTimeout(() => setShowToast(false), 3000);
-  };
-
   // Restore selected emails back to inbox
   const handleRestore = useCallback(async () => {
     if (selectedIds.length === 0) return;
@@ -81,10 +74,10 @@ export default function DeletePage() {
       // Remove restored emails from list
       setNewsletters(prev => prev.filter(n => !selectedIds.includes(n.emailId)));
       setSelectedIds([]);
-      showToastMessage(`${selectedIds.length} email${selectedIds.length > 1 ? 's' : ''} restored to inbox!`);
+      toast.success(`${selectedIds.length} email${selectedIds.length > 1 ? 's' : ''} restored to inbox!`);
     } catch (err) {
       console.error("Failed to restore emails:", err);
-      showToastMessage("Failed to restore emails. Please try again.");
+      toast.error("Failed to restore emails. Please try again.");
     } finally {
       setIsRestoring(false);
     }
@@ -103,10 +96,10 @@ export default function DeletePage() {
       setNewsletters(prev => prev.filter(n => !selectedIds.includes(n.emailId)));
       setSelectedIds([]);
       setShowDeleteModal(false);
-      showToastMessage(`${selectedIds.length} email${selectedIds.length > 1 ? 's' : ''} permanently deleted!`);
+      toast.success(`${selectedIds.length} email${selectedIds.length > 1 ? 's' : ''} permanently deleted!`);
     } catch (err) {
       console.error("Failed to delete emails:", err);
-      showToastMessage("Failed to delete emails. Please try again.");
+      toast.error("Failed to delete emails. Please try again.");
     } finally {
       setIsDeleting(false);
     }
@@ -133,8 +126,8 @@ export default function DeletePage() {
 
   return (
     <div className="flex flex-col w-full relative">
-      {/* ================= HEADER ================= */}
-      <div className="w-full h-[78px] bg-white border border-[#E5E7EB] flex items-center justify-between px-6 shadow-sm">
+      {/* ================= HEADER - Sticky ================= */}
+      <div className="sticky top-0 z-50 w-full h-[78px] bg-white border border-[#E5E7EB] flex items-center justify-between px-6 shadow-sm">
         {/* LEFT */}
         <h2 className="text-[26px] font-bold text-[#0C1014]">
           Delete
@@ -304,14 +297,6 @@ export default function DeletePage() {
               </button>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* ================= TOAST ================= */}
-      {showToast && (
-        <div className="fixed top-6 right-6 bg-white border border-[#E5E7EB] shadow-lg rounded-xl px-4 py-3 text-sm font-medium text-[#0C1014] flex items-center gap-2">
-          <span className="text-green-500">✓</span>
-          {toastMessage}
         </div>
       )}
     </div>

@@ -537,6 +537,14 @@ class EmailService {
     cacheManager.invalidate(CACHE_KEYS.EMAIL_DETAIL(emailId));
     cacheManager.invalidatePrefix(CACHE_KEYS.INBOX);
     cacheManager.invalidatePrefix(CACHE_KEYS.FAVORITES);
+    
+    // Broadcast event so favorite page can update
+    if (typeof window !== 'undefined') {
+      const event = new CustomEvent('favoriteChanged', {
+        detail: { emailId, isFavorite, timestamp: new Date().toISOString() }
+      });
+      window.dispatchEvent(event);
+    }
   }
 
   /**
@@ -551,6 +559,14 @@ class EmailService {
     cacheManager.invalidate(CACHE_KEYS.EMAIL_DETAIL(emailId));
     cacheManager.invalidatePrefix(CACHE_KEYS.INBOX);
     cacheManager.invalidatePrefix(CACHE_KEYS.READ_LATER);
+    
+    // Broadcast event so read later page can update
+    if (typeof window !== 'undefined') {
+      const event = new CustomEvent('readLaterChanged', {
+        detail: { emailId, isReadLater, timestamp: new Date().toISOString() }
+      });
+      window.dispatchEvent(event);
+    }
   }
 
   /**

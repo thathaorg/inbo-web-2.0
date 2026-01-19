@@ -43,6 +43,7 @@ function transformEmailToCard(email: EmailListItem) {
     slug: email.id,
     emailId: email.id,
     isReadLater: email.isReadLater,
+    isFavorite: email.isFavorite,
   };
 }
 
@@ -68,6 +69,7 @@ export default function ReadLaterPage() {
 
   /* -------- SORT STATE -------- */
   const [sortBy, setSortBy] = useState<SortValue>("recent");
+  const [refetchTrigger, setRefetchTrigger] = useState(0);
 
   useEffect(() => {
     async function fetchEmails() {
@@ -84,7 +86,29 @@ export default function ReadLaterPage() {
       }
     }
     fetchEmails();
-  }, [sortBy]);
+  }, [sortBy, refetchTrigger]);
+
+  // Refetch when window gains focus (user comes back from inbox after adding item)
+  useEffect(() => {
+    const handleFocus = () => {
+      console.log('🔄 Read Later page gained focus, refetching...');
+      setRefetchTrigger(prev => prev + 1);
+    };
+    
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, []);
+
+  // Listen for custom events when read later status changes
+  useEffect(() => {
+    const handleReadLaterChange = (e: CustomEvent) => {
+      console.log('📬 Read Later item added, refetching...', e.detail);
+      setRefetchTrigger(prev => prev + 1);
+    };
+    
+    window.addEventListener('readLaterChanged' as any, handleReadLaterChange);
+    return () => window.removeEventListener('readLaterChanged' as any, handleReadLaterChange);
+  }, []);
 
   /* -------- FILTERED ITEMS -------- */
   const filteredItems = items.filter((item) => {
@@ -211,7 +235,7 @@ export default function ReadLaterPage() {
                     isReadLater={true}
                     onMoveToTrash={onMoveToTrash}
                     onToggleReadLater={onToggleReadLater}
-                    onToggleFavorite={(emailId: string, isFavorite: boolean) => onToggleFavorite(emailId, isFavorite)}
+                    onToggleFavorite={onToggleFavorite}
                     isFavorite={item.isFavorite}
                   />
                 ))}
@@ -271,15 +295,17 @@ export default function ReadLaterPage() {
 
   return (
     <div className="hidden min-h-[90%] md:flex w-full flex-col gap-8">
-      {/* HEADER */}
-      <div className="w-full h-[78px] bg-white border border-[#E5E7E8] flex items-center justify-between px-5 shadow-sm">
-        <h2 className="text-[26px] font-bold text-[#0C1014]">
-          {t("readLater.title")}
-        </h2>
+      {/* HEADER - Sticky */}
+      <div className="sticky top-0 z-50 w-full">
+        <div className="w-full h-[78px] bg-white border border-[#E5E7E8] flex items-center justify-between px-5 shadow-sm">
+          <h2 className="text-[26px] font-bold text-[#0C1014] flex-shrink-0">
+            {t("readLater.title")}
+          </h2>
 
-        <div className="flex gap-3">
-          <FilterButton value={filter} onChange={setFilter} />
-          <SortButton value={sortBy} onChange={setSortBy} />
+          <div className="flex gap-3 flex-shrink-0">
+            <FilterButton value={filter} onChange={setFilter} />
+            <SortButton value={sortBy} onChange={setSortBy} />
+          </div>
         </div>
       </div>
 
@@ -299,7 +325,7 @@ export default function ReadLaterPage() {
                   isReadLater={true}
                   onMoveToTrash={onMoveToTrash}
                   onToggleReadLater={onToggleReadLater}
-                  onToggleFavorite={(emailId: string, isFavorite: boolean) => onToggleFavorite(emailId, isFavorite)}
+                  onToggleFavorite={onToggleFavorite}
                   isFavorite={item.isFavorite}
                 />
               </div>

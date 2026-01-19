@@ -22,13 +22,16 @@ export default function TabSwitcher({
 }) {
   const { t } = useTranslation("common");
   
+  // Format count: show "9+" if more than 9, otherwise show actual number
+  const displayCount = unreadCount > 9 ? "9+" : unreadCount.toString();
+  
   const items = [
     {
       id: "unread",
       label: (
         <div className="flex items-center gap-2">
           <span>{t("common.unread")}</span>
-          <CountBubble count={unreadCount} />
+          <CountBubble count={displayCount} />
         </div>
       ),
     },
@@ -37,7 +40,6 @@ export default function TabSwitcher({
       label: (
         <div className="flex items-center gap-2">
           <span>{t("common.read")}</span>
-          <CountBubble count={readCount} />
         </div>
       ),
     },
@@ -46,7 +48,6 @@ export default function TabSwitcher({
       label: (
         <div className="flex items-center gap-2">
           <span>{t("common.all")}</span>
-          <CountBubble count={allCount} />
         </div>
       ),
     },

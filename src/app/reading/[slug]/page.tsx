@@ -373,58 +373,6 @@ function applyHighlights(text: string, highlights: any[] | null | undefined) {
   return <>{parts}</>;
 }
 
-/* Helper function to apply highlights to text */
-function applyHighlights(text: string, highlights: any[] | null | undefined) {
-  if (!highlights || highlights.length === 0) return text;
-
-  // Normalize text for matching
-  const normalizedText = text.replace(/\s+/g, ' ').trim();
-  
-  let result: (string | JSX.Element)[] = [text];
-  
-  highlights.forEach((highlight, idx) => {
-    if (!highlight.text) return;
-    
-    const highlightText = highlight.text.replace(/\s+/g, ' ').trim();
-    const newResult: (string | JSX.Element)[] = [];
-    
-    result.forEach((part) => {
-      if (typeof part === 'string') {
-        // Find the highlight text in the part
-        const normalizedPart = part.replace(/\s+/g, ' ').trim();
-        const index = normalizedPart.indexOf(highlightText);
-        
-        if (index !== -1) {
-          // Split the text and add highlighted portion
-          const before = part.slice(0, index);
-          const highlighted = part.slice(index, index + highlightText.length);
-          const after = part.slice(index + highlightText.length);
-          
-          if (before) newResult.push(before);
-          newResult.push(
-            <mark 
-              key={`highlight-${idx}-${index}`} 
-              className="bg-yellow-200 text-black rounded px-0.5"
-              style={{ backgroundColor: '#fef08a' }}
-            >
-              {highlighted}
-            </mark>
-          );
-          if (after) newResult.push(after);
-        } else {
-          newResult.push(part);
-        }
-      } else {
-        newResult.push(part);
-      }
-    });
-    
-    result = newResult;
-  });
-  
-  return <>{result}</>;
-}
-
 export default function ReadingPage(props: PageProps) {
   const isMobile = useMediaQuery("(max-width: 768px)");
   const { slug } = use(props.params);

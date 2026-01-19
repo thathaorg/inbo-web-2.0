@@ -575,8 +575,64 @@ export default function InboxPage() {
     setVisibleCount(prev => prev + LOAD_MORE_COUNT);
   };
 
-  const refreshInbox = () => {
-    window.location.reload();
+  const refreshInbox = async () => {
+    setInitialLoading(true);
+    try {
+      // Stop any ongoing background fetch
+      stopBackgroundFetch();
+      
+      // Clear cache and reset state
+      inboxCache.unread = { emails: [], nextPage: 1, hasMore: true, timestamp: 0 };
+      inboxCache.read = { emails: [], nextPage: 1, hasMore: true, timestamp: 0 };
+      inboxCache.all = { emails: [], nextPage: 1, hasMore: true, timestamp: 0 };
+      
+      setAllEmails([]);
+      setVisibleCount(INITIAL_VISIBLE_PER_SECTION);
+      setNextPageToFetch(1);
+      setHasMorePages(true);
+      
+      // Determine isRead parameter based on current tab
+      const isReadParam = tab === 'unread' ? false : tab === 'read' ? true : undefined;
+      
+      // Fetch fresh emails (force refresh)
+      const { emails, lastPage, hasMore } = await withTimeout(
+        fetchPages(1, INITIAL_PAGES_TO_FETCH, isReadParam, true), // Force refresh
+        "Refresh inbox fetch"
+      );
+      
+      if (emails.length === 0) {
+        setAllEmails([]);
+        setHasMorePages(false);
+        setCachedInbox(tab, [], 1, false);
+      } else {
+        const transformed = emails.map(transformEmailToCard);
+        setAllEmails(transformed);
+        setNextPageToFetch(lastPage + 1);
+        setHasMorePages(hasMore);
+        setCachedInbox(tab, transformed, lastPage + 1, hasMore);
+        
+        // Start background fetch for remaining pages
+        if (hasMore) {
+          setTimeout(() => {
+            startBackgroundFetch(lastPage + 1, isReadParam);
+          }, 100);
+        }
+      }
+      
+      // Fetch updated unread count
+      fetchUnreadCount();
+      
+      toast.success('Inbox refreshed', {
+        description: 'Fetched latest emails'
+      });
+    } catch (error) {
+      console.error('Failed to refresh inbox:', error);
+      toast.error('Failed to refresh', {
+        description: 'Please try again'
+      });
+    } finally {
+      setInitialLoading(false);
+    }
   };
 
   const onMoveToTrash = async (emailId: string) => {
@@ -716,9 +772,9 @@ export default function InboxPage() {
           />
 
           {/* DESKTOP RENDER */}
-          <div className="hidden md:flex w-full flex-col gap-8">
-            {/* HEADER */}
-            <div className="w-full">
+          <div className="hidden md:flex w-full flex-col h-full">
+            {/* HEADER - Sticky */}
+            <div className="w-full sticky top-0 z-50 bg-white">
               <div className="w-full h-[78px] bg-white border border-[#E5E7E8] flex items-center justify-between px-5 shadow-sm">
                 <div className="flex items-center gap-3">
                   <h2 className="text-[26px] font-bold text-[#0C1014]">
@@ -745,8 +801,8 @@ export default function InboxPage() {
               </div>
             </div>
 
-            {/* CONTENT */}
-            <div className="w-full flex flex-col gap-10 mt-6 px-6">
+            {/* CONTENT - Scrollable */}
+            <div className="w-full flex flex-col gap-10 mt-6 px-6 overflow-y-auto flex-1">
               {allEmpty && <EmptyInbox />}
 
               {/* TODAY */}
@@ -761,7 +817,7 @@ export default function InboxPage() {
                         {...item}
                         onMoveToTrash={onMoveToTrash}
                         onToggleReadLater={onToggleReadLater}
-                        onToggleFavorite={() => onToggleFavorite(item.emailId, !item.isFavorite)}
+                        onToggleFavorite={onToggleFavorite}
                         isFavorite={item.isFavorite}
                       />
                     </div>
@@ -781,7 +837,7 @@ export default function InboxPage() {
                         {...item}
                         onMoveToTrash={onMoveToTrash}
                         onToggleReadLater={onToggleReadLater}
-                        onToggleFavorite={() => onToggleFavorite(item.emailId, !item.isFavorite)}
+                        onToggleFavorite={onToggleFavorite}
                         isFavorite={item.isFavorite}
                       />
                     </div>
@@ -801,7 +857,7 @@ export default function InboxPage() {
                         {...item}
                         onMoveToTrash={onMoveToTrash}
                         onToggleReadLater={onToggleReadLater}
-                        onToggleFavorite={() => onToggleFavorite(item.emailId, !item.isFavorite)}
+                        onToggleFavorite={onToggleFavorite}
                         isFavorite={item.isFavorite}
                       />
                     </div>
@@ -821,7 +877,7 @@ export default function InboxPage() {
                         {...item}
                         onMoveToTrash={onMoveToTrash}
                         onToggleReadLater={onToggleReadLater}
-                        onToggleFavorite={() => onToggleFavorite(item.emailId, !item.isFavorite)}
+                        onToggleFavorite={onToggleFavorite}
                         isFavorite={item.isFavorite}
                       />
                     </div>

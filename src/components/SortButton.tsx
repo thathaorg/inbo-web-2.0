@@ -26,7 +26,7 @@ export default function SortButton({
   const [open, setOpen] = useState(false);
 
   return (
-    <>
+    <div className="relative">
       {/* BUTTON */}
       <button
         onClick={() => setOpen(true)}
@@ -93,7 +93,7 @@ export default function SortButton({
               onClick={() => setOpen(false)}
             />
 
-            <div className="absolute z-50 mt-2 w-56 rounded-xl border bg-white p-4 shadow-lg">
+            <div className="absolute right-0 z-50 mt-2 w-56 rounded-xl border bg-white p-4 shadow-lg">
               {(Object.keys(SORT_LABELS) as SortValue[]).map((key) => (
                 <button
                   key={key}
@@ -124,6 +124,6 @@ export default function SortButton({
           </>
         </div>
       )}
-    </>
+    </div>
   );
 }

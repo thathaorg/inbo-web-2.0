@@ -59,6 +59,7 @@ export default function FavouritePage() {
   const [items, setItems] = useState<any[]>([]);
   const [visible, setVisible] = useState(INITIAL_VISIBLE);
   const [loading, setLoading] = useState(true);
+  const [refetchTrigger, setRefetchTrigger] = useState(0);
 
   /* -------- FILTER STATE -------- */
   const [filter, setFilter] = useState<FilterValue>("unread");
@@ -76,6 +77,28 @@ export default function FavouritePage() {
       }
     }
     fetchFavorites();
+  }, [refetchTrigger]);
+
+  // Refetch when window gains focus
+  useEffect(() => {
+    const handleFocus = () => {
+      console.log('🔄 Favorites page gained focus, refetching...');
+      setRefetchTrigger(prev => prev + 1);
+    };
+    
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, []);
+
+  // Listen for custom events when favorite status changes
+  useEffect(() => {
+    const handleFavoriteChange = (e: CustomEvent) => {
+      console.log('📬 Favorite item added, refetching...', e.detail);
+      setRefetchTrigger(prev => prev + 1);
+    };
+    
+    window.addEventListener('favoriteChanged' as any, handleFavoriteChange);
+    return () => window.removeEventListener('favoriteChanged' as any, handleFavoriteChange);
   }, []);
 
   /* -------- FILTERED ITEMS -------- */
@@ -141,14 +164,16 @@ export default function FavouritePage() {
   /* ---------------- DESKTOP UI ---------------- */
   return (
     <div className="hidden min-h-[90%] md:flex w-full flex-col gap-8">
-      {/* HEADER */}
-      <div className="w-full h-[78px] bg-white border border-[#E5E7E8] flex items-center justify-between px-5 shadow-sm">
-        <h2 className="text-[26px] font-bold text-[#0C1014]">
-          {t("favorites.title")}
-        </h2>
+      {/* HEADER - Sticky */}
+      <div className="sticky top-0 z-50 w-full">
+        <div className="w-full h-[78px] bg-white border border-[#E5E7E8] flex items-center justify-between px-5 shadow-sm">
+          <h2 className="text-[26px] font-bold text-[#0C1014]">
+            {t("favorites.title")}
+          </h2>
 
-        {/* FILTER BUTTON */}
-        <FilterButton value={filter} onChange={setFilter} />
+          {/* FILTER BUTTON */}
+          <FilterButton value={filter} onChange={setFilter} />
+        </div>
       </div>
 
       {/* CONTENT */}

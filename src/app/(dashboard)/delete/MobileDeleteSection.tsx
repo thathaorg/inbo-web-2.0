@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { toast } from "sonner";
 import InboxCardMobile from "@/components/inbox/InboxCard";
 import SortButton, { SortValue } from "@/components/SortButton";
 import emailService, { EmailListItem } from "@/services/email";
@@ -50,8 +51,6 @@ export default function MobileDeleteSection() {
   const [loading, setLoading] = useState(true);
   const [isRestoring, setIsRestoring] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [toastMessage, setToastMessage] = useState("");
-  const [showToast, setShowToast] = useState(false);
 
   const isSelectionMode = selectedIds.length > 0;
 
@@ -67,12 +66,6 @@ export default function MobileDeleteSection() {
 
   const clearSelection = () => {
     setSelectedIds([]);
-  };
-
-  const showToastMessage = (message: string) => {
-    setToastMessage(message);
-    setShowToast(true);
-    setTimeout(() => setShowToast(false), 3000);
   };
 
   // Fetch trash emails
@@ -100,11 +93,11 @@ export default function MobileDeleteSection() {
     try {
       await Promise.all(selectedIds.map(id => emailService.restoreFromTrash(id)));
       setNewsletters(prev => prev.filter(n => !selectedIds.includes(n.id)));
-      showToastMessage(`${selectedIds.length} email${selectedIds.length > 1 ? 's' : ''} restored!`);
+      toast.success(`${selectedIds.length} email${selectedIds.length > 1 ? 's' : ''} restored!`);
       clearSelection();
     } catch (err) {
       console.error("Failed to restore emails:", err);
-      showToastMessage("Failed to restore. Please try again.");
+      toast.error("Failed to restore. Please try again.");
     } finally {
       setIsRestoring(false);
     }
@@ -118,12 +111,12 @@ export default function MobileDeleteSection() {
     try {
       await Promise.all(selectedIds.map(id => emailService.deleteEmail(id)));
       setNewsletters(prev => prev.filter(n => !selectedIds.includes(n.id)));
-      showToastMessage(`${selectedIds.length} email${selectedIds.length > 1 ? 's' : ''} deleted!`);
+      toast.success(`${selectedIds.length} email${selectedIds.length > 1 ? 's' : ''} deleted!`);
       clearSelection();
       setShowDeleteModal(false);
     } catch (err) {
       console.error("Failed to delete emails:", err);
-      showToastMessage("Failed to delete. Please try again.");
+      toast.error("Failed to delete. Please try again.");
     } finally {
       setIsDeleting(false);
     }
@@ -350,14 +343,6 @@ export default function MobileDeleteSection() {
               </button>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* ================= TOAST ================= */}
-      {showToast && (
-        <div className="fixed bottom-20 left-4 right-4 bg-[#1F2937] text-white rounded-xl px-4 py-3 text-sm font-medium flex items-center gap-2 z-50 shadow-lg">
-          <span className="text-green-400">✓</span>
-          {toastMessage}
         </div>
       )}
     </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import NewsletterCard from "@/components/inbox/InboxCard"; // ✅ adjust path if needed
 import MobileDeleteSection from "./MobileDeleteSection";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
@@ -47,8 +47,11 @@ export default function DeletePage() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
   const [newsletters, setNewsletters] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isRestoring, setIsRestoring] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const isSelected = selectedIds.length > 0;
 
@@ -60,15 +63,54 @@ export default function DeletePage() {
     );
   };
 
-  const handleConfirmDelete = () => {
-    // simulate delete
-    setSelectedIds([]);
-    setShowDeleteModal(false);
-
-    // show toast
+  const showToastMessage = (message: string) => {
+    setToastMessage(message);
     setShowToast(true);
     setTimeout(() => setShowToast(false), 3000);
   };
+
+  // Restore selected emails back to inbox
+  const handleRestore = useCallback(async () => {
+    if (selectedIds.length === 0) return;
+    
+    setIsRestoring(true);
+    try {
+      // Restore all selected emails in parallel
+      await Promise.all(selectedIds.map(id => emailService.restoreFromTrash(id)));
+      
+      // Remove restored emails from list
+      setNewsletters(prev => prev.filter(n => !selectedIds.includes(n.emailId)));
+      setSelectedIds([]);
+      showToastMessage(`${selectedIds.length} email${selectedIds.length > 1 ? 's' : ''} restored to inbox!`);
+    } catch (err) {
+      console.error("Failed to restore emails:", err);
+      showToastMessage("Failed to restore emails. Please try again.");
+    } finally {
+      setIsRestoring(false);
+    }
+  }, [selectedIds]);
+
+  // Permanently delete selected emails
+  const handleConfirmDelete = useCallback(async () => {
+    if (selectedIds.length === 0) return;
+    
+    setIsDeleting(true);
+    try {
+      // Delete all selected emails in parallel
+      await Promise.all(selectedIds.map(id => emailService.deleteEmail(id)));
+      
+      // Remove deleted emails from list
+      setNewsletters(prev => prev.filter(n => !selectedIds.includes(n.emailId)));
+      setSelectedIds([]);
+      setShowDeleteModal(false);
+      showToastMessage(`${selectedIds.length} email${selectedIds.length > 1 ? 's' : ''} permanently deleted!`);
+    } catch (err) {
+      console.error("Failed to delete emails:", err);
+      showToastMessage("Failed to delete emails. Please try again.");
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [selectedIds]);
 
   useEffect(() => {
     async function fetchTrash() {
@@ -104,30 +146,46 @@ export default function DeletePage() {
             <>
               {/* Restore */}
               <button
+                onClick={handleRestore}
+                disabled={isRestoring}
                 className="
                   h-10 px-5 rounded-xl
                   border border-[#E5E7EB]
                   bg-white
                   text-sm font-medium text-[#111827]
                   hover:bg-gray-100
+                  disabled:opacity-50 disabled:cursor-not-allowed
+                  flex items-center gap-2
                 "
               >
-                Restore
+                {isRestoring ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-400 border-t-transparent"></div>
+                    Restoring...
+                  </>
+                ) : (
+                  <>
+                    <span>♻️</span>
+                    Restore ({selectedIds.length})
+                  </>
+                )}
               </button>
 
               {/* Delete Permanently */}
               <button
                 onClick={() => setShowDeleteModal(true)}
+                disabled={isDeleting}
                 className="
                   h-10 px-5 rounded-xl
                   border border-red-500
                   bg-red-50
                   text-sm font-medium text-red-600
                   hover:bg-red-100
+                  disabled:opacity-50 disabled:cursor-not-allowed
                   flex items-center gap-2
                 "
               >
-                Delete Permanently
+                Delete Permanently ({selectedIds.length})
                 <span className="text-base">🗑️</span>
               </button>
             </>
@@ -188,9 +246,9 @@ export default function DeletePage() {
 
         {/* ================= NEWSLETTER LIST ================= */}
         <div className="flex flex-col gap-3">
-          {newsletters.map((item) => (
+          {newsletters.map((item, idx) => (
             <div
-              key={item.id}
+              key={item.id || idx}
               className={
                 selectedIds.includes(item.id)
                   ? "ring-2 ring-black rounded-2xl"
@@ -213,27 +271,36 @@ export default function DeletePage() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white w-[420px] rounded-2xl p-6 shadow-lg">
             <h3 className="text-lg font-semibold text-[#0C1014] mb-2">
-              Delete Newsletter – Are you sure?
+              Delete {selectedIds.length} Newsletter{selectedIds.length > 1 ? 's' : ''} – Are you sure?
             </h3>
 
             <p className="text-sm text-[#6B7280] mb-6">
-              Are you sure you want to delete this item?
+              Are you sure you want to permanently delete {selectedIds.length > 1 ? 'these items' : 'this item'}?
               This action cannot be undone.
             </p>
 
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setShowDeleteModal(false)}
-                className="h-10 px-5 rounded-full border border-[#E5E7EB] bg-white text-sm font-medium hover:bg-gray-100"
+                disabled={isDeleting}
+                className="h-10 px-5 rounded-full border border-[#E5E7EB] bg-white text-sm font-medium hover:bg-gray-100 disabled:opacity-50"
               >
                 Cancel
               </button>
 
               <button
                 onClick={handleConfirmDelete}
-                className="h-10 px-5 rounded-full bg-red-600 text-white text-sm font-medium hover:bg-red-700"
+                disabled={isDeleting}
+                className="h-10 px-5 rounded-full bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50 flex items-center gap-2"
               >
-                Yes, Delete
+                {isDeleting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                    Deleting...
+                  </>
+                ) : (
+                  'Yes, Delete'
+                )}
               </button>
             </div>
           </div>
@@ -242,8 +309,9 @@ export default function DeletePage() {
 
       {/* ================= TOAST ================= */}
       {showToast && (
-        <div className="fixed top-6 right-6 bg-white border border-[#E5E7EB] shadow-lg rounded-xl px-4 py-3 text-sm font-medium text-[#0C1014]">
-          Newsletter Deleted!
+        <div className="fixed top-6 right-6 bg-white border border-[#E5E7EB] shadow-lg rounded-xl px-4 py-3 text-sm font-medium text-[#0C1014] flex items-center gap-2">
+          <span className="text-green-500">✓</span>
+          {toastMessage}
         </div>
       )}
     </div>

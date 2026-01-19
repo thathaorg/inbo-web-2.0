@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Loader2 } from "lucide-react";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { userService } from "@/services/user";
@@ -17,13 +18,6 @@ interface UserDetailsStepProps {
     onBack: () => void;
 }
 
-const GENDER_OPTIONS = [
-    { value: "male", label: "Male" },
-    { value: "female", label: "Female" },
-    { value: "non_binary", label: "Non-binary" },
-    { value: "prefer_not_to_say", label: "Prefer not to say" },
-];
-
 export default function UserDetailsStep({
     formData,
     setFormData,
@@ -31,8 +25,17 @@ export default function UserDetailsStep({
     onBack,
 }: UserDetailsStepProps) {
     const isMobile = useMediaQuery("(max-width: 768px)");
+    const { t } = useTranslation("auth");
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // Gender options with translations
+    const GENDER_OPTIONS = [
+        { value: "male", label: t("onboarding.genderOptions.male") },
+        { value: "female", label: t("onboarding.genderOptions.female") },
+        { value: "non_binary", label: t("onboarding.genderOptions.other") },
+        { value: "prefer_not_to_say", label: t("onboarding.genderOptions.preferNotToSay") },
+    ];
 
     // Generate years (100 years back from current year - 13)
     const currentYear = new Date().getFullYear();
@@ -71,13 +74,13 @@ export default function UserDetailsStep({
             {/* Name */}
             <div>
                 <label className="block text-[#6F7680] text-[16px] md:text-[18px] mb-2">
-                    What should we call you?
+                    {t("onboarding.nameLabel")}
                 </label>
                 <input
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="Enter your name"
+                    placeholder={t("onboarding.namePlaceholder")}
                     className="w-full px-4 py-3.5 rounded-xl border border-[#E5E7EB] outline-none focus:border-[#C46A54] transition bg-white text-[#0C1014]"
                 />
             </div>
@@ -85,7 +88,7 @@ export default function UserDetailsStep({
             {/* Birth Year */}
             <div>
                 <label className="block text-[#6F7680] text-[16px] md:text-[18px] mb-2">
-                    Year of birth
+                    {t("onboarding.birthYearLabel")}
                 </label>
                 <select
                     value={formData.birthYear}
@@ -102,7 +105,7 @@ export default function UserDetailsStep({
             {/* Gender */}
             <div>
                 <label className="block text-[#6F7680] text-[16px] md:text-[18px] mb-2">
-                    Gender
+                    {t("onboarding.genderLabel")}
                 </label>
                 <div className="grid grid-cols-2 gap-3">
                     {GENDER_OPTIONS.map((option) => (
@@ -137,10 +140,10 @@ export default function UserDetailsStep({
             <div className="max-h-screen flex flex-col bg-white">
                 <div className="px-4 pt-6 text-center">
                     <h1 className="text-[24px] font-bold text-[#0C1014]">
-                        Tell us about you
+                        {t("onboarding.tellUsAboutYourself")}
                     </h1>
                     <p className="text-[#6F7680] mt-2">
-                        This helps us personalize your experience.
+                        {t("onboarding.letsGetStarted")}
                     </p>
                 </div>
 

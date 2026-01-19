@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useRouter } from "next/navigation";
  
@@ -15,7 +16,9 @@ import MobileAnalyticsSection from "./MobileAnalyticsSection";
 /* TEMP placeholders — replace later */
 import { Star, ChevronUp } from "lucide-react";
 
-export const FavouriteRow = () => (
+export const FavouriteRow = () => {
+  const { t } = useTranslation("common");
+  return (
   <div
     className="
       w-full
@@ -33,7 +36,7 @@ export const FavouriteRow = () => (
         <Star className="w-5 h-5 text-[#F59E0B]" fill="currentColor" />
       </div>
       <span className="text-base font-semibold text-gray-900">
-        Favourite
+        {t("navigation.favorites")}
       </span>
     </div>
 
@@ -41,8 +44,11 @@ export const FavouriteRow = () => (
     <ChevronUp className="w-5 h-5 text-gray-900" />
   </div>
 );
+};
 
-export const ReadLaterRow = () => (
+export const ReadLaterRow = () => {
+  const { t } = useTranslation("common");
+  return (
   <div
     className="
       w-full
@@ -60,7 +66,7 @@ export const ReadLaterRow = () => (
         <img src="/icons/read-later-icon.png" alt="read-later" />
       </div>
       <span className="text-base font-semibold text-gray-900">
-        Read Later
+        {t("navigation.readLater")}
       </span>
     </div>
 
@@ -68,13 +74,30 @@ export const ReadLaterRow = () => (
     <ChevronUp className="w-5 h-5 text-gray-900" />
   </div>
 );
+};
 
 
 export default function AnalyticsPage() {
+  const { t } = useTranslation("common");
   const isMobile = useMediaQuery("(max-width: 768px)");
-  const Router=useRouter()
+  const router = useRouter();
   const [isStreakOpen, setIsStreakOpen] = useState(false);
   const [isAchievementsOpen, setIsAchievementsOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  // Ensure component is mounted before rendering to prevent hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Show loading state during SSR and initial mount
+  if (!mounted) {
+    return (
+      <div className="w-full min-h-screen bg-[#F5F6FA] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
+      </div>
+    );
+  }
 
   /* ================= MOBILE RETURN ================= */
   if (isMobile) {
@@ -105,14 +128,14 @@ export default function AnalyticsPage() {
       {/* Desktop Header */}
           <div className="w-full">
             <div className="w-full h-[78px] bg-white border border-[#E5E7EB] flex items-center justify-between px-6 shadow-sm">
-              <h2 className="text-[26px] font-bold text-[#0C1014]">Analytics</h2>
+              <h2 className="text-[26px] font-bold text-[#0C1014]">{t("analytics.title")}</h2>
             </div>
           </div>
 
       {/* Subtitle BELOW header (styled correctly) */}
       <div className="px-8 pt-3 pb-2">
         <p className="text-[14px] leading-[20px] text-[#6B7280] max-w-[720px]">
-          Track your reading – by time, words, and what you’ve read.
+          {t("analytics.subtitle", "Track your reading – by time, words, and what you've read.")}
         </p>
       </div>
 
@@ -129,10 +152,10 @@ export default function AnalyticsPage() {
         </div>
 
         {/* Row 3: Favourite | Read Later */}
-        <div onClick={()=>{Router.push("/favorite")}} className="col-span-6">
+        <div onClick={() => { router.push("/favorite"); }} className="col-span-6">
           <FavouriteRow />
         </div>
-        <div onClick={()=>{Router.push("/read_later")}} className="col-span-6">
+        <div onClick={() => { router.push("/read_later"); }} className="col-span-6">
           <ReadLaterRow />
         </div>
 

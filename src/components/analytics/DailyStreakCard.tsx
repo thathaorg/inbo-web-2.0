@@ -1,7 +1,9 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Flame, Check, ChevronRight } from "lucide-react";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
+import analyticsService from "@/services/analytics";
 
 /* ================= Types ================= */
 type StreakDay = {
@@ -12,22 +14,33 @@ type StreakDay = {
 
 type DailyStreakData = {
   currentStreak: number;
+  longestStreak: number;
   days: StreakDay[];
 };
 
-/* ================= Mock Data ================= */
-const mockDailyStreak: DailyStreakData = {
-  currentStreak: 3,
-  days: [
-    { label: "Sa", completed: true },
-    { label: "Mo", completed: true },
-    { label: "Tu", completed: true },
-    { label: "Th", completed: true },
-    { label: "Fr", completed: false, isToday: true },
-    { label: "Su", completed: false },
-    { label: "Mo", completed: false },
-  ],
-};
+/* ================= Helper: Generate week days ================= */
+function generateWeekDays(streakCount: number): StreakDay[] {
+  const dayLabels = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+  const today = new Date();
+  const todayIndex = today.getDay(); // 0 = Sunday
+  
+  // Generate the current week starting from Sunday
+  const days: StreakDay[] = [];
+  for (let i = 0; i < 7; i++) {
+    const isToday = i === todayIndex;
+    // Mark days as completed based on streak count (counting backwards from today)
+    const daysFromToday = todayIndex - i;
+    const completed = daysFromToday >= 0 && daysFromToday < streakCount && !isToday;
+    
+    days.push({
+      label: dayLabels[i],
+      completed,
+      isToday,
+    });
+  }
+  
+  return days;
+}
 
 /* ================= Component ================= */
 export default function DailyStreakCard({
@@ -38,7 +51,31 @@ export default function DailyStreakCard({
   className?: string;
 }) {
   const isMobile = useMediaQuery("(max-width: 768px)");
-  const data = mockDailyStreak;
+  const [data, setData] = useState<DailyStreakData>({
+    currentStreak: 0,
+    longestStreak: 0,
+    days: generateWeekDays(0),
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchStreak = async () => {
+      try {
+        const streakData = await analyticsService.getStreakCount();
+        setData({
+          currentStreak: streakData.streak_count,
+          longestStreak: streakData.longest_streak,
+          days: generateWeekDays(streakData.streak_count),
+        });
+      } catch (error) {
+        console.error("Failed to fetch streak data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStreak();
+  }, []);
 
   return (
     <div

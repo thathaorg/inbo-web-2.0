@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { ArrowLeft, ListFilter } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -53,6 +54,7 @@ const LOAD_MORE = 5;
 /* ----------------------------------------------------- */
 
 export default function ReadLaterPage() {
+  const { t } = useTranslation("common");
   const isMobile = useMediaQuery("(max-width: 768px)");
   const router = useRouter();
 
@@ -99,6 +101,45 @@ export default function ReadLaterPage() {
     return filteredItems;
   }, [filteredItems, sortBy]);
 
+  /* -------- ACTION HANDLERS -------- */
+  const onMoveToTrash = async (emailId: string) => {
+    try {
+      await emailService.moveToTrash(emailId);
+      // Remove from local list immediately
+      setItems(prev => prev.filter(e => e.emailId !== emailId));
+    } catch (err) {
+      console.error("Failed to move to trash", err);
+    }
+  };
+
+  const onToggleReadLater = async (emailId: string, isReadLater: boolean) => {
+    try {
+      await emailService.toggleReadLater(emailId, isReadLater);
+      // If removing from read later, remove from list; otherwise update
+      if (!isReadLater) {
+        setItems(prev => prev.filter(e => e.emailId !== emailId));
+      } else {
+        setItems(prev => prev.map(e =>
+          e.emailId === emailId ? { ...e, isReadLater } : e
+        ));
+      }
+    } catch (err) {
+      console.error("Failed to toggle read later", err);
+    }
+  };
+
+  const onToggleFavorite = async (emailId: string, isFavorite: boolean) => {
+    try {
+      await emailService.toggleFavorite(emailId, isFavorite);
+      // Update local state
+      setItems(prev => prev.map(e =>
+        e.emailId === emailId ? { ...e, isFavorite } : e
+      ));
+    } catch (err) {
+      console.error("Failed to toggle favorite", err);
+    }
+  };
+
   const isEmpty = sortedItems.length === 0;
   const showMore = visible < sortedItems.length;
 
@@ -122,7 +163,7 @@ export default function ReadLaterPage() {
           </button>
 
           <h1 className="flex-1 text-center text-[20px] font-semibold">
-            Read Later
+            {t("readLater.title")}
           </h1>
 
           <div className="w-5 h-5" />
@@ -142,7 +183,7 @@ export default function ReadLaterPage() {
                   <span className="text-black">
                     {sortedItems.length}
                   </span>{" "}
-                  Read Later
+                  {t("readLater.title")}
                 </span>
 
                 <div className="flex gap-2">
@@ -167,6 +208,11 @@ export default function ReadLaterPage() {
                     key={item.slug}
                     {...item}
                     onClick={() => { }}
+                    isReadLater={true}
+                    onMoveToTrash={onMoveToTrash}
+                    onToggleReadLater={onToggleReadLater}
+                    onToggleFavorite={(emailId: string, isFavorite: boolean) => onToggleFavorite(emailId, isFavorite)}
+                    isFavorite={item.isFavorite}
                   />
                 ))}
               </div>
@@ -228,7 +274,7 @@ export default function ReadLaterPage() {
       {/* HEADER */}
       <div className="w-full h-[78px] bg-white border border-[#E5E7E8] flex items-center justify-between px-5 shadow-sm">
         <h2 className="text-[26px] font-bold text-[#0C1014]">
-          Read Later
+          {t("readLater.title")}
         </h2>
 
         <div className="flex gap-3">
@@ -247,7 +293,15 @@ export default function ReadLaterPage() {
           <div className="w-full flex flex-col mt-2">
             {sortedItems.slice(0, visible).map((item) => (
               <div key={item.slug} className="mb-3">
-                <NewsletterCard {...item} onClick={() => { }} />
+                <NewsletterCard
+                  {...item}
+                  onClick={() => { }}
+                  isReadLater={true}
+                  onMoveToTrash={onMoveToTrash}
+                  onToggleReadLater={onToggleReadLater}
+                  onToggleFavorite={(emailId: string, isFavorite: boolean) => onToggleFavorite(emailId, isFavorite)}
+                  isFavorite={item.isFavorite}
+                />
               </div>
             ))}
 
@@ -262,12 +316,13 @@ export default function ReadLaterPage() {
 /* ---------------- VIEW MORE BUTTON ---------------- */
 
 function CenterButton({ onClick }: { onClick: () => void }) {
+  const { t } = useTranslation("common");
   return (
     <button
       onClick={onClick}
       className="mx-auto mt-4 px-6 py-2 border border-gray-300 rounded-full text-black font-medium hover:bg-gray-50 transition"
     >
-      View more
+      {t("common.viewMore")}
     </button>
   );
 }

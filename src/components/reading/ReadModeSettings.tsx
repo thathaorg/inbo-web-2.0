@@ -10,11 +10,17 @@ type ThemeMode = "light" | "dark" | "system";
 type PageColor = "white" | "paper" | "calm";
 type FontFamily = "sans" | "serif" | "mono";
 type FontType =
-  | "Default"
-  | "Helvetica Neue"
-  | "Avenir"
+  | "System Default"
+  | "Georgia"
+  | "Merriweather"
+  | "Lora"
+  | "Charter"
+  | "Palatino"
   | "Times New Roman"
-  | "Georgia";
+  | "Helvetica"
+  | "Inter"
+  | "SF Pro"
+  | "Roboto";
 
 interface ReadModeSettingsProps {
   isOpen: boolean;
@@ -28,6 +34,10 @@ interface ReadModeSettingsProps {
   setPageColor?: (v: PageColor) => void;
   fontFamily?: FontFamily;
   setFontFamily?: (v: FontFamily) => void;
+  fontType?: FontType;
+  setFontType?: (v: FontType) => void;
+  showFontSelector?: boolean;
+  position?: 'left' | 'center' | 'right';
 }
 
 /* ------------------------------------------------------------------ */
@@ -44,13 +54,17 @@ export default function ReadModeSettings({
   setPageColor: externalSetPageColor,
   fontFamily: externalFontFamily,
   setFontFamily: externalSetFontFamily,
+  fontType: externalFontType,
+  setFontType: externalSetFontType,
+  showFontSelector = true,
+  position = 'center',
 }: ReadModeSettingsProps) {
   // Internal state (used when no external state is provided)
   const [internalTheme, setInternalTheme] = useState<ThemeMode>("system");
   const [internalPageColor, setInternalPageColor] = useState<PageColor>("white");
   const [internalFontSize, setInternalFontSize] = useState(17);
   const [internalFontFamily, setInternalFontFamily] = useState<FontFamily>("sans");
-  const [font, setFont] = useState<FontType>("Helvetica Neue");
+  const [internalFontType, setInternalFontType] = useState<FontType>("Georgia");
   const [showFonts, setShowFonts] = useState(false);
 
   // Use external state if provided, otherwise use internal state
@@ -62,6 +76,8 @@ export default function ReadModeSettings({
   const setFontSize = externalSetFontSize ?? setInternalFontSize;
   const fontFamily = externalFontFamily ?? internalFontFamily;
   const setFontFamilyState = externalSetFontFamily ?? setInternalFontFamily;
+  const fontType = externalFontType ?? internalFontType;
+  const setFontType = externalSetFontType ?? setInternalFontType;
 
   const panelRef = useRef<HTMLDivElement>(null);
   const fontRef = useRef<HTMLDivElement>(null);
@@ -129,10 +145,11 @@ export default function ReadModeSettings({
 
       {/* ================= SETTINGS PANEL ================= */}
       <div
-        className="
+        className={`
           fixed inset-x-0 bottom-0
-          md:inset-auto md:left-[88px] md:top-1/2 md:-translate-y-1/2
-        "
+          md:inset-auto md:top-1/2 md:-translate-y-1/2
+          ${position === 'left' ? 'md:left-6' : position === 'right' ? 'md:right-6' : 'md:left-[88px]'}
+        `}
         onClick={(e) => e.stopPropagation()}
       >
         <div
@@ -188,7 +205,7 @@ export default function ReadModeSettings({
                   setFontSize(Math.max(14, fontSize - 2));
                 }}
                 disabled={fontSize <= 14}
-                className={`flex-1 h-11 rounded-xl border flex items-center justify-center font-medium transition ${fontSize <= 14 ? 'opacity-50 cursor-not-allowed bg-gray-100' : 'bg-white hover:bg-gray-50'}`}
+                className={`flex-1 h-11 rounded-xl border border-gray-300 flex items-center justify-center font-medium transition ${fontSize <= 14 ? 'opacity-50 cursor-not-allowed bg-gray-100 text-gray-400' : 'bg-white hover:bg-gray-50 text-[#0C1014]'}`}
               >
                 A -
               </button>
@@ -198,7 +215,7 @@ export default function ReadModeSettings({
                   setFontSize(Math.min(32, fontSize + 2));
                 }}
                 disabled={fontSize >= 32}
-                className={`flex-1 h-11 rounded-xl border flex items-center justify-center font-medium transition ${fontSize >= 32 ? 'opacity-50 cursor-not-allowed bg-gray-100' : 'bg-white hover:bg-gray-50'}`}
+                className={`flex-1 h-11 rounded-xl border border-gray-300 flex items-center justify-center font-medium transition ${fontSize >= 32 ? 'opacity-50 cursor-not-allowed bg-gray-100 text-gray-400' : 'bg-white hover:bg-gray-50 text-[#0C1014]'}`}
               >
                 A +
               </button>
@@ -233,21 +250,24 @@ export default function ReadModeSettings({
             </div>
           </div>
 
-          {/* FONT TRIGGER */}
-          <button
-            onClick={() => setShowFonts(true)}
-            className="
-              h-11 px-4 rounded-xl
-              flex items-center justify-between
-              bg-[#F3F4F6]
-            "
-          >
-            <span className="text-sm text-[#0C1014]">Font</span>
-            <div className="flex items-center gap-1 text-[#6F7680]">
-              <span className="text-sm">{font}</span>
-              <ChevronRight size={16} />
-            </div>
-          </button>
+          {/* FONT TRIGGER - Only show if enabled */}
+          {showFontSelector && (
+            <button
+              onClick={() => setShowFonts(true)}
+              className="
+                h-11 px-4 rounded-xl
+                flex items-center justify-between
+                bg-[#F3F4F6]
+                hover:bg-gray-200 transition-colors
+              "
+            >
+              <span className="text-sm font-medium text-[#0C1014]">Font</span>
+              <div className="flex items-center gap-1 text-[#6F7680]">
+                <span className="text-sm font-medium">{fontType}</span>
+                <ChevronRight size={16} />
+              </div>
+            </button>
+          )}
         </div>
       </div>
 
@@ -276,28 +296,35 @@ export default function ReadModeSettings({
 
             {(
               [
-                "Default",
-                "Helvetica Neue",
-                "Avenir",
-                "Times New Roman",
+                "System Default",
                 "Georgia",
+                "Merriweather",
+                "Lora",
+                "Charter",
+                "Palatino",
+                "Times New Roman",
+                "Helvetica",
+                "Inter",
+                "SF Pro",
+                "Roboto",
               ] as FontType[]
             ).map((f) => (
               <button
                 key={f}
                 onClick={() => {
-                  setFont(f);
+                  setFontType(f);
                   setShowFonts(false);
                 }}
                 className={`
                   w-full px-4 py-3 text-sm text-center
                   border-b border-gray-200/60 last:border-b-0
                   ${
-                    font === f
-                      ? "text-[#C46A54]"
+                    fontType === f
+                      ? "text-[#C46A54] font-semibold"
                       : "text-[#0C1014]"
                   }
                 `}
+                style={{ fontFamily: getFontFamilyCSS(f) }}
               >
                 {f}
               </button>
@@ -307,6 +334,38 @@ export default function ReadModeSettings({
       )}
     </div>
   );
+}
+
+/* ------------------------------------------------------------------ */
+/* HELPER FUNCTIONS */
+/* ------------------------------------------------------------------ */
+function getFontFamilyCSS(fontType: FontType): string {
+  switch (fontType) {
+    case "System Default":
+      return '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+    case "Georgia":
+      return '"Georgia", serif';
+    case "Merriweather":
+      return '"Merriweather", "Georgia", serif';
+    case "Lora":
+      return '"Lora", "Georgia", serif';
+    case "Charter":
+      return '"Charter", "Georgia", serif';
+    case "Palatino":
+      return '"Palatino Linotype", "Book Antiqua", Palatino, serif';
+    case "Times New Roman":
+      return '"Times New Roman", Times, serif';
+    case "Helvetica":
+      return '"Helvetica Neue", Helvetica, Arial, sans-serif';
+    case "Inter":
+      return '"Inter", -apple-system, BlinkMacSystemFont, sans-serif';
+    case "SF Pro":
+      return '-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", sans-serif';
+    case "Roboto":
+      return '"Roboto", -apple-system, sans-serif';
+    default:
+      return '"Georgia", serif';
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -372,6 +431,20 @@ function PageColorCard({
   active: boolean;
   onClick: () => void;
 }) {
+  // Get actual background colors for preview
+  const getPreviewColor = () => {
+    switch(label) {
+      case 'White':
+        return 'bg-white';
+      case 'Paper':
+        return 'bg-[#F7F3E9]';
+      case 'Calm':
+        return 'bg-[#E8F4F8]';
+      default:
+        return 'bg-white';
+    }
+  };
+
   return (
     <button
       onClick={onClick}
@@ -379,11 +452,17 @@ function PageColorCard({
     >
       <div
         className={`
-          rounded-xl border
+          w-full aspect-square rounded-xl border overflow-hidden
           ${active ? "border-black border-2" : "border-gray-300"}
         `}
       >
-        <img src={bg} alt={label} />
+        <div className={`w-full h-full ${getPreviewColor()} p-3 flex flex-col gap-1.5`}>
+          <div className="w-full h-1 bg-gray-400 rounded opacity-40"></div>
+          <div className="w-full h-1 bg-gray-400 rounded opacity-30"></div>
+          <div className="w-3/4 h-1 bg-gray-400 rounded opacity-30"></div>
+          <div className="w-full h-1 bg-gray-400 rounded opacity-25"></div>
+          <div className="w-5/6 h-1 bg-gray-400 rounded opacity-25"></div>
+        </div>
       </div>
       <span className="text-sm text-[#0C1014]">{label}</span>
     </button>

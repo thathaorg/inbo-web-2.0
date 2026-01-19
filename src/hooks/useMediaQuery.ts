@@ -1,9 +1,13 @@
 import { useState, useEffect } from "react";
 
 export function useMediaQuery(query: string) {
-  const [matches, setMatches] = useState(false);
+  // Initialize with undefined to handle SSR
+  const [matches, setMatches] = useState<boolean | undefined>(undefined);
 
   useEffect(() => {
+    // Only run on client side
+    if (typeof window === 'undefined') return;
+
     const media = window.matchMedia(query);
     setMatches(media.matches);
 
@@ -13,5 +17,6 @@ export function useMediaQuery(query: string) {
     return () => media.removeEventListener("change", listener);
   }, [query]);
 
-  return matches;
+  // Return false during SSR to render desktop version by default
+  return matches ?? false;
 }

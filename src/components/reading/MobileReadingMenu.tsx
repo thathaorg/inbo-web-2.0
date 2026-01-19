@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   Type,
   ArrowRight,
@@ -11,6 +12,8 @@ import {
   MinusCircle,
   Bot,
   Bookmark,
+  Link2,
+  Sparkles,
 } from "lucide-react";
 import emailService from "@/services/email";
 import { useRouter } from "next/navigation";
@@ -22,10 +25,13 @@ interface MobileReadingMenuProps {
   isReadLater?: boolean;
   isFavorite?: boolean;
   isRead?: boolean;
+  isShared?: boolean;
   onReadLaterChange?: (value: boolean) => void;
   onFavoriteChange?: (value: boolean) => void;
   onReadChange?: (value: boolean) => void;
+  onSharedChange?: (value: boolean) => void;
   onOpenAppearance?: () => void;
+  onOpenSummary?: () => void;
 }
 
 export default function MobileReadingMenu({
@@ -35,12 +41,17 @@ export default function MobileReadingMenu({
   isReadLater,
   isFavorite,
   isRead,
+  isShared,
   onReadLaterChange,
   onFavoriteChange,
   onReadChange,
+  onSharedChange,
   onOpenAppearance,
+  onOpenSummary,
 }: MobileReadingMenuProps) {
   const router = useRouter();
+  const [isToggling, setIsToggling] = useState(false);
+  const [copySuccess, setCopySuccess] = useState(false);
 
   const handleShare = async () => {
     const shareUrl = `${window.location.origin}/reading/${emailId}`;
@@ -113,6 +124,19 @@ export default function MobileReadingMenu({
     try {
       await emailService.toggleReadStatus(emailId, nextStatus);
       onReadChange?.(nextStatus);
+      
+      // Broadcast event so inbox updates
+      if (typeof window !== 'undefined') {
+        const event = new CustomEvent('emailStatusChanged', {
+          detail: {
+            emailId: emailId,
+            isRead: nextStatus,
+            timestamp: new Date().toISOString()
+          }
+        });
+        window.dispatchEvent(event);
+      }
+      
       onClose();
     } catch (err) {
       console.error("Failed to toggle read status", err);
@@ -152,6 +176,14 @@ export default function MobileReadingMenu({
 
         {/* List */}
         <div className="bg-white rounded-2xl overflow-hidden">
+          <ListItem
+            label="AI Summary"
+            icon={<Sparkles className="text-purple-500" />}
+            onClick={() => {
+              onClose();
+              onOpenSummary?.();
+            }}
+          />
           <ListItem
             label={isRead ? "Mark Unread" : "Mark Read"}
             icon={<Check className={isRead ? "text-green-500" : "text-gray-400"} />}

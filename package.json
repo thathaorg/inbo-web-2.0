@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@react-oauth/google": "^0.12.2",
+    "@vitalets/google-translate-api": "^9.2.1",
     "axios": "^1.7.7",
     "clsx": "^2.1.1",
     "i18next": "^25.7.2",

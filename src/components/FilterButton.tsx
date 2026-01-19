@@ -2,11 +2,13 @@
 
 import { useRef, useState, useEffect } from "react";
 import { ListFilter } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 /* ------------------ Types & Constants ------------------ */
 
 export type FilterValue = "unread" | "read" | "all";
 
+// These will be used as fallbacks, actual labels come from translations
 export const FILTER_LABELS: Record<FilterValue, string> = {
   unread: "Unread",
   read: "Read",
@@ -23,9 +25,20 @@ export default function FilterButton({
   value,
   onChange,
 }: FilterButtonProps) {
+  const { t } = useTranslation("common");
   const anchorRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+
+  // Get translated labels
+  const getFilterLabel = (key: FilterValue) => {
+    switch (key) {
+      case "unread": return t("common.unread");
+      case "read": return t("common.read");
+      case "all": return t("common.all");
+      default: return FILTER_LABELS[key];
+    }
+  };
 
   /* Detect mobile */
   useEffect(() => {
@@ -48,7 +61,7 @@ export default function FilterButton({
         "
       >
         <ListFilter size={16} />
-        {FILTER_LABELS[value]}
+        {getFilterLabel(value)}
       </button>
 
       {/* MOBILE → BOTTOM SHEET */}
@@ -60,6 +73,7 @@ export default function FilterButton({
               onChange(v);
               setOpen(false);
             }}
+            getFilterLabel={getFilterLabel}
           />
         </MobileBottomSheet>
       )}
@@ -73,6 +87,7 @@ export default function FilterButton({
               onChange(v);
               setOpen(false);
             }}
+            getFilterLabel={getFilterLabel}
           />
         </DesktopPopover>
       )}
@@ -85,9 +100,11 @@ export default function FilterButton({
 function FilterContent({
   value,
   onChange,
+  getFilterLabel,
 }: {
   value: FilterValue;
   onChange: (v: FilterValue) => void;
+  getFilterLabel: (key: FilterValue) => string;
 }) {
   return (
     <div className="space-y-6">
@@ -97,7 +114,7 @@ function FilterContent({
           onClick={() => onChange(key)}
           className="flex w-full items-center justify-between text-base"
         >
-          <span>{FILTER_LABELS[key]}</span>
+          <span>{getFilterLabel(key)}</span>
 
           <span
             className={`h-5 w-5 rounded-full border flex items-center justify-center

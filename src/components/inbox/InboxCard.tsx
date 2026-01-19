@@ -72,6 +72,7 @@ function InboxCardMobile({
   slug,
   emailId,
   isReadLater,
+  isFavorite,
   onClick,
   showCheckbox = false,
   checked = false,
@@ -80,6 +81,7 @@ function InboxCardMobile({
   newsletterLogo,
   onMoveToTrash,
   onToggleReadLater,
+  onToggleFavorite,
   sender,
 }: any) {
   const router = useRouter();
@@ -210,12 +212,24 @@ function InboxCardMobile({
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
+                        if (onToggleFavorite) onToggleFavorite(emailId, !isFavorite);
+                        setShowMenu(false);
+                      }}
+                      className="w-full text-left px-3 py-2 hover:bg-yellow-50 rounded-md text-xs font-medium cursor-pointer"
+                    >
+                      {isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
+                    </div>
+                    <div
+                      role="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
                         if (onToggleReadLater) onToggleReadLater(emailId, !isReadLater);
                         setShowMenu(false);
                       }}
                       className="w-full text-left px-3 py-2 hover:bg-gray-50 rounded-md text-xs font-medium cursor-pointer"
                     >
-                      {isReadLater ? 'Remove Read Later' : 'Read Later'}
+                      {isReadLater ? 'Remove from Read Later' : 'Read Later'}
                     </div>
                     <div
                       role="button"
@@ -277,6 +291,7 @@ function NewsletterCardDesktop({
   emailId,
   read,
   isReadLater,
+  isFavorite,
   onClick,
   showCheckbox = false,
   checked = false,
@@ -285,6 +300,7 @@ function NewsletterCardDesktop({
   newsletterLogo,
   onMoveToTrash,
   onToggleReadLater,
+  onToggleFavorite,
   sender,
 }: any) {
   const router = useRouter();
@@ -317,6 +333,13 @@ function NewsletterCardDesktop({
     e.preventDefault();
     e.stopPropagation();
     setShowMenu(!showMenu);
+  };
+
+  const handleFavorite = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (onToggleFavorite) onToggleFavorite(emailId, !isFavorite);
+    setShowMenu(false);
   };
 
   const handleReadLater = (e: React.MouseEvent) => {
@@ -428,6 +451,13 @@ function NewsletterCardDesktop({
 
               {showMenu && (
                 <div className="absolute right-0 top-full mt-1 w-44 bg-white border rounded-xl shadow-xl z-50 p-1.5 animate-in fade-in zoom-in duration-200">
+                  <div
+                    role="button"
+                    onClick={handleFavorite}
+                    className="w-full text-left px-3 py-2 hover:bg-yellow-50 rounded-lg text-sm font-medium flex items-center justify-between cursor-pointer"
+                  >
+                    {isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
+                  </div>
                   <div
                     role="button"
                     onClick={handleReadLater}

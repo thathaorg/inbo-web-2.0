@@ -32,6 +32,7 @@ export default function CategoryPage({ params }: PageProps) {
   const publishers: Record<string, Publication[]> = {
     technology: [
       {
+        id: "benedicts",
         logo: "/logos/forbes-sample.png",
         name: "Benedict's",
         description:
@@ -41,6 +42,7 @@ export default function CategoryPage({ params }: PageProps) {
         desc: "Top technology publication",
       },
       {
+        id: "mit-download",
         logo: "/logos/forbes-sample.png",
         name: "the download (mit technology review)",
         description:
@@ -50,6 +52,7 @@ export default function CategoryPage({ params }: PageProps) {
         desc: "MIT Technology Review newsletter",
       },
       {
+        id: "techcrunch",
         logo: "/logos/forbes-sample.png",
         name: "TechCrunch",
         description:
@@ -59,6 +62,7 @@ export default function CategoryPage({ params }: PageProps) {
         desc: "Startup and tech news",
       },
       {
+        id: "box-of-amazing",
         logo: "/logos/forbes-sample.png",
         name: "Box of amazing",
         description:

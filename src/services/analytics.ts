@@ -6,9 +6,32 @@ export interface ReadingInsights {
     highlights_made: number;
 }
 
+export interface StreakCount {
+    streak_count: number;
+    longest_streak: number;
+}
+
+export interface Achievement {
+    id: string;
+    title: string;
+    date?: string;
+    status: 'earned' | 'locked';
+    gradient?: string;
+}
+
 const analyticsService = {
     getReadingInsights: async (): Promise<ReadingInsights> => {
         const response = await apiClient.get('/api/user/analytics/reading-insights/');
+        return response.data;
+    },
+
+    getStreakCount: async (): Promise<StreakCount> => {
+        const response = await apiClient.get('/api/user/streak-count/');
+        return response.data;
+    },
+
+    getAchievements: async (): Promise<Achievement[]> => {
+        const response = await apiClient.get('/api/user/analytics/achievements/');
         return response.data;
     },
 

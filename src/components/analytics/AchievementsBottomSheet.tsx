@@ -1,37 +1,30 @@
+"use client";
+
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import analyticsService, { Achievement } from "@/services/analytics";
 
 /* ======================
-   Types (API-ready)
+   Types
 ====================== */
-
-type Achievement = {
-  id: string;
-  title: string;
-  date: string;
-  variant: "green" | "blue";
-};
 
 type Props = {
   open: boolean;
   onClose: () => void;
-  achievements?: Achievement[];
 };
 
-/* ======================
-   Dummy Data
-====================== */
+// Gradient mapping based on achievement ID
+const VARIANT_MAP: Record<string, "green" | "blue" | "orange"> = {
+  "first_reader": "green",
+  "rising_star": "blue",
+  "streak_master": "orange",
+  "bookworm": "green",
+};
 
-const DEFAULT_ACHIEVEMENTS: Achievement[] = Array.from(
-  { length: 8 },
-  (_, i) => ({
-    id: String(i),
-    title: "First Reader",
-    date: "19 Oct 2025",
-    variant: i % 2 === 0 ? "green" : "blue",
-  })
-);
+function getVariant(id: string): "green" | "blue" | "orange" {
+  return VARIANT_MAP[id] || "blue";
+}
 
 /* ======================
    Component
@@ -40,8 +33,28 @@ const DEFAULT_ACHIEVEMENTS: Achievement[] = Array.from(
 export default function AchievementsBottomSheet({
   open,
   onClose,
-  achievements = DEFAULT_ACHIEVEMENTS,
 }: Props) {
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!open) return;
+    
+    const fetchAchievements = async () => {
+      try {
+        const data = await analyticsService.getAchievements();
+        // Filter to only show earned achievements in the bottom sheet
+        setAchievements(data.filter(a => a.status === "earned"));
+      } catch (error) {
+        console.error("Failed to fetch achievements:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAchievements();
+  }, [open]);
+
   if (!open) return null;
 
   // Prevent background scroll
@@ -111,49 +124,71 @@ export default function AchievementsBottomSheet({
               </h2>
             </div>
 
-            {/* Achievements Grid */}
-            <div className="grid grid-cols-2 gap-4">
-              {achievements.map((a) => (
-                <div
-                  key={a.id}
-                  className="
-                    rounded-[20px]
-                    bg-[#F7F7F8]
-                    p-4
-                    text-center
-                    shadow-[0_4px_24px_rgba(197,197,197,0.25)]
-                  "
-                >
-                  {/* Badge */}
-                  <div className="mb-3 flex justify-center">
-                    <div
-                      className={`
-                        flex h-14 w-14 items-center justify-center
-                        rounded-full
-                        ${
-                          a.variant === "green"
-                            ? "bg-gradient-to-tr from-[#6EE7B7] to-[#34D399]"
-                            : "bg-gradient-to-tr from-[#60A5FA] to-[#2563EB]"
-                        }
-                      `}
-                    >
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white">
-                        {/* Placeholder icon */}
-                        <div className="h-4 w-4 rounded-full bg-gray-400" />
-                      </div>
-                    </div>
-                  </div>
+            {/* Loading State */}
+            {loading && (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+              </div>
+            )}
 
-                  {/* Text */}
-                  <p className="text-[16px] font-medium text-[#0C1014]">
-                    {a.title}
-                  </p>
-                  <p className="mt-1 text-[13px] text-[#6F7680]">
-                    {a.date}
-                  </p>
-                </div>
-              ))}
-            </div>
+            {/* Empty State */}
+            {!loading && achievements.length === 0 && (
+              <div className="text-center py-8">
+                <p className="text-gray-500">No achievements earned yet.</p>
+                <p className="text-sm text-gray-400 mt-2">Keep reading to unlock achievements!</p>
+              </div>
+            )}
+
+            {/* Achievements Grid */}
+            {!loading && achievements.length > 0 && (
+              <div className="grid grid-cols-2 gap-4">
+                {achievements.map((a) => {
+                  const variant = getVariant(a.id);
+                  return (
+                    <div
+                      key={a.id}
+                      className="
+                        rounded-[20px]
+                        bg-[#F7F7F8]
+                        p-4
+                        text-center
+                        shadow-[0_4px_24px_rgba(197,197,197,0.25)]
+                      "
+                    >
+                      {/* Badge */}
+                      <div className="mb-3 flex justify-center">
+                        <div
+                          className={`
+                            flex h-14 w-14 items-center justify-center
+                            rounded-full
+                            ${
+                              variant === "green"
+                                ? "bg-gradient-to-tr from-[#6EE7B7] to-[#34D399]"
+                                : variant === "orange"
+                                ? "bg-gradient-to-tr from-[#FDBA74] to-[#EA580C]"
+                                : "bg-gradient-to-tr from-[#60A5FA] to-[#2563EB]"
+                            }
+                          `}
+                        >
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white">
+                            {/* Placeholder icon */}
+                            <div className="h-4 w-4 rounded-full bg-gray-400" />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Text */}
+                      <p className="text-[16px] font-medium text-[#0C1014]">
+                        {a.title}
+                      </p>
+                      <p className="mt-1 text-[13px] text-[#6F7680]">
+                        {a.date || "Earned"}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       </div>

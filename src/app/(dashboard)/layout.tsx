@@ -24,14 +24,30 @@ export default function DashboardLayout({ children }: Props) {
   const isMobile = useMedia({ maxWidth: 768 });
 
   // Check authentication on mount
+  // Uses retry logic to handle race condition when redirecting from OTP verification
   useEffect(() => {
-    const accessToken = Cookies.get("access_token");
-    if (!accessToken) {
-      // No token found, redirect to login
-      router.replace("/auth/login");
-    } else {
-      setIsAuthChecking(false);
-    }
+    const checkAuth = async () => {
+      let accessToken = Cookies.get("access_token");
+      
+      // If no token on first check, wait briefly and retry
+      // This handles race condition when arriving from OTP verification
+      if (!accessToken) {
+        console.log("🔄 Auth check: No token found, retrying in 200ms...");
+        await new Promise(resolve => setTimeout(resolve, 200));
+        accessToken = Cookies.get("access_token");
+      }
+      
+      if (!accessToken) {
+        // Still no token after retry, redirect to login
+        console.log("❌ Auth check: No token after retry, redirecting to login");
+        router.replace("/auth/login");
+      } else {
+        console.log("✅ Auth check: Token found, proceeding");
+        setIsAuthChecking(false);
+      }
+    };
+    
+    checkAuth();
   }, [router]);
 
   // Show loading while checking auth

@@ -3,10 +3,12 @@
 import { Search } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
+import { useTranslation } from "react-i18next";
 
 export default function SearchBar() {
   const router = useRouter();
   const pathname = usePathname();
+  const { t } = useTranslation("common");
 
   const [query, setQuery] = useState("");
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
@@ -64,7 +66,7 @@ export default function SearchBar() {
       >
         <input
           type="text"
-          placeholder="Search newsletter..."
+          placeholder={t("common.searchPlaceholder")}
           value={query}
           onChange={(e) => handleChange(e.target.value)}
           className="flex-1 bg-transparent outline-none text-[13px] sm:text-[14px] text-black"

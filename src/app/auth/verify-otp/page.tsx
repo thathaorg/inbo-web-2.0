@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import AuthCarousel from "@/components/auth/AuthCarousel";
+import LanguageSelector from "@/components/LanguageSelector";
 import { SEOHead } from "@/components/seo/SEOHead";
 import { useTranslation } from "react-i18next";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
@@ -22,7 +23,7 @@ export default function VerifyOTPPage() {
 }
 
 function VerifyOTPContent() {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation("auth");
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isAuthenticated, verifyOTP, sendOTP } = useAuth();
@@ -36,6 +37,9 @@ function VerifyOTPContent() {
   const [isResending, setIsResending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resendCountdown, setResendCountdown] = useState(0);
+  
+  // Ref to track if verification has already succeeded to prevent duplicate attempts
+  const verificationAttemptedRef = useRef(false);
 
   const inputRefs = [
     useRef<HTMLInputElement>(null),
@@ -82,9 +86,39 @@ function VerifyOTPContent() {
 
   useEffect(() => {
     const otpString = otp.join("");
-    if (otpString.length === 4 && !isLoading) {
-      handleVerifyOTP();
+    
+    // Only auto-verify if:
+    // 1. OTP is complete (4 digits)
+    // 2. Not already loading
+    // 3. Email is present
+    // 4. No error (to allow retry after clearing error)
+    // 5. Haven't already attempted verification for this OTP
+    if (otpString.length === 4 && !isLoading && email && !error && !verificationAttemptedRef.current) {
+      // Mark that we're attempting verification to prevent duplicate calls
+      verificationAttemptedRef.current = true;
+      
+      // Small delay to ensure state is stable
+      const timer = setTimeout(() => {
+        handleVerifyOTP();
+      }, 100);
+      
+      return () => {
+        clearTimeout(timer);
+      };
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [otp, isLoading, email, error]); // Don't include handleVerifyOTP to prevent loops
+
+  /* ================= RESET VERIFICATION FLAG ON OTP CHANGE ================= */
+  
+  // Reset the verification flag when user modifies OTP (allows retry)
+  useEffect(() => {
+    // Only clear the flag if OTP becomes incomplete (user is editing)
+    const otpString = otp.join("");
+    if (otpString.length < 4) {
+      verificationAttemptedRef.current = false;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [otp]);
 
   /* ================= HANDLE OTP INPUT CHANGE ================= */
@@ -141,11 +175,39 @@ function VerifyOTPContent() {
       return;
     }
 
+    // Prevent multiple simultaneous verification attempts (only check isLoading)
+    if (isLoading) {
+      console.log("⏳ Verification already in progress, skipping...");
+      return;
+    }
+
+    // Check email is present
+    if (!email) {
+      setError("Email is missing. Please go back and enter your email.");
+      return;
+    }
+
     setError(null);
     setIsLoading(true);
 
     try {
+      console.log("🔐 Verifying OTP for:", email, "OTP:", otpString);
       const response = await verifyOTP(email, otpString);
+      
+      // Wait for auth state to fully propagate before redirecting
+      // This prevents race condition where dashboard checks auth before state is ready
+      await new Promise(resolve => setTimeout(resolve, 150));
+      
+      // Verify the token was actually saved before redirecting
+      const Cookies = (await import('js-cookie')).default;
+      const tokenSaved = !!Cookies.get('access_token');
+      console.log("🔄 Pre-redirect check - Token saved:", tokenSaved);
+      
+      if (!tokenSaved) {
+        console.warn("⚠️ Token not found after verification, retrying...");
+        // Wait a bit more and check again
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
       
       // Check if user is new or needs onboarding
       if (response.isNewUser || !response.user.isInboxCreated) {
@@ -154,12 +216,15 @@ function VerifyOTPContent() {
         router.push("/inbox");
       }
     } catch (err: any) {
+      console.error("❌ OTP verification failed:", err);
       const errorMessage =
         err?.response?.data?.message ||
         err?.message ||
         "Invalid or expired OTP. Please try again.";
       setError(errorMessage);
-      // Clear OTP on error
+      // Reset flag to allow retry on error
+      verificationAttemptedRef.current = false;
+      // Clear OTP on error to allow retry
       setOtp(["", "", "", ""]);
       inputRefs[0]?.current?.focus();
     } finally {
@@ -178,6 +243,8 @@ function VerifyOTPContent() {
     try {
       await sendOTP(email);
       setResendCountdown(60); // 60 seconds countdown
+      // Reset verification flag for new OTP
+      verificationAttemptedRef.current = false;
       setOtp(["", "", "", ""]);
       inputRefs[0]?.current?.focus();
     } catch (err: any) {
@@ -219,10 +286,10 @@ function VerifyOTPContent() {
             {/* Heading */}
             <div className="text-center mb-8">
               <h1 className="text-[32px] font-bold text-[#0C1014]">
-                Enter verification code
+                {t("otp.title")}
               </h1>
               <p className="text-[#6F7680] text-[16px] max-w-[300px] mx-auto mt-2">
-                We've sent a 4-digit code to{" "}
+                {t("otp.subtitle")}{" "}
                 <span className="font-medium text-[#0C1014]">{email}</span>
               </p>
             </div>
@@ -260,7 +327,7 @@ function VerifyOTPContent() {
                 hover:bg-[#b25949] transition disabled:opacity-50 disabled:cursor-not-allowed
               "
             >
-              {isLoading ? "Verifying..." : "Verify"}
+              {isLoading ? t("otp.verifying") : t("otp.verify")}
             </button>
 
             {/* Error */}
@@ -273,10 +340,10 @@ function VerifyOTPContent() {
             {/* Resend OTP */}
             <div className="text-center mt-6">
               <p className="text-[#6F7680]">
-                Didn't receive the code?{" "}
+                {t("otp.didntReceive")}{" "}
                 {resendCountdown > 0 ? (
                   <span className="text-[#A2AAB4]">
-                    Resend in {resendCountdown}s
+                    {t("otp.resendIn", { seconds: resendCountdown })}
                   </span>
                 ) : (
                   <button
@@ -284,7 +351,7 @@ function VerifyOTPContent() {
                     disabled={isResending}
                     className="text-[#C46A54] underline font-medium hover:text-[#b25949] disabled:opacity-50"
                   >
-                    {isResending ? "Sending..." : "Resend"}
+                    {isResending ? t("login.sending") : t("otp.resendCode")}
                   </button>
                 )}
               </p>
@@ -296,41 +363,15 @@ function VerifyOTPContent() {
                 onClick={() => router.push("/auth/login")}
                 className="text-[#6F7680] hover:text-[#0C1014] transition"
               >
-                ← Back to login
+                ← {t("register.alreadyHaveAccount")} {t("register.signIn")}
               </button>
             </div>
 
             {/* Footer */}
             <div className="text-center mt-10 space-y-5">
-              {/* Language */}
-              <div className="flex justify-center items-center gap-2 pt-2">
-                <span className="text-[#6F7680]">Language</span>
-
-                <div className="relative">
-                  <select
-                    value={i18n.language}
-                    onChange={(e) => i18n.changeLanguage(e.target.value)}
-                    className="bg-transparent cursor-pointer pr-6"
-                  >
-                    <option value="en">English (US)</option>
-                    <option value="fr">Français</option>
-                    <option value="es">Español</option>
-                  </select>
-
-                  <svg
-                    className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                </div>
+              {/* Language Selector */}
+              <div className="flex justify-center pt-2">
+                <LanguageSelector variant="default" labelPosition="inline" />
               </div>
             </div>
           </div>

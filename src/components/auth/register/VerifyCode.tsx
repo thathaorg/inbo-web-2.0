@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 /* ---------------- MEDIA QUERY ---------------- */
 function useMediaQuery(query: string) {
@@ -33,6 +34,7 @@ export default function VerifyCodePage({
   devMode = false,
 }: VerifyCodePageProps) {
   const isMobile = useMediaQuery("(max-width: 640px)");
+  const { t } = useTranslation("auth");
 
   const [code, setCode] = useState<string[]>(["", "", "", ""]);
   const [timer, setTimer] = useState(60);
@@ -157,11 +159,11 @@ export default function VerifyCodePage({
     return (
       <div className="px-4 text-center">
         <h1 className="text-[26px] font-semibold text-[#0C1014]">
-          Enter the verification code
+          {t("otp.title")}
         </h1>
 
         <p className="mt-3 text-[15px] text-[#6F7680] leading-[22px]">
-          We sent you a 4-digit code to
+          {t("otp.subtitle")}
           <br />
           <span className="font-medium text-[#0C1014]">{email}</span>
         </p>
@@ -236,11 +238,11 @@ export default function VerifyCodePage({
   return (
     <div className="w-full flex flex-col items-center text-center">
       <h1 className="text-[28px] sm:text-[32px] font-semibold text-[#0C1014]">
-        Enter the verification code
+        {t("otp.title")}
       </h1>
 
       <p className="mt-3 text-[16px] leading-[22px] text-[#6F7680]">
-        We sent you a 4-digit code to
+        {t("otp.subtitle")}
         <br />
         <span className="font-medium text-[#0C1014]">{email}</span>
       </p>

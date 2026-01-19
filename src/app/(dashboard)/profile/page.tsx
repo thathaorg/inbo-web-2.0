@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { ChevronRight } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import userService, { type UserProfileResponse } from "@/services/user";
@@ -131,6 +132,7 @@ function QRBadge({ label }: { label: string }) {
    MAIN COMPONENT
 ---------------------------------------- */
 export default function ProfileSection() {
+  const { t } = useTranslation("common");
   const isMobile = useMediaQuery("(max-width: 768px)");
   const router = useRouter();
   const { logout } = useAuth();

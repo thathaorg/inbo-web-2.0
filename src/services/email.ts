@@ -453,9 +453,9 @@ class EmailService {
 
   async markEmailAsRead(emailId: string): Promise<void> {
     try {
-      // Mark as read
+      // Mark as read - API expects camelCase "isRead"
       await apiClient.patch(EMAIL_ENDPOINTS.MARK_READ.replace('{id}', emailId), {
-        is_read: true
+        isRead: true
       });
       // Invalidate inbox cache so next refresh shows updated read status
       cacheManager.invalidatePrefix(CACHE_KEYS.INBOX);
@@ -471,12 +471,19 @@ class EmailService {
    */
   async toggleReadStatus(emailId: string, isRead: boolean): Promise<void> {
     try {
+      // API expects camelCase "isRead"
       await apiClient.patch(EMAIL_ENDPOINTS.MARK_READ.replace('{id}', emailId), {
-        is_read: isRead
+        isRead: isRead
       });
+      // Invalidate inbox cache so next refresh shows updated read status
+      cacheManager.invalidatePrefix(CACHE_KEYS.INBOX);
     } catch (error: any) {
       // Backend known issue: often returns 500 even if successful
-      console.warn('Backend reported error toggling read status (ignoring):', error.message);
+      // Extract safe error message
+      const errorMsg = error?.response?.data?.message 
+        || error?.message 
+        || 'Unknown error';
+      console.warn('Backend reported error toggling read status (ignoring):', errorMsg);
     }
   }
 
@@ -534,6 +541,49 @@ class EmailService {
   }
 
   /**
+   * Restore an email from trash back to inbox
+   */
+  async restoreFromTrash(emailId: string): Promise<void> {
+    console.debug(`♻️ Restoring email from trash: ${emailId}`);
+    await apiClient.patch(`/api/email/${emailId}/restore/`);
+    // Invalidate all caches since email moved
+    cacheManager.invalidate(CACHE_KEYS.EMAIL_DETAIL(emailId));
+    cacheManager.invalidatePrefix(CACHE_KEYS.INBOX);
+    cacheManager.invalidatePrefix(CACHE_KEYS.TRASH);
+  }
+
+  /**
+   * Move email to a specific folder
+   */
+  async moveToFolder(emailId: string, folderName: string): Promise<void> {
+    console.debug(`📁 Moving email ${emailId} to folder: ${folderName}`);
+    await apiClient.patch(`/api/email/${emailId}/move/${folderName}/`);
+    cacheManager.invalidate(CACHE_KEYS.EMAIL_DETAIL(emailId));
+    cacheManager.invalidatePrefix(CACHE_KEYS.INBOX);
+  }
+
+  /**
+   * Toggle public sharing for an email
+   */
+  async toggleShare(emailId: string, isShared: boolean): Promise<{ shareUrl?: string }> {
+    console.debug(`🔗 Toggling share for email ${emailId}: ${isShared}`);
+    const response = await apiClient.patch(`/api/email/${emailId}/toggle-share/`, {
+      isShared
+    });
+    cacheManager.invalidate(CACHE_KEYS.EMAIL_DETAIL(emailId));
+    return response.data;
+  }
+
+  /**
+   * Generate AI summary for an email (streaming)
+   */
+  async generateSummary(emailId: string): Promise<string> {
+    console.debug(`🤖 Generating AI summary for email: ${emailId}`);
+    const response = await apiClient.post(`/api/email/${emailId}/summary/`);
+    return response.data?.summary || '';
+  }
+
+  /**
    * Get email details by ID
    * Uses caching with longer TTL since email content rarely changes
    */
@@ -569,6 +619,49 @@ class EmailService {
     // Invalidate the email detail cache since highlights changed
     cacheManager.invalidate(CACHE_KEYS.EMAIL_DETAIL(emailId));
     return response.data;
+  }
+
+  /**
+   * Delete a highlight from an email
+   */
+  async deleteHighlight(emailId: string, highlightId: string): Promise<void> {
+    console.debug(`🗑️ Deleting highlight ${highlightId} from email: ${emailId}`);
+    await apiClient.delete(`/api/email/${emailId}/highlight/${highlightId}/`);
+    cacheManager.invalidate(CACHE_KEYS.EMAIL_DETAIL(emailId));
+  }
+
+  /**
+   * Add or update a note on a highlight
+   */
+  async updateHighlightNote(emailId: string, highlightId: string, note: string): Promise<any> {
+    console.debug(`📝 Updating note for highlight ${highlightId}: ${note.substring(0, 20)}...`);
+    const response = await apiClient.patch(`/api/email/${emailId}/highlight/${highlightId}/note/`, {
+      note
+    });
+    cacheManager.invalidate(CACHE_KEYS.EMAIL_DETAIL(emailId));
+    return response.data;
+  }
+
+  /**
+   * Get all highlights for current user (across all emails)
+   */
+  async getAllHighlights(): Promise<any[]> {
+    const cacheKey = 'all_highlights';
+    
+    return cacheManager.fetchWithCache(
+      cacheKey,
+      async () => {
+        const response = await apiClient.get('/api/user/all-highlights/');
+        // API returns { data: [...] } structure
+        const responseData = response.data?.data ?? response.data?.highlights ?? response.data ?? [];
+        return Array.isArray(responseData) ? responseData : [];
+      },
+      {
+        ttl: CACHE_TTL.MEDIUM,
+        persist: false,
+        staleWhileRevalidate: true,
+      }
+    );
   }
 
   /**

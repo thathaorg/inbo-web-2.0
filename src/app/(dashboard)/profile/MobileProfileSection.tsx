@@ -5,6 +5,7 @@ import { ArrowLeft, ChevronRight, Pencil, BarChart3 } from "lucide-react";
 import { getInitials } from "./page";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { UserProfileResponse } from "@/services/user";
 import { useAuth } from "@/contexts/AuthContext";
 import EditProfileModal from "@/components/profile/EditProfileModal";
@@ -100,6 +101,7 @@ export default function MobileProfileSection({
 }) {
   const router = useRouter();
   const { logout } = useAuth();
+  const { t } = useTranslation("common");
   const [notifications, setNotifications] = useState(true);
   const [haptics, setHaptics] = useState(true);
 
@@ -150,7 +152,7 @@ export default function MobileProfileSection({
           className="mr-3"
         />
         <p className="text-[20px] font-semibold flex-1 text-center mr-6">
-          Profile
+          {t("mobile.profile")}
         </p>
         <BarChart3
           size={22}
@@ -172,7 +174,7 @@ export default function MobileProfileSection({
           <div>
             <p className="text-[18px] font-semibold">{user.name}</p>
             <p className="text-[14px] text-[#6F7680]">
-                {user.joined ? `Joined ${user.joined}` : ""}
+                {user.joined ? `${t("mobile.joined")} ${user.joined}` : ""}
             </p>
           </div>
         </div>
@@ -199,8 +201,8 @@ export default function MobileProfileSection({
             height={26}
             alt=""
           />
-          <p className="text-[14px] mt-2 font-medium">Highlights</p>
-          <p className="text-[12px] text-[#6F7680] mt-1">22 Reads</p>
+          <p className="text-[14px] mt-2 font-medium">{t("mobile.highlights")}</p>
+          <p className="text-[12px] text-[#6F7680] mt-1">22 {t("mobile.reads")}</p>
         </div>
 
         {/* READ LATER */}
@@ -214,14 +216,14 @@ export default function MobileProfileSection({
             height={26}
             alt=""
           />
-          <p className="text-[14px] mt-2 font-medium">Read later</p>
-          <p className="text-[12px] text-[#6F7680] mt-1">1 Reads</p>
+          <p className="text-[14px] mt-2 font-medium">{t("nav.readLater")}</p>
+          <p className="text-[12px] text-[#6F7680] mt-1">1 {t("mobile.reads")}</p>
         </div>
       </div>
 
       {/* INBO MAIL */}
       <div className="mx-4 mt-5 bg-white rounded-2xl p-4 shadow-sm border border-[#ECECEC]">
-        <p className="text-[16px] font-semibold mb-3">Your Inbo mail</p>
+        <p className="text-[16px] font-semibold mb-3">{t("mobile.yourInboMail")}</p>
 
         <div className="flex items-center justify-between">
           <div className="flex gap-3">
@@ -232,7 +234,7 @@ export default function MobileProfileSection({
               alt=""
             />
             <div>
-              <p className="text-[13px] text-[#6F7680]">Inbo Mailbox</p>
+              <p className="text-[13px] text-[#6F7680]">{t("mobile.inboMailbox")}</p>
               <p className="text-[15px] font-semibold">
                 {user.inboxEmail || "Not created"}
               </p>
@@ -243,7 +245,7 @@ export default function MobileProfileSection({
             onClick={copyToClipboard}
             className="rounded-full px-3 py-1.5 bg-white border border-[#D8DDE3] text-[13px]"
           >
-            Copy
+            {t("mobile.copy")}
           </button>
         </div>
 
@@ -255,13 +257,13 @@ export default function MobileProfileSection({
 
       {/* MANAGE SECTION */}
       <MobileList
-        title="Manage"
+        title={t("mobile.manage")}
         items={[
-          ["Offline Newsletters", "/offline"],
-          ["Manage Subscriptions", "/subscriptions"],
-          ["Favorites", "/favorite"],
-          ["Collection", "/collection"],
-          ["Trash", "/delete"],
+          [t("mobile.offlineNewsletters"), "/offline"],
+          [t("mobile.manageSubscriptions"), "/subscriptions"],
+          [t("nav.favorites"), "/favorite"],
+          [t("mobile.collection"), "/collection"],
+          [t("mobile.trash"), "/delete"],
         ]}
         router={router}
         setActivePage={setActivePage}
@@ -270,28 +272,28 @@ export default function MobileProfileSection({
       {/* GENERAL SETTINGS */}
       <div className="mx-4 mt-6">
         <p className="text-[16px] font-semibold mb-3">
-          General Settings
+          {t("mobile.generalSettings")}
         </p>
 
         <MobileRow
-          label="Account Settings"
+          label={t("mobile.accountSettings")}
           onPress={() => setActivePage("account")}
         />
 
         {/* ⭐ UPDATED: Appearance opens theme bottom sheet */}
         <MobileRow
-          label="Appearance"
+          label={t("mobile.appearance")}
           value={themeMode}
           onPress={() => setThemeSheetOpen(true)}
         />
 
         <MobileRow
-          label="Customize Swipes"
+          label={t("mobile.customizeSwipes")}
           onPress={() => setActivePage("swipes")}
         />
 
         <MobileRow
-          label="Notification"
+          label={t("mobile.notification")}
           toggle={
             <MobileToggle
               isOn={notifications}
@@ -301,7 +303,7 @@ export default function MobileProfileSection({
         />
 
         <MobileRow
-          label="Haptic Feedback"
+          label={t("mobile.hapticFeedback")}
           toggle={
             <MobileToggle
               isOn={haptics}
@@ -313,12 +315,12 @@ export default function MobileProfileSection({
 
       {/* HELP & ABOUT */}
       <MobileList
-        title="Help & About"
+        title={t("mobile.helpAndAbout")}
         items={[
-          ["Help & FAQ", "help"],
-          ["Share feedback", "feedback"],
-          ["Report a Bug", "bug"],
-          ["About Us", "about"],
+          [t("mobile.helpAndFaq"), "help"],
+          [t("mobile.shareFeedback"), "feedback"],
+          [t("mobile.reportBug"), "bug"],
+          [t("mobile.aboutUs"), "about"],
         ]}
         router={router}
         setActivePage={setActivePage}
@@ -329,7 +331,7 @@ export default function MobileProfileSection({
         onClick={handleLogout}
         className="mx-4 mt-4 bg-white rounded-xl border shadow-sm p-4 flex justify-between items-center cursor-pointer hover:bg-red-50"
       >
-        <p className="text-[15px] text-red-500 font-medium">Log Out</p>
+        <p className="text-[15px] text-red-500 font-medium">{t("auth.logout")}</p>
         <ChevronRight size={20} className="text-red-500" />
       </div>
 

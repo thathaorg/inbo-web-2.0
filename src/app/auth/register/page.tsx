@@ -9,6 +9,7 @@ import AuthCarousel from "@/components/auth/AuthCarousel";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useAuth } from "@/contexts/AuthContext";
 import { userService } from "@/services/user";
+import LanguageSelector from "@/components/LanguageSelector";
 
 // Mobile section
 import MobileSignupSection from "@/app/auth/register/MobileSignupSection";
@@ -35,7 +36,7 @@ export type Step =
 
 export default function SignupPage() {
   const router = useRouter();
-  const { i18n } = useTranslation();
+  const { t } = useTranslation("auth");
   const { sendOTP, verifyOTP } = useAuth();
 
   const isMobile = useMediaQuery("(max-width: 768px)");
@@ -78,7 +79,7 @@ export default function SignupPage() {
       await sendOTP(formData.email);
       setStep("check-email");
     } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to send OTP. Please try again.");
+      setError(err.response?.data?.message || t("login.otpFailed"));
       console.error("Send OTP error:", err);
     } finally {
       setIsLoading(false);
@@ -103,7 +104,7 @@ export default function SignupPage() {
         router.push("/inbox");
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || "Invalid OTP. Please try again.");
+      setError(err.response?.data?.message || t("otp.invalidCode"));
       console.error("Verify OTP error:", err);
       throw err; // Re-throw to show error in VerifyCode component
     } finally {
@@ -197,7 +198,7 @@ export default function SignupPage() {
 
     return (
       <>
-        <SEOHead title="Sign up" description="Create an account" />
+        <SEOHead title={t("register.title")} description="Create an account" />
 
         <MobileSignupSection
           step={step}
@@ -229,7 +230,7 @@ export default function SignupPage() {
 
   return (
     <>
-      <SEOHead title="Sign up" description="Create an account" />
+      <SEOHead title={t("register.title")} description="Create an account" />
 
       <div className="flex h-screen overflow-hidden bg-white">
         {showCarousel && (
@@ -345,16 +346,7 @@ export default function SignupPage() {
             </div>
 
             <div className="mt-6 text-center flex-shrink-0">
-              <span className="text-[#6F7680] mr-2 text-lg">Language</span>
-              <select
-                value={i18n.language}
-                onChange={(e) => i18n.changeLanguage(e.target.value)}
-                className="text-[#0C1014] font-semibold text-md bg-transparent border-none outline-none cursor-pointer"
-              >
-                <option value="en">English (US)</option>
-                <option value="fr">Français</option>
-                <option value="es">Español</option>
-              </select>
+              <LanguageSelector variant="default" labelPosition="inline" />
             </div>
           </div>
         </div>

@@ -1,14 +1,28 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import MobileFloatingNavbar from "@/components/reading/MobileFloatingNavbar";
 import MobileReadingMenu from "@/components/reading/MobileReadingMenu";
 import MobileReadingHeader from "@/components/reading/MobileReadingHeader";
 import ReadModeSettings from "@/components/reading/ReadModeSettings";
+import emailService from "@/services/email";
 
 type ThemeMode = "light" | "dark" | "system";
 type PageColor = "white" | "paper" | "calm";
 type FontFamily = "sans" | "serif" | "mono";
+type FontType =
+  | "System Default"
+  | "Georgia"
+  | "Merriweather"
+  | "Lora"
+  | "Charter"
+  | "Palatino"
+  | "Times New Roman"
+  | "Helvetica"
+  | "Inter"
+  | "SF Pro"
+  | "Roboto";
 
 interface MobileReadingSectionProps {
   id: string;
@@ -30,6 +44,8 @@ interface MobileReadingSectionProps {
   setPageColor: (v: PageColor) => void;
   fontFamily: FontFamily;
   setFontFamily: (v: FontFamily) => void;
+  fontType: FontType;
+  setFontType: (v: FontType) => void;
 }
 
 export default function MobileReadingSection({
@@ -52,8 +68,11 @@ export default function MobileReadingSection({
   setPageColor,
   fontFamily,
   setFontFamily,
+  fontType,
+  setFontType,
 }: MobileReadingSectionProps) {
   const contentRef = useRef<HTMLDivElement>(null);
+  const { t } = useTranslation("common");
 
   const [atTop, setAtTop] = useState(true);
   const [showMenu, setShowMenu] = useState(false);
@@ -64,6 +83,43 @@ export default function MobileReadingSection({
   const [isFavorite, setIsFavorite] = useState(initialFavorite);
   const [isRead, setIsRead] = useState(initialRead);
 
+  // Ref to track if we've already triggered auto-mark-as-read to avoid duplicate calls
+  const hasAutoMarkedAsReadRef = useRef(false);
+
+  // Update ref when initial read status is already true
+  useEffect(() => {
+    if (isRead) {
+      hasAutoMarkedAsReadRef.current = true;
+    }
+  }, [isRead]);
+
+  // Handler for auto-marking as read when scrolling to bottom
+  const handleAutoMarkAsRead = useCallback(async () => {
+    if (hasAutoMarkedAsReadRef.current) return;
+    hasAutoMarkedAsReadRef.current = true;
+    
+    console.log('📖 Mobile: User reached bottom of article - marking as read');
+    
+    try {
+      await emailService.toggleReadStatus(id, true);
+      setIsRead(true);
+      
+      // Broadcast event so inbox updates
+      if (typeof window !== 'undefined') {
+        const event = new CustomEvent('emailStatusChanged', {
+          detail: {
+            emailId: id,
+            isRead: true,
+            timestamp: new Date().toISOString()
+          }
+        });
+        window.dispatchEvent(event);
+      }
+    } catch (err) {
+      console.error("Failed to auto-mark as read", err);
+    }
+  }, [id]);
+
   /* ---------------- SCROLL HANDLER ---------------- */
   useEffect(() => {
     const el = contentRef.current;
@@ -71,20 +127,36 @@ export default function MobileReadingSection({
 
     const handleScroll = () => {
       setAtTop(el.scrollTop < 8);
+      
+      // Check if scrolled to bottom
+      const atBottomVal = el.scrollTop + el.clientHeight >= el.scrollHeight - 5;
+      if (atBottomVal && !hasAutoMarkedAsReadRef.current) {
+        handleAutoMarkAsRead();
+      }
     };
 
     handleScroll();
     el.addEventListener("scroll", handleScroll);
     return () => el.removeEventListener("scroll", handleScroll);
-  }, []);
+  }, [handleAutoMarkAsRead]);
 
   // Background classes based on theme and page color
   const getBackgroundClass = () => {
     if (themeMode === 'dark') return 'bg-[#1C1C1E] text-white';
     switch (pageColor) {
-      case 'paper': return 'bg-[#F5F5F3] text-black';
-      case 'calm': return 'bg-[#E8F1F5] text-black';
-      default: return 'bg-[#F5F5F5] text-black';
+      case 'paper': return 'bg-[#F7F3E9] text-[#3A3A3A]';
+      case 'calm': return 'bg-[#E8F4F8] text-[#2A2A2A]';
+      default: return 'bg-white text-gray-900';
+    }
+  };
+
+  // Article card background
+  const getArticleCardBg = () => {
+    if (themeMode === 'dark') return 'bg-[#2C2C2E]';
+    switch (pageColor) {
+      case 'paper': return 'bg-[#FFFCF5]';
+      case 'calm': return 'bg-[#F5FBFD]';
+      default: return 'bg-white';
     }
   };
 
@@ -93,6 +165,35 @@ export default function MobileReadingSection({
       case 'serif': return 'font-serif';
       case 'mono': return 'font-mono';
       default: return 'font-sans';
+    }
+  };
+
+  const getFontFamilyCSS = () => {
+    switch (fontType) {
+      case "System Default":
+        return '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+      case "Georgia":
+        return '"Georgia", serif';
+      case "Merriweather":
+        return '"Merriweather", "Georgia", serif';
+      case "Lora":
+        return '"Lora", "Georgia", serif';
+      case "Charter":
+        return '"Charter", "Georgia", serif';
+      case "Palatino":
+        return '"Palatino Linotype", "Book Antiqua", Palatino, serif';
+      case "Times New Roman":
+        return '"Times New Roman", Times, serif';
+      case "Helvetica":
+        return '"Helvetica Neue", Helvetica, Arial, sans-serif';
+      case "Inter":
+        return '"Inter", -apple-system, BlinkMacSystemFont, sans-serif';
+      case "SF Pro":
+        return '-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", sans-serif';
+      case "Roboto":
+        return '"Roboto", -apple-system, sans-serif';
+      default:
+        return '"Georgia", serif';
     }
   };
 
@@ -123,11 +224,16 @@ export default function MobileReadingSection({
         </div>
 
         {/* ARTICLE BODY */}
-        <div>
-          <div className={`rounded-2xl px-5 py-6 shadow-sm ${themeMode === 'dark' ? 'bg-[#2C2C2E]' : 'bg-white'}`}>
+        <div className="px-4 pb-10">
+          <div className={`rounded-2xl px-5 py-6 shadow-sm ${getArticleCardBg()}`}>
             <article 
-              className={`space-y-6 leading-relaxed ${getFontFamilyClass()} ${themeMode === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}
-              style={{ fontSize: `${fontSize}px` }}
+              className={`space-y-6 leading-relaxed ${getFontFamilyClass()}`}
+              style={{ 
+                fontSize: `${fontSize}px`, 
+                fontFamily: getFontFamilyCSS(),
+                lineHeight: 1.8,
+                color: themeMode === 'dark' ? '#E5E5E5' : pageColor === 'paper' ? '#3A3A3A' : pageColor === 'calm' ? '#2A2A2A' : '#1F1F1F'
+              }}
             >
               {content.map((p, i) => (
                 <p key={i}>{p}</p>
@@ -174,6 +280,8 @@ export default function MobileReadingSection({
           setPageColor={setPageColor}
           fontFamily={fontFamily}
           setFontFamily={setFontFamily}
+          fontType={fontType}
+          setFontType={setFontType}
         />
       )}
 

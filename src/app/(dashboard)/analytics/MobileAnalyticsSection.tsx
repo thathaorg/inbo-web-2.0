@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useTranslation } from "react-i18next";
 import { MoveLeft, Flame } from "lucide-react";
 
 import ReadingInsightsCard from "@/components/analytics/ReadingInsightsCard";
@@ -20,6 +21,7 @@ export default function MobileAnalyticsSection({
   onOpenAchievements,
 }: MobileAnalyticsSectionProps) {
   const router = useRouter();
+  const { t } = useTranslation("common");
 
   const hasStreak = streakCount > 0;
 
@@ -55,7 +57,7 @@ export default function MobileAnalyticsSection({
           </button>
 
           {/* Title */}
-          <h1 className="text-lg font-semibold">Insights</h1>
+          <h1 className="text-lg font-semibold">{t("mobile.insights")}</h1>
         </div>
 
         {/* Streak Info */}
@@ -64,7 +66,7 @@ export default function MobileAnalyticsSection({
             <h2 className="text-6xl font-bold leading-none">
               {streakCount}
             </h2>
-            <p className="text-lg mt-1 opacity-90">Streak Days</p>
+            <p className="text-lg mt-1 opacity-90">{t("mobile.streakDays")}</p>
           </div>
 
           {/* Flame Icon */}
@@ -88,9 +90,8 @@ export default function MobileAnalyticsSection({
           <div className="flex flex-col gap-3 flex-1">
             {/* Message */}
             <p className="text-[18px] leading-6 text-[#6F7680]">
-              Every habit begins with{" "}
-              <span className="text-orange-500 font-medium">Day 1</span>. Start
-              when it feels right.
+              {t("mobile.everyHabitBegins")}{" "}
+              <span className="text-orange-500 font-medium">{t("mobile.day1")}</span>. {t("mobile.startWhenReady")}
             </p>
 
             {/* Action */}
@@ -98,7 +99,7 @@ export default function MobileAnalyticsSection({
               onClick={() => router.push("/inbox")}
               className="text-[18px] leading-6 font-medium text-[#C46A54] text-left"
             >
-              Start Reading
+              {t("mobile.startReading")}
             </button>
           </div>
         </div>

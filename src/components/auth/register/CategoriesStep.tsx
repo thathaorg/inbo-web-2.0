@@ -21,6 +21,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { useTranslation } from "react-i18next";
 import { useEffect, useState } from "react";
 import { userService, type Category } from "@/services/user";
 
@@ -92,6 +93,7 @@ export default function CategoriesStep({
   onBack,
 }: CategoriesStepProps) {
   const isMobile = useMediaQuery("(max-width: 768px)");
+  const { t } = useTranslation("auth");
   const canContinue = categories.length >= 3;
   
   // State for fetched categories
@@ -130,7 +132,7 @@ export default function CategoriesStep({
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px]">
         <Loader2 className="animate-spin text-[#C46A54]" size={40} />
-        <p className="mt-4 text-[#6F7680]">Loading categories...</p>
+        <p className="mt-4 text-[#6F7680]">{t("onboarding.loadingCategories") || "Loading categories..."}</p>
       </div>
     );
   }
@@ -249,12 +251,11 @@ function MobileLayout({
 /* ---------------------------------- */
 
 function Title() {
+  const { t } = useTranslation("auth");
   return (
     <div className="text-center mb-5">
       <h1 className="text-[26px] font-bold text-[#0C1014] leading-[32px]">
-        Please select Topics you
-        <br />
-        are interested in
+        {t("onboarding.selectCategories")}
       </h1>
     </div>
   );
@@ -314,6 +315,7 @@ function CategoriesGrid({
 }
 
 function CTAButton({ canContinue, onContinue }: any) {
+  const { t } = useTranslation("auth");
   return (
     <button
       disabled={!canContinue}
@@ -325,7 +327,7 @@ function CTAButton({ canContinue, onContinue }: any) {
         ${canContinue ? "bg-[#C46A54]" : "bg-[#d8a89c] cursor-not-allowed"}
       `}
     >
-      Select at least 3 to Continue
+      {t("onboarding.minCategories", { count: 3 })}
     </button>
   );
 }

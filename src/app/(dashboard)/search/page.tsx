@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import NewsletterCard from "@/components/inbox/InboxCard";
 import FilterButton, { FilterValue } from "@/components/FilterButton";
 import EmptyState from "@/components/SearchNotFound";
@@ -58,6 +59,7 @@ const LOAD_MORE = 5;
 /* ----------------------------------------------------- */
 
 export default function SearchPage() {
+  const { t } = useTranslation("common");
   const [items, setItems] = useState<any[]>([]);
   const [visible, setVisible] = useState(INITIAL_VISIBLE);
   const [carouselItems, setCarouselItems] =
@@ -95,7 +97,7 @@ export default function SearchPage() {
       {/* HEADER */}
       <div className="w-full h-[78px] bg-white border border-[#E5E7E8] flex items-center justify-between px-5 shadow-sm">
         <h2 className="text-[26px] font-bold text-[#0C1014]">
-          Search
+          {t("search.title")}
         </h2>
 
         {/* ✅ WORKING FILTER BUTTON */}
@@ -155,12 +157,13 @@ export default function SearchPage() {
 /* ---------------- VIEW MORE BUTTON ---------------- */
 
 function CenterButton({ onClick }: { onClick: () => void }) {
+  const { t } = useTranslation("common");
   return (
     <button
       onClick={onClick}
       className="mx-auto mt-4 px-6 py-2 border border-gray-300 rounded-full text-black font-medium hover:bg-gray-50 transition"
     >
-      View more
+      {t("common.viewMore")}
     </button>
   );
 }

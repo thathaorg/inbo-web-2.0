@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 
 import NewsletterCard from "@/components/inbox/InboxCard";
 import FilterButton, {
@@ -52,6 +53,7 @@ const LOAD_MORE = 5;
 /* ----------------------------------------------------- */
 
 export default function FavouritePage() {
+  const { t } = useTranslation("common");
   const isMobile = useMediaQuery("(max-width: 768px)");
 
   const [items, setItems] = useState<any[]>([]);
@@ -83,6 +85,45 @@ export default function FavouritePage() {
     return !item.read;
   });
 
+  /* -------- ACTION HANDLERS -------- */
+  const onMoveToTrash = async (emailId: string) => {
+    try {
+      await emailService.moveToTrash(emailId);
+      // Remove from local list immediately
+      setItems(prev => prev.filter(e => e.emailId !== emailId));
+    } catch (err) {
+      console.error("Failed to move to trash", err);
+    }
+  };
+
+  const onToggleReadLater = async (emailId: string, isReadLater: boolean) => {
+    try {
+      await emailService.toggleReadLater(emailId, isReadLater);
+      // Update local state
+      setItems(prev => prev.map(e =>
+        e.emailId === emailId ? { ...e, isReadLater } : e
+      ));
+    } catch (err) {
+      console.error("Failed to toggle read later", err);
+    }
+  };
+
+  const onToggleFavorite = async (emailId: string, isFavorite: boolean) => {
+    try {
+      await emailService.toggleFavorite(emailId, isFavorite);
+      // If removing from favorites, remove from list; otherwise update
+      if (!isFavorite) {
+        setItems(prev => prev.filter(e => e.emailId !== emailId));
+      } else {
+        setItems(prev => prev.map(e =>
+          e.emailId === emailId ? { ...e, isFavorite } : e
+        ));
+      }
+    } catch (err) {
+      console.error("Failed to toggle favorite", err);
+    }
+  };
+
   /* -------- MOBILE -------- */
   if (isMobile) {
     return <MobileFavoriteSection />;
@@ -103,7 +144,7 @@ export default function FavouritePage() {
       {/* HEADER */}
       <div className="w-full h-[78px] bg-white border border-[#E5E7E8] flex items-center justify-between px-5 shadow-sm">
         <h2 className="text-[26px] font-bold text-[#0C1014]">
-          Favorite
+          {t("favorites.title")}
         </h2>
 
         {/* FILTER BUTTON */}
@@ -120,7 +161,12 @@ export default function FavouritePage() {
           <div className="w-full flex flex-col mt-2">
             {filteredItems.slice(0, visible).map((item) => (
               <div key={item.slug} className="mb-3">
-                <NewsletterCard {...item} onClick={() => { }} />
+                <NewsletterCard
+                  {...item}
+                  onMoveToTrash={onMoveToTrash}
+                  onToggleReadLater={onToggleReadLater}
+                  onToggleFavorite={onToggleFavorite}
+                />
               </div>
             ))}
 
@@ -129,7 +175,7 @@ export default function FavouritePage() {
                 onClick={loadMore}
                 className="mx-auto mt-4 px-6 py-2 border border-gray-300 rounded-full font-medium hover:bg-gray-200 transition"
               >
-                View more
+                {t("common.viewMore")}
               </button>
             )}
           </div>

@@ -25,14 +25,14 @@ export default function VerifyMagicLinkPage() {
       // No backend verify endpoint available; proceed to dashboard
       router.push("/dashboard");
     } else {
-      setError("Invalid magic link token");
+      setError(t("magicLink.linkFailed"));
       setIsLoading(false);
     }
-  }, [router]);
+  }, [router, t]);
 
   return (
     <>
-      <SEOHead title="Verify Magic Link" description="Verify your magic link" />
+      <SEOHead title={t("magicLink.title")} description={t("magicLink.subtitle")} />
 
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="max-w-md w-full space-y-8 text-center">
@@ -40,7 +40,7 @@ export default function VerifyMagicLinkPage() {
           {isLoading && (
             <div className="space-y-4">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="text-gray-600">Verifying your magic link...</p>
+              <p className="text-gray-600">{t("magicLink.checkEmail")}...</p>
             </div>
           )}
 

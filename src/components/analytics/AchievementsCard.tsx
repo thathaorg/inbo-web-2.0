@@ -1,53 +1,58 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import { ChevronRight } from "lucide-react";
+import analyticsService, { Achievement } from "@/services/analytics";
 
-type AchievementStatus = "earned" | "locked";
+// Default gradient mappings for achievements
+const GRADIENT_MAP: Record<string, string> = {
+  "first_reader": "from-emerald-400 to-teal-400",
+  "rising_star": "from-blue-500 to-indigo-500",
+  "streak_master": "from-orange-400 to-red-400",
+  "bookworm": "from-purple-400 to-pink-400",
+  "default": "from-gray-300 to-gray-400",
+};
 
-interface Achievement {
-  id: string;
-  title: string;
-  date?: string;
-  status: AchievementStatus;
-  gradient?: string;
+function getGradient(id: string, providedGradient?: string): string {
+  if (providedGradient) return providedGradient;
+  return GRADIENT_MAP[id] || GRADIENT_MAP.default;
 }
-
-const DUMMY_ACHIEVEMENTS: Achievement[] = [
-  {
-    id: "1",
-    title: "First Reader",
-    date: "19 Oct 2025",
-    status: "earned",
-    gradient: "from-emerald-400 to-teal-400",
-  },
-  {
-    id: "2",
-    title: "First Reader",
-    date: "19 Oct 2025",
-    status: "earned",
-    gradient: "from-blue-500 to-indigo-500",
-  },
-  {
-    id: "3",
-    title: "First Reader",
-    date: "19 Oct 2025",
-    status: "earned",
-    gradient: "from-gray-300 to-gray-400",
-  },
-  {
-    id: "4",
-    title: "Rising Star",
-    status: "locked",
-  },
-];
 
 export default function AchievementsCard({
   onOpen,
   className = "",
-  achievements = DUMMY_ACHIEVEMENTS,
 }: {
   onOpen: () => void;
   className?: string;
-  achievements?: Achievement[];
 }) {
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchAchievements = async () => {
+      try {
+        const data = await analyticsService.getAchievements();
+        setAchievements(data);
+      } catch (error) {
+        console.error("Failed to fetch achievements:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAchievements();
+  }, []);
+
+  // Show up to 4 achievements, filling with locked placeholders if needed
+  const displayAchievements = achievements.slice(0, 4);
+  while (displayAchievements.length < 4) {
+    displayAchievements.push({
+      id: `placeholder-${displayAchievements.length}`,
+      title: "Coming Soon",
+      status: "locked",
+    });
+  }
+
   return (
     <div
       onClick={onOpen}
@@ -73,8 +78,9 @@ export default function AchievementsCard({
 
       {/* Achievements */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
-        {achievements.map((achievement, index) => {
+        {displayAchievements.map((achievement, index) => {
           const isLocked = achievement.status === "locked";
+          const gradient = getGradient(achievement.id, achievement.gradient);
 
           return (
             <div
@@ -98,7 +104,7 @@ export default function AchievementsCard({
                   ${
                     isLocked
                       ? "bg-gray-200"
-                      : `bg-gradient-to-tr ${achievement.gradient}`
+                      : `bg-gradient-to-tr ${gradient}`
                   }
                 `}
               >
@@ -120,7 +126,7 @@ export default function AchievementsCard({
 
               {/* Meta */}
               <p className="text-[11px] sm:text-xs text-slate-500 text-center">
-                {isLocked ? "Reach level 10" : achievement.date}
+                {isLocked ? "Keep reading!" : achievement.date}
               </p>
             </div>
           );

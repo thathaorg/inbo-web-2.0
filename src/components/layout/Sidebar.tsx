@@ -6,18 +6,22 @@ import {
   BarChart3,
   Bell,
   Trash2,
+  Highlighter,
 } from "lucide-react";
 
 import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
+import { useTranslation } from "react-i18next";
 
 // Import the new component
 import UserSection from "@/components/UserSection";
+import LanguageSelector from "@/components/LanguageSelector";
 
 export default function Sidebar({ openMobile, onClose }: any) {
   const pathname = usePathname();
+  const { t } = useTranslation("common");
 
   const [collapsed, setCollapsed] = useState(false);
   const [showPromo, setShowPromo] = useState(true);
@@ -37,11 +41,12 @@ export default function Sidebar({ openMobile, onClose }: any) {
   }, []);
 
   const menu = [
-    { label: "Inbox", icon: Inbox, href: "/inbox" },
-    { label: "Discover", icon: Compass, href: "/discover" },
-    { label: "Analytics", icon: BarChart3, href: "/analytics" },
-    { label: "Subscriptions", icon: Bell, href: "/subscriptions" },
-    { label: "Delete", icon: Trash2, href: "/delete" },
+    { label: t("navigation.inbox"), icon: Inbox, href: "/inbox" },
+    { label: t("navigation.discover"), icon: Compass, href: "/discover" },
+    { label: t("navigation.analytics"), icon: BarChart3, href: "/analytics" },
+    { label: t("navigation.subscriptions"), icon: Bell, href: "/subscriptions" },
+    { label: "Highlights", icon: Highlighter, href: "/highlights" },
+    { label: t("common.delete"), icon: Trash2, href: "/delete" },
   ];
 
   /* SIDEBAR STYLES */
@@ -174,6 +179,13 @@ export default function Sidebar({ openMobile, onClose }: any) {
                     </div>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* LANGUAGE SELECTOR */}
+            {!collapsed && (
+              <div className="mb-4">
+                <LanguageSelector variant="compact" showLabel={false} />
               </div>
             )}
 

@@ -8,9 +8,10 @@ import AuthCarousel from "@/components/auth/AuthCarousel";
 import { SEOHead } from "@/components/seo/SEOHead";
 import { useTranslation } from "react-i18next";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
+import LanguageSelector from "@/components/LanguageSelector";
 
 export default function LoginPage() {
-  const { i18n } = useTranslation();
+  const { t } = useTranslation("auth");
   const router = useRouter();
   const { isAuthenticated, sendOTP, googleAuth } = useAuth();
 
@@ -21,8 +22,6 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [isValidEmail, setIsValidEmail] = useState(false);
 
-  const selectRef = useRef<HTMLSelectElement>(null);
-
   // Email validation
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -32,13 +31,6 @@ export default function LoginPage() {
   useEffect(() => {
     setIsValidEmail(validateEmail(email));
   }, [email]);
-
-  const openDropdown = () => {
-    if (selectRef.current) {
-      selectRef.current.focus();
-      selectRef.current.click();
-    }
-  };
 
   /* ================= AUTH REDIRECT ================= */
 
@@ -60,7 +52,7 @@ export default function LoginPage() {
 
   const handleSendOTP = async () => {
     if (!isValidEmail) {
-      setError("Please enter a valid email address");
+      setError(t("login.invalidEmail"));
       return;
     }
 
@@ -75,7 +67,7 @@ export default function LoginPage() {
       const errorMessage = 
         err?.response?.data?.message || 
         err?.message || 
-        "Failed to send OTP. Please try again.";
+        t("login.otpFailed");
       setError(errorMessage);
     } finally {
       setIsLoading(false);
@@ -94,7 +86,7 @@ export default function LoginPage() {
 
   return (
     <>
-      <SEOHead title="Login" description="Login to Inbo" />
+      <SEOHead title={t("login.title")} description="Login to Inbo" />
 
       <div className="flex h-screen bg-white">
         {/* LEFT */}
@@ -118,10 +110,10 @@ export default function LoginPage() {
             {/* Heading */}
             <div className="text-center mb-8">
               <h1 className="text-[32px] font-bold text-[#0C1014]">
-                Welcome back 👋
+                {t("login.welcomeBack")}
               </h1>
               <p className="text-[#6F7680] text-[16px] max-w-[260px] mx-auto mt-2">
-                We'll send you a one-time code to verify your email.
+                {t("login.subtitle")}
               </p>
             </div>
 
@@ -139,23 +131,23 @@ export default function LoginPage() {
                 alt="Google"
               />
               <span className="text-[#272727] font-medium">
-                Continue with Google
+                {t("login.continueWithGoogle")}
               </span>
             </button>
 
             {/* Divider */}
             <div className="flex items-center gap-4 my-6">
               <div className="flex-1 h-px bg-[#E3E5E8]" />
-              <span className="text-[#A2AAB4] text-sm font-medium">OR</span>
+              <span className="text-[#A2AAB4] text-sm font-medium">{t("login.or")}</span>
               <div className="flex-1 h-px bg-[#E3E5E8]" />
             </div>
 
             {/* Email Input */}
             <div className="mb-6">
-              <label className="text-sm text-[#6F7680]">Email address</label>
+              <label className="text-sm text-[#6F7680]">{t("login.emailLabel")}</label>
               <input
                 type="email"
-                placeholder="you@example.com"
+                placeholder={t("login.emailPlaceholder")}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 onKeyPress={handleKeyPress}
@@ -176,7 +168,7 @@ export default function LoginPage() {
                 hover:bg-[#b25949] transition disabled:opacity-50 disabled:cursor-not-allowed
               "
             >
-              {isLoading ? "Sending..." : "Send Code"}
+              {isLoading ? t("login.sending") : t("login.sendCode")}
             </button>
 
             {/* Error */}
@@ -189,47 +181,18 @@ export default function LoginPage() {
             {/* Footer */}
             <div className="text-center mt-10 space-y-5">
               <p className="text-[#6F7680]">
-                No account yet?{" "}
+                {t("login.noAccount")}{" "}
                 <a
                   href="/auth/register"
                   className="text-[#C46A54] underline font-medium"
                 >
-                  Sign up
+                  {t("login.signUp")}
                 </a>
               </p>
 
-              {/* Language */}
-              <div className="flex justify-center items-center gap-2 pt-2">
-                <span className="text-[#6F7680]">Language</span>
-
-                <div className="relative">
-                  <select
-                    ref={selectRef}
-                    value={i18n.language}
-                    onChange={(e) =>
-                      i18n.changeLanguage(e.target.value)
-                    }
-                    className="bg-transparent cursor-pointer pr-6"
-                  >
-                    <option value="en">English (US)</option>
-                    <option value="fr">Français</option>
-                    <option value="es">Español</option>
-                  </select>
-
-                  <svg
-                    className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                </div>
+              {/* Language Selector */}
+              <div className="flex justify-center pt-2">
+                <LanguageSelector variant="default" labelPosition="inline" />
               </div>
             </div>
           </div>

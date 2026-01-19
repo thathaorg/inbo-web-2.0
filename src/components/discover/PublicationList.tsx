@@ -3,22 +3,21 @@ import { useState, useEffect } from "react";
 import PublicationItem from "@/components/discover/PublicationItem";
 import PublicationModal from "@/components/discover/PublicationModal";
 import { ChevronDown } from "lucide-react";
+import discoverService, { type Newsletter } from "@/services/discover";
+
+interface PublicationData {
+  rank: number;
+  logo: string;
+  name: string;
+  desc: string;
+  id?: string;
+  frequency?: string;
+  url?: string; // Newsletter website URL
+}
 
 export default function PublicationList({ title }: { title: string }) {
-  const list = [
-    { rank: 1, logo: "/logos/forbes-sample.png", name: "Forbes", desc: "Meta Connect 2025: What to expect and how to watch." },
-    { rank: 2, logo: "/logos/forbes-sample.png", name: "Lenny’s Newsletter", desc: "A weekly advice column about product, growth, and acceleration." },
-    { rank: 3, logo: "/logos/forbes-sample.png", name: "Forbes", desc: "Meta Connect 2025: What to expect and how to watch." },
-    { rank: 4, logo: "/logos/forbes-sample.png", name: "Forbes", desc: "Meta Connect 2025: What to expect and how to watch." },
-    { rank: 5, logo: "/logos/forbes-sample.png", name: "Lenny’s Newsletter", desc: "A weekly advice column about product, growth, and acceleration." },
-    { rank: 6, logo: "/logos/forbes-sample.png", name: "Forbes", desc: "Meta Connect 2025: What to expect and how to watch." },
-    { rank: 7, logo: "/logos/forbes-sample.png", name: "Forbes", desc: "Meta Connect 2025: What to expect and how to watch." },
-    { rank: 8, logo: "/logos/forbes-sample.png", name: "Forbes", desc: "Meta Connect 2025: What to expect and how to watch." },
-    { rank: 9, logo: "/logos/forbes-sample.png", name: "Lenny’s Newsletter", desc: "A weekly advice column about product, growth, and acceleration." },
-    { rank: 10, logo: "/logos/forbes-sample.png", name: "Forbes", desc: "Meta Connect 2025: What to expect and how to watch." },
-    { rank: 11, logo: "/logos/forbes-sample.png", name: "Forbes", desc: "Meta Connect 2025: What to expect and how to watch." }
-  ];
-
+  const [list, setList] = useState<PublicationData[]>([]);
+  const [loading, setLoading] = useState(true);
   const [visibleCount, setVisibleCount] = useState(3);
   const [isDesktop, setIsDesktop] = useState(false);
 
@@ -26,8 +25,55 @@ export default function PublicationList({ title }: { title: string }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedPublication, setSelectedPublication] = useState<any>(null);
 
-  const openModal = (pub: any) => {
-    setSelectedPublication(pub);
+  // Fetch popular newsletters
+  useEffect(() => {
+    const fetchPopular = async () => {
+      try {
+        setLoading(true);
+        const newsletters = await discoverService.getPopularNewsletters(11);
+        const transformed = newsletters.map((n, index) => ({
+          rank: index + 1,
+          logo: "/logos/forbes-sample.png", // Default logo
+          name: n.name,
+          desc: n.description || "Discover curated content delivered to your inbox.",
+          id: n.id,
+          frequency: n.contentFrequency || "Weekly",
+          url: n.url, // Include website URL
+        }));
+        setList(transformed);
+      } catch (error) {
+        console.error("Failed to fetch popular publications:", error);
+        // Fallback data
+        setList([
+          { rank: 1, logo: "/logos/forbes-sample.png", name: "Unable to load", desc: "Please try again later." },
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPopular();
+  }, []);
+
+  const openModal = async (pub: PublicationData) => {
+    // Fetch full details if we have an ID
+    if (pub.id) {
+      try {
+        const details = await discoverService.getNewsletterDetails(pub.id);
+        setSelectedPublication({
+          ...pub,
+          description: details.description,
+          frequency: details.contentFrequency || "Weekly",
+          categories: details.categories,
+          author: details.author,
+          url: details.url || pub.url, // Include website URL
+        });
+      } catch {
+        setSelectedPublication(pub);
+      }
+    } else {
+      setSelectedPublication(pub);
+    }
     setModalOpen(true);
   };
 
@@ -64,6 +110,19 @@ export default function PublicationList({ title }: { title: string }) {
 
   const visibleItems = list.slice(0, visibleCount);
   const hasMore = visibleCount < list.length;
+
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-4">
+        <h3 className="text-[24px] ml-2 font-semibold leading-[28px] text-[#0F0F0F]">
+          {title}
+        </h3>
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-black"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-4">

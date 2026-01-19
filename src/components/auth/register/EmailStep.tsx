@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 function useMediaQuery(query: string) {
   const [matches, setMatches] = useState(false);
@@ -29,6 +30,7 @@ export default function EmailStep({
   devMode = false,
 }: any) {
   const isMobile = useMediaQuery("(max-width: 640px)");
+  const { t } = useTranslation("auth");
   const isEmailValid =
   !!formData.email &&
   /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email);
@@ -45,10 +47,10 @@ export default function EmailStep({
           {/* Title */}
           <div className="text-center mb-6">
             <h1 className="text-[24px] font-bold text-[#0C1014]">
-              Let’s get you start reading
+              {t("onboarding.letsGetStarted")}
             </h1>
             <p className="text-[#6F7680] text-[14px] mt-2">
-              Enter your email to receive a 4-Digit <br /> verification code.
+              {t("login.subtitle")}
             </p>
           </div>
 
@@ -74,7 +76,7 @@ export default function EmailStep({
           {/* Error */}
           {showError && (
             <p className="mt-2 text-[14px] text-red-500">
-              Please enter a valid email address.
+              {t("login.invalidEmail")}
             </p>
           )}
         </div>
@@ -94,7 +96,7 @@ export default function EmailStep({
                 bg-[#C46A54] text-white
               "
             >
-              {isLoading ? "Sending..." : "Send OTP"}
+              {isLoading ? t("login.sending") : t("login.sendCode")}
             </button>
           </div>
         </div>
@@ -180,7 +182,7 @@ export default function EmailStep({
           disabled:opacity-50
         "
       >
-        {isLoading ? "Sending..." : "Send Code"}
+        {isLoading ? t("login.sending") : t("login.sendCode")}
       </button>
 
       {/* Simulate Button */}
@@ -199,21 +201,21 @@ export default function EmailStep({
       {/* Already have account + Terms */}
       <div className="mt-6 text-center space-y-3">
         <p className="text-[#6F7680]">
-          Already have an account?{" "}
+          {t("register.alreadyHaveAccount")}{" "}
           <Link href="/auth/login" className="text-[#C46A54] underline font-medium">
-            Log in
+            {t("register.signIn")}
           </Link>
         </p>
 
         <p className="text-[#6F7680] text-[14px] leading-[16px] mx-4">
-          By continuing you agree to the
+          {t("register.agreeToTerms")}
           <br />
           <Link href="/terms" className="text-[#C46A54] font-normal underline">
-            Terms of service
+            {t("register.termsOfService")}
           </Link>
-          <span className="text-[#6F7680]">{" "}and{" "}</span>
+          <span className="text-[#6F7680]">{" "}{t("register.and")}{" "}</span>
           <Link href="/privacy" className="text-[#C46A54] font-normal underline">
-            Privacy Policy
+            {t("register.privacyPolicy")}
           </Link>
         </p>
       </div>

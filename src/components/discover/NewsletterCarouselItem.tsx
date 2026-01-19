@@ -3,6 +3,7 @@ import Image from "next/image";
 import SubscribeButton from "../SubscribeButton";
 
 export interface NewsletterEntry {
+  id?: string;
   title: string;
   description: string;
   imageUrl: string;
@@ -10,9 +11,11 @@ export interface NewsletterEntry {
   ctaLabel: string;
   tagLabel?: string;
   tagIcon?: string;
+  websiteUrl?: string; // Newsletter's website URL for subscription
 }
 
 export default function NewsletterCarouselItem({
+  id,
   title,
   description,
   imageUrl,
@@ -20,6 +23,7 @@ export default function NewsletterCarouselItem({
   ctaLabel,
   tagLabel,
   tagIcon,
+  websiteUrl,
 }: NewsletterEntry) {
   return (
     <div className="w-full max-w-[280px] flex-none p-4 bg-white rounded-[20px] shadow-sm flex flex-col gap-3 relative z-10">
@@ -56,11 +60,11 @@ export default function NewsletterCarouselItem({
 
         {/* TITLE + DESCRIPTION */}
         <div className="flex flex-col gap-1">
-          <h3 className="text-black text-[20px] font-medium leading-[30px]">
+          <h3 className="text-black text-[20px] font-medium leading-[30px] line-clamp-1">
             {title}
           </h3>
 
-          <p className="text-[#6F7680] text-[14px] font-normal leading-[16px]">
+          <p className="text-[#6F7680] text-[14px] font-normal leading-[16px] line-clamp-2">
             {description}
           </p>
         </div>
@@ -69,7 +73,7 @@ export default function NewsletterCarouselItem({
         <div className="flex justify-between items-center">
 
           {/* CTA BUTTON */}
-          <SubscribeButton/>
+          <SubscribeButton newsletterId={id} websiteUrl={websiteUrl} />
 
           {/* FREQUENCY */}
           <div className="px-1.5 py-1 rounded-b-[12px] flex items-center gap-2">

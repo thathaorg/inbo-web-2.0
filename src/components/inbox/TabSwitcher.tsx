@@ -1,6 +1,7 @@
 "use client";
 
 import CountBubble from "@/components/inbox/CountBubble";
+import { useTranslation } from "react-i18next";
 
 export type TabType = "unread" | "read" | "all";
 
@@ -19,12 +20,14 @@ export default function TabSwitcher({
   allCount?: number;
   className?: string;
 }) {
+  const { t } = useTranslation("common");
+  
   const items = [
     {
       id: "unread",
       label: (
         <div className="flex items-center gap-2">
-          <span>Unread</span>
+          <span>{t("common.unread")}</span>
           <CountBubble count={unreadCount} />
         </div>
       ),
@@ -33,7 +36,7 @@ export default function TabSwitcher({
       id: "read",
       label: (
         <div className="flex items-center gap-2">
-          <span>Read</span>
+          <span>{t("common.read")}</span>
           <CountBubble count={readCount} />
         </div>
       ),
@@ -42,7 +45,7 @@ export default function TabSwitcher({
       id: "all",
       label: (
         <div className="flex items-center gap-2">
-          <span>All</span>
+          <span>{t("common.all")}</span>
           <CountBubble count={allCount} />
         </div>
       ),

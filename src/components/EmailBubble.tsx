@@ -5,23 +5,22 @@ import Image from "next/image";
 import userService, { type UserProfileResponse } from "@/services/user";
 
 export default function EmailBubble() {
+  const { user, isLoading } = useAuth();
   const [copied, setCopied] = useState(false);
-  const [profile, setProfile] = useState<UserProfileResponse | null>(null);
 
-  useEffect(() => {
-    const loadProfile = async () => {
-      try {
-        const data = await userService.getProfile();
-        setProfile(data);
-      } catch (err) {
-        console.error("Failed to load profile", err);
-      }
-    };
-    loadProfile();
-  }, []);
+  // Use inboxEmail from API, fallback to constructing from username
+  const email = user?.inboxEmail || (user?.username ? `${user.username}@inbo.me` : "");
 
-  // Use inboxEmail if available, otherwise construct from username (same as profile page)
-  const email = profile?.inboxEmail || (profile?.username ? `${profile.username}@inbo.club` : "");
+  // Show loading placeholder while fetching user or if no email yet
+  if (isLoading || !email) {
+    return (
+      <div className="flex items-center gap-2 animate-pulse">
+        <div className="w-[22px] h-[22px] bg-gray-200 rounded-full" />
+        <div className="w-32 h-4 bg-gray-200 rounded" />
+        <div className="w-14 h-6 bg-gray-200 rounded-full" />
+      </div>
+    );
+  }
 
   const handleCopy = async () => {
     if (!email) return;

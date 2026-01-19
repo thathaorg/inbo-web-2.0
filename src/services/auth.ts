@@ -48,6 +48,7 @@ export interface UserProfileResponse {
   isInboxCreated: boolean;
   inboxEmail: string | null;
   createdAt: string;
+  picture?: string | null;
 }
 
 export interface CheckEmailResponse {
@@ -67,9 +68,12 @@ class AuthService {
    * Verify OTP and get JWT tokens
    */
   async verifyOTP(email: string, otp: string, deviceInfo?: object): Promise<VerifyOTPResponse> {
+    // Ensure OTP is exactly 4 characters and is a string
+    const otpString = String(otp).trim().padStart(4, '0').substring(0, 4);
+    
     const payload = {
-      email,
-      otp: otp.toString(), // Ensure OTP is a string
+      email: email.trim(),
+      otp: otpString,
       deviceInfo: deviceInfo || {
         deviceName: typeof navigator !== 'undefined' ? navigator.userAgent.substring(0, 50) : 'Web Browser',
         userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
@@ -77,7 +81,12 @@ class AuthService {
       },
     };
     
-    console.log("🔐 Verify OTP Request:", { email, otp: otp, deviceInfo: payload.deviceInfo });
+    console.log("🔐 Verify OTP Request:", { 
+      email: payload.email, 
+      otp: payload.otp,
+      otpLength: payload.otp.length,
+      deviceInfo: payload.deviceInfo 
+    });
     
     const response = await apiClient.post<VerifyOTPResponse>(AUTH_ENDPOINTS.VERIFY_OTP, payload);
     
@@ -112,8 +121,10 @@ class AuthService {
    * Get current user profile
    */
   async getCurrentUser(): Promise<UserProfileResponse> {
-    const response = await apiClient.get<UserProfileResponse>(AUTH_ENDPOINTS.USER_PROFILE);
-    return response.data;
+    const response = await apiClient.get<{ profile: UserProfileResponse }>(AUTH_ENDPOINTS.USER_PROFILE);
+    // API returns { profile: { ...userData } }, so extract the profile
+    const profileData = response.data.profile || response.data;
+    return profileData as UserProfileResponse;
   }
 
   /**
@@ -202,18 +213,54 @@ class AuthService {
 
   /**
    * Set authentication tokens
+   * Cookies are set with:
+   * - expires: 7 days for access token, 30 days for refresh token
+   * - sameSite: 'lax' for better compatibility with redirects
+   * - secure: true in production (HTTPS)
+   * - path: '/' to ensure cookies are available across all pages
    */
   private setTokens(accessToken: string, refreshToken: string): void {
-    Cookies.set('access_token', accessToken, { expires: 7, sameSite: 'strict' });
-    Cookies.set('refresh_token', refreshToken, { expires: 30, sameSite: 'strict' });
+    const isSecure = typeof window !== 'undefined' && window.location.protocol === 'https:';
+    
+    // Cookie options for proper persistence
+    const accessTokenOptions = {
+      expires: 7, // 7 days
+      sameSite: 'lax' as const,
+      secure: isSecure,
+      path: '/',
+    };
+    
+    const refreshTokenOptions = {
+      expires: 30, // 30 days
+      sameSite: 'lax' as const,
+      secure: isSecure,
+      path: '/',
+    };
+    
+    Cookies.set('access_token', accessToken, accessTokenOptions);
+    Cookies.set('refresh_token', refreshToken, refreshTokenOptions);
+    
+    // Verify cookies were set
+    const savedAccess = Cookies.get('access_token');
+    const savedRefresh = Cookies.get('refresh_token');
+    console.log('🔐 Tokens saved:', {
+      accessToken: savedAccess ? '✓ SET' : '✗ FAILED',
+      refreshToken: savedRefresh ? '✓ SET' : '✗ FAILED',
+    });
   }
 
   /**
    * Clear authentication tokens
    */
   private clearTokens(): void {
-    Cookies.remove('access_token');
-    Cookies.remove('refresh_token');
+    Cookies.remove('access_token', { path: '/' });
+    Cookies.remove('refresh_token', { path: '/' });
+    // Also clear from localStorage cache
+    try {
+      localStorage.removeItem('user_cache');
+    } catch (e) {
+      // Ignore localStorage errors
+    }
   }
 }
 

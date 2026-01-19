@@ -1,9 +1,12 @@
 "use client";
 
+import { useTranslation } from "react-i18next";
 import { Mail, CircleQuestionMark } from "lucide-react";
 import Image from "next/image";
 
 export function IntroStep({ onEmail }: { onEmail: () => void }) {
+  const { t } = useTranslation("auth");
+  
   return (
     <div className="relative max-h-screen overflow-hidden bg-[#C86E58] text-white">
 
@@ -40,13 +43,11 @@ export function IntroStep({ onEmail }: { onEmail: () => void }) {
 
         {/* Headline */}
         <h1 className="text-center text-[28px] font-semibold leading-[1.15]">
-          All your favorite
-          <br />
-          newsletters
+          {t("onboarding.welcome")}
         </h1>
 
         <p className="mt-2 text-center text-[28px] font-semibold leading-[1.15] text-yellow-300">
-          one epic space
+          {t("onboarding.letsGetStarted")}
         </p>
 
         {/* Buttons */}
@@ -56,7 +57,7 @@ export function IntroStep({ onEmail }: { onEmail: () => void }) {
             className="flex h-14 w-full items-center justify-center gap-3 rounded-full bg-white text-[15px] font-semibold text-black active:scale-[0.97]"
           >
             <Mail className="h-5 w-5" />
-            Continue with Email
+            {t("login.continueWithEmail") || "Continue with Email"}
           </button>
 
           <button className="flex h-14 w-full items-center justify-center gap-3 rounded-full border border-white/40 text-[15px] font-semibold text-white active:scale-[0.97]">
@@ -66,14 +67,14 @@ export function IntroStep({ onEmail }: { onEmail: () => void }) {
               height={18}
               alt="Google"
             />
-            Continue with Google
+            {t("login.continueWithGoogle")}
           </button>
 
           {/* Legal */}
           <p className="mx-auto max-w-[280px] pt-3 text-center text-[11px] leading-relaxed text-white/70">
-            By continuing you agree to the <br />
-            <span className="underline">Terms of Use</span> and{" "}
-            <span className="underline">Privacy Policy</span>.
+            {t("register.agreeToTerms")} <br />
+            <span className="underline">{t("register.termsOfService")}</span> {t("register.and")}{" "}
+            <span className="underline">{t("register.privacyPolicy")}</span>.
           </p>
         </div>
       </div>

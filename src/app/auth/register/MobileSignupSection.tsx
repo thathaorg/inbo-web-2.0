@@ -17,6 +17,9 @@ import NotifyStep from "@/components/auth/register/NotifyStep";
 // Intro
 import { IntroStep } from "@/components/auth/register/IntroStep";
 
+// Language selector
+import LanguageSelector from "@/components/LanguageSelector";
+
 const STEP_ORDER: Step[] = [
   "intro",
   "email",
@@ -164,14 +167,19 @@ export default function MobileSignupSection(props: any) {
             "
           >
             {step === "email" && (
-              <EmailStep
-                formData={formData}
-                setFormData={setFormData}
-                onContinue={onEmailContinue}
-                googleLogin={() => { }}
-                isLoading={isLoading}
-                devMode={devMode}
-              />
+              <>
+                <EmailStep
+                  formData={formData}
+                  setFormData={setFormData}
+                  onContinue={onEmailContinue}
+                  googleLogin={() => { }}
+                  isLoading={isLoading}
+                  devMode={devMode}
+                />
+                <div className="mt-6 flex justify-center">
+                  <LanguageSelector variant="compact" labelPosition="inline" />
+                </div>
+              </>
             )}
 
             {step === "check-email" && (

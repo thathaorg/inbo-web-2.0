@@ -1,22 +1,81 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { ArrowLeft } from "lucide-react";
-import { PUBLISHERS, Publisher } from "./page";
+import { Publisher } from "./page";
 import MobileInboxCard from "@/components/inbox/InboxCard";
 import FilterButton, { FilterValue } from "@/components/FilterButton";
 import Link from "next/link";
+import userService, { Subscription } from "@/services/user";
+
+/* ============================================================
+   HELPER: Convert API subscription to Publisher format
+============================================================ */
+function formatTimeAgo(dateString: string): string {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffHours / 24);
+  
+  if (diffHours < 1) return "just now";
+  if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+  if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)} week${Math.floor(diffDays / 7) > 1 ? 's' : ''} ago`;
+  return `${Math.floor(diffDays / 30)} month${Math.floor(diffDays / 30) > 1 ? 's' : ''} ago`;
+}
+
+function formatDate(dateString: string): string {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function convertSubscriptionToPublisher(sub: Subscription): Publisher {
+  return {
+    id: sub.id,
+    name: sub.name,
+    description: sub.sender_email,
+    logo: `https://ui-avatars.com/api/?name=${encodeURIComponent(sub.name)}&background=random&size=62`,
+    totalItems: sub.email_count,
+    lastReceivedAgo: formatTimeAgo(sub.last_received),
+    active: sub.is_active !== false,
+    firstMail: formatDate(sub.first_received),
+    newsletters: [],
+    senderEmail: sub.sender_email,
+  };
+}
 
 /* ============================================================
    MOBILE MAIN SCREEN (Pixel-Perfect)
 ============================================================ */
 export default function MobileSubscriptionSection() {
+  const { t } = useTranslation("common");
   const [selectedPublisher, setSelectedPublisher] =
     useState<Publisher | null>(null);
   const [tab, setTab] = useState<"active" | "inactive">("active");
+  const [publishers, setPublishers] = useState<Publisher[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const active = PUBLISHERS.filter((p) => p.active);
-  const inactive = PUBLISHERS.filter((p) => !p.active);
+  // Fetch subscriptions from API
+  useEffect(() => {
+    const fetchSubscriptions = async () => {
+      try {
+        const subscriptions = await userService.getSubscriptions();
+        const converted = subscriptions.map(convertSubscriptionToPublisher);
+        setPublishers(converted);
+      } catch (error) {
+        console.error("Failed to fetch subscriptions:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSubscriptions();
+  }, []);
+
+  const active = publishers.filter((p) => p.active);
+  const inactive = publishers.filter((p) => !p.active);
 
   const publicationCount =
     tab === "active" ? active.length : inactive.length;
@@ -30,6 +89,14 @@ export default function MobileSubscriptionSection() {
     );
   }
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#F5F6FA] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#C46A54]"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#F5F6FA]">
       {/* HEADER */}
@@ -38,7 +105,7 @@ export default function MobileSubscriptionSection() {
           <ArrowLeft size={22} className="mr-3" />
         </Link>
         <p className="text-[18px] font-semibold flex-1 text-center mr-6">
-          Subscription
+          {t("nav.subscriptions")}
         </p>
       </div>
 
@@ -46,7 +113,7 @@ export default function MobileSubscriptionSection() {
         {/* COUNT + SEGMENTED CONTROL */}
         <div className="flex justify-between items-center px-4 mt-5">
           <p className="text-[16px] font-medium">
-            {publicationCount} Publication
+            {publicationCount} {t("mobile.publication")}
           </p>
 
           <div className="flex rounded-full bg-white border border-[#D8DDE3] p-1">
@@ -58,7 +125,7 @@ export default function MobileSubscriptionSection() {
                   : "text-[#6F7680]"
               }`}
             >
-              Active
+              {t("mobile.active")}
             </button>
 
             <button
@@ -69,7 +136,7 @@ export default function MobileSubscriptionSection() {
                   : "text-[#6F7680]"
               }`}
             >
-              Inactive
+              {t("mobile.inactive")}
             </button>
           </div>
         </div>
@@ -116,6 +183,7 @@ function MobilePublisherDetail({
   publisher: Publisher;
   onBack: () => void;
 }) {
+  const { t } = useTranslation("common");
   const [state, setState] = useState(publisher);
   const [filter, setFilter] = useState<FilterValue>("all");
 
@@ -163,7 +231,7 @@ function MobilePublisherDetail({
             </p>
 
             <p className="text-[14px]">
-              <span className="font-medium">First mail: </span>
+              <span className="font-medium">{t("mobile.firstMail")}: </span>
               <span className="text-[#6F7680]">
                 {state.firstMail}
               </span>
@@ -172,7 +240,7 @@ function MobilePublisherDetail({
 
           <div className="flex justify-between items-center mt-6">
             <button className="text-[17px] text-gray-500 font-semibold">
-              Unsubscribe
+              {t("mobile.unsubscribe")}
             </button>
 
             <div className="flex items-center gap-3">
@@ -183,7 +251,7 @@ function MobilePublisherDetail({
                     : "text-[#A2AAB4]"
                 }`}
               >
-                {state.active ? "Active" : "Inactive"}
+                {state.active ? t("mobile.active") : t("mobile.inactive")}
               </span>
 
               <button
@@ -214,20 +282,20 @@ function MobilePublisherDetail({
         {/* ENGAGEMENT */}
         <div className="bg-[#F3F4F6] mx-4 mb-4 rounded-2xl p-5">
           <p className="text-[18px] font-semibold mb-4">
-            Your Engagement
+            {t("mobile.yourEngagement")}
           </p>
 
           <div className="flex justify-between mb-4">
             <div>
               <p className="text-[14px] text-[#A2AAB4]">
-                Total newsletter received
+                {t("mobile.totalNewsletterReceived")}
               </p>
               <p className="text-[24px] font-bold">{total}</p>
             </div>
 
             <div>
               <p className="text-[14px] text-[#A2AAB4]">
-                Read percentage
+                {t("mobile.readPercentage")}
               </p>
               <p className="text-[24px] font-bold">
                 {readPercentage}%
@@ -251,7 +319,7 @@ function MobilePublisherDetail({
         <div className="px-4 pb-6">
           <div className="flex justify-between items-center">
             <p className="text-[16px] font-semibold">
-              Recent Issues
+              {t("mobile.recentIssues")}
             </p>
             <FilterButton value={filter} onChange={setFilter} />
           </div>

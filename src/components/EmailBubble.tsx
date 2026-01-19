@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import userService, { type UserProfileResponse } from "@/services/user";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function EmailBubble() {
   const { user, isLoading } = useAuth();

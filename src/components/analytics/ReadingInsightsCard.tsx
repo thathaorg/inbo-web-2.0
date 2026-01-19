@@ -63,14 +63,15 @@ export default function ReadingInsightsCard() {
   if (safeCats.length < 4) safeCats.push({ id: 'c1', label: 'Other', value: 10, color: 'from-blue-400 to-blue-500' });
   if (safeCats.length < 4) safeCats.push({ id: 'c2', label: 'General', value: 10, color: 'from-green-400 to-green-500' });
 
-  // Specific Visual Map matching the image
-  // Image: Yellow(Left) < Orange < Pink < Cyan < Purple BG
-  const layers = [
-    { cat: safeCats[3], width: '90%', height: '140%', left: '30%', color: 'bg-cyan-400', gradient: 'bg-gradient-to-r from-[#00BCD4] to-[#26C6DA]' }, // Cyan (Back)
-    { cat: safeCats[2], width: '75%', height: '120%', left: '15%', color: 'bg-pink-500', gradient: 'bg-gradient-to-r from-[#EC407A] to-[#F48FB1]' },   // Pink
-    { cat: safeCats[1], width: '55%', height: '100%', left: '5%', color: 'bg-orange-500', gradient: 'bg-gradient-to-r from-[#FF7043] to-[#FFAB91]' },  // Orange
-    { cat: safeCats[0], width: '35%', height: '80%', left: '-5%', color: 'bg-yellow-400', gradient: 'bg-gradient-to-r from-[#FFCA28] to-[#FFE082]' },   // Yellow (Front)
-  ];
+  // Fallback category labels if missing
+  const fallbackLabels = ['Category 1', 'Category 2', 'Category 3', 'Category 4'];
+  // Dynamically show up to 4 layers if enough categories exist, with label alignment for readability
+  const dynamicLayers = [
+    { cat: safeCats[3], width: '100%', height: '140%', left: '0%', labelClass: 'justify-end pr-12', labelAlign: 'text-right', fallback: fallbackLabels[3] }, // Cyan (Back, increased width)
+    { cat: safeCats[2], width: '75%', height: '120%', left: '15%', labelClass: 'justify-center', labelAlign: 'text-center', fallback: fallbackLabels[2] },     // Pink
+    { cat: safeCats[1], width: '60%', height: '100%', left: '0%', labelClass: 'justify-center', labelAlign: 'text-center', fallback: fallbackLabels[1] },      // Orange
+    { cat: safeCats[0], width: '55%', height: '100%', left: '-10%', labelClass: 'justify-start pl-12', labelAlign: 'text-left', fallback: fallbackLabels[0] }, // Yellow (Front)
+  ].slice(4 - Math.min(safeCats.length, 4));
 
   return (
     <div
@@ -78,7 +79,7 @@ export default function ReadingInsightsCard() {
         relative w-full
         h-[260px]
         md:h-[240px]
-        rounded-2xl
+        rounded-2xl rounded-b-[32px]
         overflow-hidden
         bg-gradient-to-r from-[#9575CD] to-[#B39DDB] 
       "
@@ -89,36 +90,68 @@ export default function ReadingInsightsCard() {
         Style: Solid/Gradient colors, shadow for depth.
       */}
       <div className="absolute inset-0 overflow-hidden flex items-center">
-        {layers.map((layer, i) => (
-          <div
-            key={i}
-            className={`
-              absolute rounded-full shadow-[0_10px_40px_rgba(0,0,0,0.15)]
-              flex items-center justify-end pr-8
-              transition-all duration-1000 ease-out
-              ${layer.gradient}
-            `}
-            style={{
-              width: layer.width,
-              height: layer.height, // Height > 100% creates the arc effect if centered/clipped
-              left: layer.left,
-              zIndex: 10 + i,
-              // Aspect ratio fix: ensure it looks round. 
-              // Since container is rect, using % height might distort. 
-              // Better to use aspect-square or fixed pixels calculated.
-              // For simplicity in this constrained environment, we use strict aspect ratio via padding or min-height.
-              // Actually, simply making them huge squares centered vertically works.
-              top: '50%',
-              transform: 'translateY(-50%)',
-            }}
-          >
-            {/* LABEL */}
-            <span className="text-white/90 font-semibold text-lg drop-shadow-md">
-              {layer.cat?.label}
-            </span>
-          </div>
-        ))}
-
+        {dynamicLayers.map((layer, i) => {
+          let gradient = '';
+          if (i === 0) gradient = 'from-[#00BCD4] to-[#26C6DA]';
+          else if (i === 1) gradient = 'from-[#EC407A] to-[#F48FB1]';
+          else if (i === 2) gradient = 'from-[#FF7043] to-[#FFAB91]';
+          else gradient = 'from-[#FFCA28] to-[#FFE082]';
+          // For the last (cyan) color, align tag with right boundary
+          const isLast = i === 0;
+          const tagStyle = isLast
+            ? {
+                right: '2%',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                zIndex: 100 + i,
+                width: 'max-content',
+                whiteSpace: 'nowrap',
+                textAlign: 'right',
+              }
+            : {
+                right: '4%',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                zIndex: 100 + i,
+                width: 'max-content',
+                whiteSpace: 'nowrap',
+                textAlign: 'right',
+              };
+          return (
+            <div
+              key={i}
+              className={`
+                absolute rounded-full shadow-[0_10px_40px_rgba(0,0,0,0.15)]
+                transition-all duration-1000 ease-out
+                bg-gradient-to-r ${gradient}
+              `}
+              style={{
+                width: layer.width,
+                height: layer.height,
+                left: layer.left,
+                zIndex: 10 + i,
+                top: '50%',
+                transform: 'translateY(-50%)',
+              }}
+            >
+              <span
+                className={[
+                  'absolute',
+                  'text-white',
+                  'opacity-90',
+                  'font-semibold',
+                  'text-lg',
+                  'drop-shadow-md',
+                  'pointer-events-none',
+                  'text-right',
+                ].join(' ')}
+                style={tagStyle}
+              >
+                {layer.cat?.label || layer.fallback}
+              </span>
+            </div>
+          );
+        })}
         {/* Soft Glare Overlay */}
         <div className="absolute top-1/4 right-1/4 w-32 h-32 bg-white/20 blur-3xl rounded-full z-20 pointer-events-none" />
       </div>
@@ -130,10 +163,9 @@ export default function ReadingInsightsCard() {
           bg-white/10
           backdrop-blur-md
           border-t border-white/20
-          
           px-4 py-3
           flex flex-col gap-3
-
+          rounded-full overflow-hidden
           md:h-[60px]
           md:flex-row
           md:items-center
@@ -169,7 +201,7 @@ export default function ReadingInsightsCard() {
               </button>
             ))}
           </div>
-          <button className="bg-[#C46A54] text-white text-sm font-bold px-4 py-1.5 rounded-full shadow-lg hover:bg-[#D87D67] transition">
+          <button className="bg-[#C46A54] text-white text-sm font-bold px-4 py-1.5 rounded-2xl shadow-lg hover:bg-[#D87D67] transition">
             {STATIC_CONFIG.ctaText}
           </button>
         </div>

@@ -135,7 +135,7 @@ export default function Sidebar({ openMobile, onClose }: any) {
 
             {/* PROMO */}
             {!collapsed && showPromo && (
-              <div className="mt-4 mb-4">
+              <div className="mt-2 mb-4">
                 <div className="relative bg-gradient-to-br from-[#98FBB2] to-[#A6F5E6] rounded-2xl px-4 py-3 overflow-hidden">
 
                   {/* Header with title and close button */}
@@ -184,7 +184,7 @@ export default function Sidebar({ openMobile, onClose }: any) {
 
             {/* LANGUAGE SELECTOR */}
             {!collapsed && (
-              <div className="mb-4">
+              <div className="mb-4 ml-1">
                 <LanguageSelector variant="compact" showLabel={false} />
               </div>
             )}

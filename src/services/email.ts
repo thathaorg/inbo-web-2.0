@@ -104,14 +104,28 @@ type EmailListItemApi = Partial<EmailListItem> & {
 };
 
 /**
- * Extract newsletter name from sender email
- * e.g., "newsletter@example.com" -> "Newsletter" or "example"
+ * Extract newsletter name from sender string
+ * Handles formats like: "TLDR Design <dan@tldrnewsletter.com>" -> "TLDR Design"
+ * or "newsletter@example.com" -> "Newsletter"
  */
 export function extractNewsletterName(sender: string): string {
   if (!sender) return 'Newsletter';
 
-  // Extract name from email (part before @)
-  const emailPart = sender.split('@')[0];
+  // First, try to extract the display name from "Name <email>" format
+  const displayNameMatch = sender.match(/^([^<]+)</);
+  if (displayNameMatch && displayNameMatch[1]) {
+    let name = displayNameMatch[1].trim();
+    // Remove any remaining HTML-like tags or special chars
+    name = name.replace(/<[^>]*>/g, '').replace(/[<>]/g, '').trim();
+    if (name.length > 0 && name.length < 50) {
+      return name;
+    }
+  }
+
+  // Fallback: Extract name from email (part before @)
+  const emailMatch = sender.match(/<([^>]+)>/) || [null, sender];
+  const email = emailMatch[1] || sender;
+  const emailPart = email.split('@')[0];
   if (!emailPart) return 'Newsletter';
 
   // Capitalize first letter and remove common prefixes
@@ -126,6 +140,31 @@ export function extractNewsletterName(sender: string): string {
     .join(' ');
 
   return name || 'Newsletter';
+}
+
+/**
+ * Clean content preview - removes HTML tags, excessive whitespace, and special characters
+ */
+export function cleanContentPreview(preview: string | null | undefined): string {
+  if (!preview) return 'No preview available';
+
+  let cleaned = preview
+    // Remove HTML tags
+    .replace(/<[^>]*>/g, '')
+    // Remove HTML entities
+    .replace(/&[a-zA-Z0-9#]+;/g, ' ')
+    // Remove URLs and links
+    .replace(/\[[\d\w]+\]/g, '')
+    // Remove excessive whitespace (including non-breaking spaces)
+    .replace(/[\u00A0\u2002\u2003\u2009\u200A\u200B\u202F\u205F\u3000]/g, ' ')
+    .replace(/\s+/g, ' ')
+    // Remove leading/trailing whitespace
+    .trim();
+
+  // If preview is too short after cleaning, return default
+  if (cleaned.length < 10) return 'No preview available';
+
+  return cleaned;
 }
 
 /**

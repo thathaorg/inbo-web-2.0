@@ -427,7 +427,7 @@ function NewsletterCardDesktop({
             )}
 
             <span className="text-[13px] text-[#6F7680] font-medium">
-              {newsletterName || badgeText || author} Newsletter
+              {newsletterName || badgeText || author}
             </span>
           </div>
 

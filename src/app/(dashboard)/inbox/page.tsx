@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import EmptyList from "@/components/inbox/EmptyList";
 import EmptyInbox from "@/components/inbox/EmptyInbox";
 import NewsletterCard from "@/components/inbox/InboxCard";
@@ -10,7 +12,7 @@ import RefreshButton from "@/components/inbox/RefreshButton";
 import TabSwitcher from "@/components/inbox/TabSwitcher";
 import MobileInboxSection from "./MobileInboxSection";
 import EmptyState from "@/components/SearchNotFound";
-import emailService, { extractNewsletterName, extractFirstImage } from "@/services/email";
+import emailService, { extractNewsletterName, extractFirstImage, cleanContentPreview } from "@/services/email";
 import analyticsService from "@/services/analytics";
 import type { EmailListItem } from "@/services/email";
 import InboxSkeleton from "@/components/inbox/InboxSkeleton";
@@ -53,7 +55,7 @@ function transformEmailToCard(email: EmailListItem) {
     badgeTextColor: "#0369A1",
     author: newsletterName,
     title: email.subject || "No Subject",
-    description: email.contentPreview || "No preview available",
+    description: cleanContentPreview(email.contentPreview),
     date: dateStr,
     time: timeDisplay,
     tag: "Email",
@@ -77,7 +79,7 @@ const INITIAL_PAGES_TO_FETCH = 10; // Fetch 10 pages (200 emails) initially for 
 const BACKGROUND_BATCH_SIZE = 5; // Fetch 5 pages per background batch (100 emails)
 const BACKGROUND_FETCH_DELAY = 200; // 200ms delay between background batches (faster)
 const INITIAL_VISIBLE_PER_SECTION = 10; // Show 10 emails initially per section
-const LOAD_MORE_COUNT = 20; // Show 20 more when clicking view more
+const LOAD_MORE_COUNT = 10; // Show 10 more when clicking view more
 const REQUEST_TIMEOUT_MS = 60000; // 60 second timeout
 const MAX_PAGES = 1000; // Max 1000 pages (20,000 emails)
 
@@ -132,6 +134,7 @@ function updateCachedEmail(emailId: string, updates: Partial<any>) {
 
 export default function InboxPage() {
   const { t } = useTranslation("common");
+  const router = useRouter();
   const [tab, setTab] = useState<"unread" | "read" | "all">("unread");
   
   // Initialize from cache if available
@@ -158,7 +161,7 @@ export default function InboxPage() {
   const hasInitializedRef = useRef<boolean>(!!cachedData); // Track if we've already initialized
 
   // UI visibility controls (how many to show in each section)
-  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_PER_SECTION * 4); // Total visible across all sections
+  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_PER_SECTION); // Start with 10 visible total
 
   /**
    * Merge emails with deduplication by ID
@@ -580,8 +583,17 @@ export default function InboxPage() {
     try {
       await emailService.moveToTrash(emailId);
       setAllEmails(prev => prev.filter(e => e.emailId !== emailId));
+      
+      toast.success('Moved to trash', {
+        description: 'Email has been moved to trash',
+        action: {
+          label: 'View',
+          onClick: () => router.push('/delete'),
+        },
+      });
     } catch (err) {
       console.error("Failed to move to trash", err);
+      toast.error('Failed to move to trash');
     }
   };
 
@@ -591,8 +603,21 @@ export default function InboxPage() {
       setAllEmails(prev => prev.map(e =>
         e.emailId === emailId ? { ...e, isReadLater } : e
       ));
+      
+      if (isReadLater) {
+        toast.success('Added to Read Later', {
+          description: 'Email saved for later reading',
+          action: {
+            label: 'View',
+            onClick: () => router.push('/read_later'),
+          },
+        });
+      } else {
+        toast.success('Removed from Read Later');
+      }
     } catch (err) {
       console.error("Failed to toggle read later", err);
+      toast.error('Failed to update read later');
     }
   };
 
@@ -602,8 +627,21 @@ export default function InboxPage() {
       setAllEmails(prev => prev.map(e =>
         e.emailId === emailId ? { ...e, isFavorite } : e
       ));
+      
+      if (isFavorite) {
+        toast.success('Added to Favorites', {
+          description: 'Email marked as favorite',
+          action: {
+            label: 'View',
+            onClick: () => router.push('/favorite'),
+          },
+        });
+      } else {
+        toast.success('Removed from Favorites');
+      }
     } catch (err) {
       console.error("Failed to toggle favorite", err);
+      toast.error('Failed to update favorite');
     }
   };
 
@@ -715,7 +753,7 @@ export default function InboxPage() {
               {visibleEmails.today.length > 0 && (
                 <section>
                   <h3 className="text-[18px] font-semibold text-[#6F7680] mb-4">
-                    {t("time.today")} ({todayEmails.length})
+                    {t("time.today")}
                   </h3>
                   {visibleEmails.today.map((item) => (
                     <div key={item.emailId} className="mb-2">
@@ -735,7 +773,7 @@ export default function InboxPage() {
               {visibleEmails.last7Days.length > 0 && (
                 <section>
                   <h3 className="text-[18px] font-semibold text-[#6F7680] mb-4">
-                    {t("time.last7Days", "Last 7 days")} ({last7DaysEmails.length})
+                    {t("time.last7Days", "Last 7 days")}
                   </h3>
                   {visibleEmails.last7Days.map((item) => (
                     <div key={item.emailId} className="mb-2">
@@ -755,7 +793,7 @@ export default function InboxPage() {
               {visibleEmails.last30Days.length > 0 && (
                 <section>
                   <h3 className="text-[18px] font-semibold text-[#6F7680] mb-4">
-                    {t("time.last30Days", "Last 30 days")} ({last30DaysEmails.length})
+                    {t("time.last30Days", "Last 30 days")}
                   </h3>
                   {visibleEmails.last30Days.map((item) => (
                     <div key={item.emailId} className="mb-2">
@@ -775,7 +813,7 @@ export default function InboxPage() {
               {visibleEmails.older.length > 0 && (
                 <section>
                   <h3 className="text-[18px] font-semibold text-[#6F7680] mb-4">
-                    {t("time.older", "Older")} ({olderEmails.length})
+                    {t("time.older", "Older")}
                   </h3>
                   {visibleEmails.older.map((item) => (
                     <div key={item.emailId} className="mb-2">

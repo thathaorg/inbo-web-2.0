@@ -2,6 +2,7 @@
 
 import React, { use, useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import Image from "next/image";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useTranslation } from "react-i18next";
@@ -569,10 +570,20 @@ export default function ReadingPage(props: PageProps) {
     if (confirm("Are you sure you want to move this to trash?")) {
       try {
         await emailService.moveToTrash(emailData.id);
-        router.push('/inbox');
+        
+        toast.success('Moved to trash', {
+          description: 'Email has been moved to trash',
+          action: {
+            label: 'View',
+            onClick: () => router.push('/delete'),
+          },
+        });
+        
+        // Navigate after a short delay to allow toast to show
+        setTimeout(() => router.push('/inbox'), 500);
       } catch (e) {
         console.error("Failed to delete", e);
-        alert("Failed to delete email");
+        toast.error('Failed to move to trash');
       }
     }
   };
@@ -583,8 +594,21 @@ export default function ReadingPage(props: PageProps) {
       const nextStatus = !emailData.isReadLater;
       await emailService.toggleReadLater(emailData.id, nextStatus);
       setEmailData(prev => prev ? { ...prev, isReadLater: nextStatus } : null);
+      
+      if (nextStatus) {
+        toast.success('Added to Read Later', {
+          description: 'Email saved for later reading',
+          action: {
+            label: 'View',
+            onClick: () => router.push('/read_later'),
+          },
+        });
+      } else {
+        toast.success('Removed from Read Later');
+      }
     } catch (e) {
       console.error("Failed to toggle read later", e);
+      toast.error('Failed to update read later');
     }
   };
 
@@ -594,8 +618,21 @@ export default function ReadingPage(props: PageProps) {
       const nextStatus = !emailData.isFavorite;
       await emailService.toggleFavorite(emailData.id, nextStatus);
       setEmailData(prev => prev ? { ...prev, isFavorite: nextStatus } : null);
+      
+      if (nextStatus) {
+        toast.success('Added to Favorites', {
+          description: 'Email marked as favorite',
+          action: {
+            label: 'View',
+            onClick: () => router.push('/favorite'),
+          },
+        });
+      } else {
+        toast.success('Removed from Favorites');
+      }
     } catch (e) {
       console.error("Failed to toggle favorite", e);
+      toast.error('Failed to update favorite');
     }
   };
 

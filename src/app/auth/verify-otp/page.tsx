@@ -217,10 +217,21 @@ function VerifyOTPContent() {
       }
     } catch (err: any) {
       console.error("❌ OTP verification failed:", err);
-      const errorMessage =
-        err?.response?.data?.message ||
-        err?.message ||
-        "Invalid or expired OTP. Please try again.";
+      
+      // Parse specific error messages
+      let errorMessage = "Invalid or expired OTP. Please try again.";
+      
+      if (err?.response?.status === 401) {
+        errorMessage = err?.response?.data?.message || 
+                      err?.response?.data?.detail ||
+                      "Invalid OTP code. Please check and try again.";
+      } else if (err?.response?.status === 400) {
+        errorMessage = err?.response?.data?.message || 
+                      "OTP has expired. Please request a new code.";
+      } else if (err?.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      }
+      
       setError(errorMessage);
       // Reset flag to allow retry on error
       verificationAttemptedRef.current = false;

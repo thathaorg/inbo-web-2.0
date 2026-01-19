@@ -37,6 +37,9 @@ function VerifyOTPContent() {
   const [isResending, setIsResending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resendCountdown, setResendCountdown] = useState(0);
+  
+  // Ref to track if verification has already succeeded to prevent duplicate attempts
+  const verificationAttemptedRef = useRef(false);
 
   const inputRefs = [
     useRef<HTMLInputElement>(null),
@@ -89,7 +92,11 @@ function VerifyOTPContent() {
     // 2. Not already loading
     // 3. Email is present
     // 4. No error (to allow retry after clearing error)
-    if (otpString.length === 4 && !isLoading && email && !error) {
+    // 5. Haven't already attempted verification for this OTP
+    if (otpString.length === 4 && !isLoading && email && !error && !verificationAttemptedRef.current) {
+      // Mark that we're attempting verification to prevent duplicate calls
+      verificationAttemptedRef.current = true;
+      
       // Small delay to ensure state is stable
       const timer = setTimeout(() => {
         handleVerifyOTP();
@@ -101,6 +108,18 @@ function VerifyOTPContent() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [otp, isLoading, email, error]); // Don't include handleVerifyOTP to prevent loops
+
+  /* ================= RESET VERIFICATION FLAG ON OTP CHANGE ================= */
+  
+  // Reset the verification flag when user modifies OTP (allows retry)
+  useEffect(() => {
+    // Only clear the flag if OTP becomes incomplete (user is editing)
+    const otpString = otp.join("");
+    if (otpString.length < 4) {
+      verificationAttemptedRef.current = false;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [otp]);
 
   /* ================= HANDLE OTP INPUT CHANGE ================= */
 
@@ -203,6 +222,8 @@ function VerifyOTPContent() {
         err?.message ||
         "Invalid or expired OTP. Please try again.";
       setError(errorMessage);
+      // Reset flag to allow retry on error
+      verificationAttemptedRef.current = false;
       // Clear OTP on error to allow retry
       setOtp(["", "", "", ""]);
       inputRefs[0]?.current?.focus();
@@ -222,6 +243,8 @@ function VerifyOTPContent() {
     try {
       await sendOTP(email);
       setResendCountdown(60); // 60 seconds countdown
+      // Reset verification flag for new OTP
+      verificationAttemptedRef.current = false;
       setOtp(["", "", "", ""]);
       inputRefs[0]?.current?.focus();
     } catch (err: any) {

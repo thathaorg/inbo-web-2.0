@@ -106,6 +106,9 @@ function VerifyOTPContent() {
       
       return () => {
         clearTimeout(timer);
+        // Reset flag if cleanup runs before handleVerifyOTP executes
+        // This prevents the flag from getting stuck if component re-renders
+        isVerifyingRef.current = false;
       };
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

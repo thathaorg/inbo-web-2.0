@@ -37,9 +37,6 @@ function VerifyOTPContent() {
   const [isResending, setIsResending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resendCountdown, setResendCountdown] = useState(0);
-  
-  // Ref to track if verification is in progress (prevents race conditions)
-  const isVerifyingRef = useRef(false);
 
   const inputRefs = [
     useRef<HTMLInputElement>(null),
@@ -89,26 +86,17 @@ function VerifyOTPContent() {
     
     // Only auto-verify if:
     // 1. OTP is complete (4 digits)
-    // 2. Not already loading/verifying
+    // 2. Not already loading
     // 3. Email is present
-    // 4. Not already verified (no error shown means we're in initial state)
-    if (otpString.length === 4 && !isLoading && !isVerifyingRef.current && email && !error) {
-      // Mark as verifying immediately to prevent duplicate calls
-      isVerifyingRef.current = true;
-      
-      // Small delay to ensure state is stable and prevent race conditions
+    // 4. No error (to allow retry after clearing error)
+    if (otpString.length === 4 && !isLoading && email && !error) {
+      // Small delay to ensure state is stable
       const timer = setTimeout(() => {
-        // Double-check we're still not verifying before proceeding
-        if (isVerifyingRef.current) {
-          handleVerifyOTP();
-        }
+        handleVerifyOTP();
       }, 100);
       
       return () => {
         clearTimeout(timer);
-        // Reset flag if cleanup runs before handleVerifyOTP executes
-        // This prevents the flag from getting stuck if component re-renders
-        isVerifyingRef.current = false;
       };
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -168,8 +156,8 @@ function VerifyOTPContent() {
       return;
     }
 
-    // Prevent multiple simultaneous verification attempts
-    if (isVerifyingRef.current || isLoading) {
+    // Prevent multiple simultaneous verification attempts (only check isLoading)
+    if (isLoading) {
       console.log("⏳ Verification already in progress, skipping...");
       return;
     }

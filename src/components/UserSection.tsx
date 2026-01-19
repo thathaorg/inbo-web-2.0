@@ -1,15 +1,28 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
+import userService, { type UserProfileResponse } from "@/services/user";
 
 export default function UserSection({ collapsed }: { collapsed: boolean }) {
-  const { user } = useAuth();
+  const [profile, setProfile] = useState<UserProfileResponse | null>(null);
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const data = await userService.getProfile();
+        setProfile(data);
+      } catch (err) {
+        console.error("Failed to load profile", err);
+      }
+    };
+    loadProfile();
+  }, []);
 
   // Use real user data or fallback to defaults
-  const userName = user?.name || user?.username || "User";
+  const userName = profile?.name || profile?.username || "User";
   const userImage = "/icons/account-icon.png";
 
   return (

@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import EmptyList from "@/components/inbox/EmptyList";
 import EmptyInbox from "@/components/inbox/EmptyInbox";
 import NewsletterCard from "@/components/inbox/InboxCard";
@@ -132,6 +134,7 @@ function updateCachedEmail(emailId: string, updates: Partial<any>) {
 
 export default function InboxPage() {
   const { t } = useTranslation("common");
+  const router = useRouter();
   const [tab, setTab] = useState<"unread" | "read" | "all">("unread");
   
   // Initialize from cache if available
@@ -580,8 +583,17 @@ export default function InboxPage() {
     try {
       await emailService.moveToTrash(emailId);
       setAllEmails(prev => prev.filter(e => e.emailId !== emailId));
+      
+      toast.success('Moved to trash', {
+        description: 'Email has been moved to trash',
+        action: {
+          label: 'View',
+          onClick: () => router.push('/delete'),
+        },
+      });
     } catch (err) {
       console.error("Failed to move to trash", err);
+      toast.error('Failed to move to trash');
     }
   };
 
@@ -591,8 +603,21 @@ export default function InboxPage() {
       setAllEmails(prev => prev.map(e =>
         e.emailId === emailId ? { ...e, isReadLater } : e
       ));
+      
+      if (isReadLater) {
+        toast.success('Added to Read Later', {
+          description: 'Email saved for later reading',
+          action: {
+            label: 'View',
+            onClick: () => router.push('/read_later'),
+          },
+        });
+      } else {
+        toast.success('Removed from Read Later');
+      }
     } catch (err) {
       console.error("Failed to toggle read later", err);
+      toast.error('Failed to update read later');
     }
   };
 
@@ -602,8 +627,21 @@ export default function InboxPage() {
       setAllEmails(prev => prev.map(e =>
         e.emailId === emailId ? { ...e, isFavorite } : e
       ));
+      
+      if (isFavorite) {
+        toast.success('Added to Favorites', {
+          description: 'Email marked as favorite',
+          action: {
+            label: 'View',
+            onClick: () => router.push('/favorite'),
+          },
+        });
+      } else {
+        toast.success('Removed from Favorites');
+      }
     } catch (err) {
       console.error("Failed to toggle favorite", err);
+      toast.error('Failed to update favorite');
     }
   };
 

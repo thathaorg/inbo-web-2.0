@@ -65,12 +65,27 @@ export default function LanguageSelector({
 }: LanguageSelectorProps) {
   const { i18n, t } = useTranslation("common");
   const [isOpen, setIsOpen] = useState(false);
+  const [dropUp, setDropUp] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   // Get current language
   const currentLanguage =
     SUPPORTED_LANGUAGES.find((lang) => lang.code === i18n.language) ||
     SUPPORTED_LANGUAGES[0];
+
+  // Calculate if dropdown should open upward or downward
+  useEffect(() => {
+    if (isOpen && buttonRef.current) {
+      const buttonRect = buttonRef.current.getBoundingClientRect();
+      const dropdownHeight = 300; // max-height from styles
+      const spaceBelow = window.innerHeight - buttonRect.bottom;
+      const spaceAbove = buttonRect.top;
+      
+      // Open upward if not enough space below and more space above
+      setDropUp(spaceBelow < dropdownHeight && spaceAbove > spaceBelow);
+    }
+  }, [isOpen]);
 
   // Handle click outside to close dropdown
   useEffect(() => {
@@ -147,8 +162,9 @@ export default function LanguageSelector({
 
   const getDropdownStyles = () => {
     const baseStyles = `
-      absolute z-50 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg
+      absolute z-50 bg-white border border-gray-200 rounded-xl shadow-lg
       overflow-hidden min-w-[200px] max-h-[300px] overflow-y-auto
+      ${dropUp ? 'bottom-full mb-1' : 'top-full mt-1'}
     `;
     
     switch (variant) {
@@ -179,6 +195,7 @@ export default function LanguageSelector({
 
         {/* Dropdown trigger button */}
         <button
+          ref={buttonRef}
           type="button"
           onClick={() => setIsOpen(!isOpen)}
           onKeyDown={(e) => handleKeyDown(e)}

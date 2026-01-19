@@ -22,6 +22,7 @@ import {
   Book,
   Star,
   Trash2,
+  Eraser,
 } from "lucide-react";
 import TTSPlayerModal from "@/components/TTSPlayerModal";
 import ReadModeSettings from "@/components/reading/ReadModeSettings";
@@ -372,6 +373,58 @@ function applyHighlights(text: string, highlights: any[] | null | undefined) {
   return <>{parts}</>;
 }
 
+/* Helper function to apply highlights to text */
+function applyHighlights(text: string, highlights: any[] | null | undefined) {
+  if (!highlights || highlights.length === 0) return text;
+
+  // Normalize text for matching
+  const normalizedText = text.replace(/\s+/g, ' ').trim();
+  
+  let result: (string | JSX.Element)[] = [text];
+  
+  highlights.forEach((highlight, idx) => {
+    if (!highlight.text) return;
+    
+    const highlightText = highlight.text.replace(/\s+/g, ' ').trim();
+    const newResult: (string | JSX.Element)[] = [];
+    
+    result.forEach((part) => {
+      if (typeof part === 'string') {
+        // Find the highlight text in the part
+        const normalizedPart = part.replace(/\s+/g, ' ').trim();
+        const index = normalizedPart.indexOf(highlightText);
+        
+        if (index !== -1) {
+          // Split the text and add highlighted portion
+          const before = part.slice(0, index);
+          const highlighted = part.slice(index, index + highlightText.length);
+          const after = part.slice(index + highlightText.length);
+          
+          if (before) newResult.push(before);
+          newResult.push(
+            <mark 
+              key={`highlight-${idx}-${index}`} 
+              className="bg-yellow-200 text-black rounded px-0.5"
+              style={{ backgroundColor: '#fef08a' }}
+            >
+              {highlighted}
+            </mark>
+          );
+          if (after) newResult.push(after);
+        } else {
+          newResult.push(part);
+        }
+      } else {
+        newResult.push(part);
+      }
+    });
+    
+    result = newResult;
+  });
+  
+  return <>{result}</>;
+}
+
 export default function ReadingPage(props: PageProps) {
   const isMobile = useMediaQuery("(max-width: 768px)");
   const { slug } = use(props.params);
@@ -397,6 +450,7 @@ export default function ReadingPage(props: PageProps) {
 
   // HIGHLIGHT STATE
   const [isHighlightMode, setIsHighlightMode] = useState(false);
+  const [isEraserMode, setIsEraserMode] = useState(false);
 
   const { t } = useTranslation("common");
 
@@ -782,7 +836,14 @@ export default function ReadingPage(props: PageProps) {
 
   /* ---------------- HIGHLIGHTING LOGIC ---------------- */
   useEffect(() => {
-    if (!isHighlightMode || !isReadingMode) return;
+    // Turn off eraser mode when highlight mode is turned off
+    if (!isHighlightMode && isEraserMode) {
+      setIsEraserMode(false);
+    }
+  }, [isHighlightMode, isEraserMode]);
+
+  useEffect(() => {
+    if ((!isHighlightMode && !isEraserMode) || !isReadingMode) return;
 
     const handleSelection = async () => {
       const selection = window.getSelection();
@@ -796,7 +857,58 @@ export default function ReadingPage(props: PageProps) {
 
       if (!emailData) return;
 
+      // Check if we're in eraser mode
+      if (isEraserMode) {
+        console.log("Attempting to delete highlight:", text);
+        
+        // Find matching highlight
+        const existingHighlights = emailData.highlights || [];
+        const matchingHighlight = existingHighlights.find(h => {
+          const normalizedH = (h.text || '').replace(/\s+/g, ' ').trim();
+          return normalizedH === text;
+        });
+
+        if (matchingHighlight && matchingHighlight.id) {
+          try {
+            await emailService.deleteHighlight(emailData.id, matchingHighlight.id);
+            
+            // Remove from local state
+            setEmailData(prev => {
+              if (!prev) return null;
+              const updatedHighlights = (prev.highlights || []).filter(h => h.id !== matchingHighlight.id);
+              return { ...prev, highlights: updatedHighlights };
+            });
+            
+            console.log("Highlight deleted!");
+            toast.success('Highlight removed');
+          } catch (err) {
+            console.error("Failed to delete highlight", err);
+            toast.error('Failed to remove highlight');
+          }
+        } else {
+          console.log("No matching highlight found");
+        }
+        
+        selection.removeAllRanges();
+        return;
+      }
+
+      // Highlight mode - check for duplicates
       console.log("Attempting to highlight:", text);
+      
+      // Check if this text is already highlighted
+      const existingHighlights = emailData.highlights || [];
+      const isDuplicate = existingHighlights.some(h => {
+        const normalizedH = (h.text || '').replace(/\s+/g, ' ').trim();
+        return normalizedH === text;
+      });
+
+      if (isDuplicate) {
+        console.log("Text already highlighted, skipping...");
+        selection.removeAllRanges();
+        toast.info('Already highlighted');
+        return;
+      }
 
       try {
         const result = await emailService.addHighlight(emailData.id, text, {}, 'yellow');
@@ -813,8 +925,10 @@ export default function ReadingPage(props: PageProps) {
         // Clear selection
         selection.removeAllRanges();
         console.log("Highlight saved!");
+        toast.success('Highlighted');
       } catch (err) {
         console.error("Failed to save highlight", err);
+        toast.error('Failed to highlight');
       }
     };
 
@@ -823,7 +937,7 @@ export default function ReadingPage(props: PageProps) {
     return () => {
       if (el) el.removeEventListener('mouseup', handleSelection);
     };
-  }, [isHighlightMode, isReadingMode, emailData]);
+  }, [isHighlightMode, isEraserMode, isReadingMode, emailData]);
 
 
   // BACKGROUND CLASSES
@@ -1109,7 +1223,7 @@ export default function ReadingPage(props: PageProps) {
 
             <div
               ref={contentRef}
-              className={`flex-1 overflow-y-auto py-10 hide-scrollbar transition-all duration-300 ${getAppearanceClasses()} ${isHighlightMode ? 'cursor-text selection:bg-yellow-200 selection:text-black' : ''}`}
+              className={`flex-1 overflow-y-auto py-10 hide-scrollbar transition-all duration-300 ${getAppearanceClasses()} ${isHighlightMode ? 'cursor-text selection:bg-yellow-200 selection:text-black' : isEraserMode ? 'cursor-pointer selection:bg-red-200 selection:text-black' : ''}`}
             >
               <div
                 className={`mx-auto max-w-[760px] px-10 transition-all duration-300 ${getFontFamily()}`}
@@ -1179,12 +1293,29 @@ export default function ReadingPage(props: PageProps) {
               <img src="/icons/read-style-icon.png" alt="style" className="w-6 h-6" />
             </button>
             <button
-              onClick={() => setIsHighlightMode(v => !v)}
+              onClick={() => {
+                setIsHighlightMode(v => !v);
+                if (isEraserMode) setIsEraserMode(false);
+              }}
               className={`p-3 hover:bg-gray-100 transition-colors ${isHighlightMode ? 'bg-yellow-100 hover:bg-yellow-200' : ''}`}
               title="Toggle Highlight Mode"
             >
               <img src="/icons/highlight-icon.png" alt="highlight" className="w-6 h-6" />
             </button>
+            {isHighlightMode && (
+              <button
+                onClick={() => {
+                  setIsEraserMode(v => !v);
+                }}
+                className={`p-3 hover:bg-gray-100 transition-colors ${isEraserMode ? 'bg-red-100 hover:bg-red-200' : ''}`}
+                title="Erase Highlights"
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M7 21h10M2.5 13.5L9 7l5-5 4 4-5 5-6.5 6.5a2 2 0 01-1.414.586h-2.172" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M8.5 8.5l7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            )}
             <button 
               onClick={() => setShowAISummary(true)}
               className="p-3 hover:bg-gray-100 hover:bg-purple-50 transition-colors"

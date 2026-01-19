@@ -89,20 +89,63 @@ async function withTimeout<T>(promise: Promise<T>, label: string, timeoutMs = RE
 }
 
 /* ---------------------------------------------------------------- */
+/* PERSISTENT INBOX CACHE - survives component remounts */
+/* ---------------------------------------------------------------- */
+interface InboxCache {
+  unread: { emails: any[]; nextPage: number; hasMore: boolean; timestamp: number };
+  read: { emails: any[]; nextPage: number; hasMore: boolean; timestamp: number };
+  all: { emails: any[]; nextPage: number; hasMore: boolean; timestamp: number };
+}
+
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache validity
+
+// Global cache outside React - persists across component remounts
+let inboxCache: InboxCache = {
+  unread: { emails: [], nextPage: 1, hasMore: true, timestamp: 0 },
+  read: { emails: [], nextPage: 1, hasMore: true, timestamp: 0 },
+  all: { emails: [], nextPage: 1, hasMore: true, timestamp: 0 },
+};
+
+function getCachedInbox(tab: 'unread' | 'read' | 'all'): { emails: any[]; nextPage: number; hasMore: boolean } | null {
+  const cached = inboxCache[tab];
+  const now = Date.now();
+  if (cached.emails.length > 0 && (now - cached.timestamp) < CACHE_TTL) {
+    console.log(`✅ Using cached ${tab} inbox: ${cached.emails.length} emails`);
+    return { emails: cached.emails, nextPage: cached.nextPage, hasMore: cached.hasMore };
+  }
+  return null;
+}
+
+function setCachedInbox(tab: 'unread' | 'read' | 'all', emails: any[], nextPage: number, hasMore: boolean) {
+  inboxCache[tab] = { emails, nextPage, hasMore, timestamp: Date.now() };
+}
+
+function updateCachedEmail(emailId: string, updates: Partial<any>) {
+  (['unread', 'read', 'all'] as const).forEach(tab => {
+    inboxCache[tab].emails = inboxCache[tab].emails.map(e => 
+      e.emailId === emailId ? { ...e, ...updates } : e
+    );
+  });
+}
+
+/* ---------------------------------------------------------------- */
 
 export default function InboxPage() {
   const { t } = useTranslation("common");
   const [tab, setTab] = useState<"unread" | "read" | "all">("unread");
-  const [initialLoading, setInitialLoading] = useState(true);
+  
+  // Initialize from cache if available
+  const cachedData = getCachedInbox(tab);
+  const [initialLoading, setInitialLoading] = useState(!cachedData);
   const [backgroundLoading, setBackgroundLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // All fetched emails (single source of truth)
-  const [allEmails, setAllEmails] = useState<any[]>([]);
+  // All fetched emails (single source of truth) - initialize from cache
+  const [allEmails, setAllEmails] = useState<any[]>(cachedData?.emails || []);
 
-  // Pagination tracking
-  const [nextPageToFetch, setNextPageToFetch] = useState(1);
-  const [hasMorePages, setHasMorePages] = useState(true);
+  // Pagination tracking - initialize from cache
+  const [nextPageToFetch, setNextPageToFetch] = useState(cachedData?.nextPage || 1);
+  const [hasMorePages, setHasMorePages] = useState(cachedData?.hasMore ?? true);
   const [realUnreadCount, setRealUnreadCount] = useState(0);
   const [realReadCount, setRealReadCount] = useState(0); // Real read count from analytics
   const [totalEmailsFromAPI, setTotalEmailsFromAPI] = useState(0); // Real total from analytics
@@ -112,6 +155,7 @@ export default function InboxPage() {
   const abortControllerRef = useRef<AbortController | null>(null);
   const currentTabRef = useRef<string>(tab); // Track current tab to detect real tab changes
   const isMountedRef = useRef<boolean>(true); // Track if component is mounted
+  const hasInitializedRef = useRef<boolean>(!!cachedData); // Track if we've already initialized
 
   // UI visibility controls (how many to show in each section)
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_PER_SECTION * 4); // Total visible across all sections
@@ -127,11 +171,12 @@ export default function InboxPage() {
   }, []);
 
   /**
-   * Fetch a single page of emails
+   * Fetch a single page of emails - use cache when available
    */
-  const fetchPage = useCallback(async (page: number, isReadParam: boolean | undefined): Promise<EmailListItem[]> => {
+  const fetchPage = useCallback(async (page: number, isReadParam: boolean | undefined, forceRefresh: boolean = false): Promise<EmailListItem[]> => {
     try {
-      const response = await emailService.getInboxEmails("latest", isReadParam, page);
+      // Use forceRefresh=false to leverage cache on navigation back
+      const response = await emailService.getInboxEmails("latest", isReadParam, page, forceRefresh);
       
       if (!Array.isArray(response) || response.length === 0) return [];
       
@@ -147,12 +192,12 @@ export default function InboxPage() {
   }, []);
 
   /**
-   * Fetch multiple pages in parallel
+   * Fetch multiple pages in parallel - use cache by default
    */
-  const fetchPages = useCallback(async (startPage: number, count: number, isReadParam: boolean | undefined): Promise<{emails: EmailListItem[], lastPage: number, hasMore: boolean}> => {
+  const fetchPages = useCallback(async (startPage: number, count: number, isReadParam: boolean | undefined, forceRefresh: boolean = false): Promise<{emails: EmailListItem[], lastPage: number, hasMore: boolean}> => {
     const pagePromises = [];
     for (let i = 0; i < count; i++) {
-      pagePromises.push(fetchPage(startPage + i, isReadParam));
+      pagePromises.push(fetchPage(startPage + i, isReadParam, forceRefresh));
     }
     
     const results = await Promise.all(pagePromises);
@@ -216,6 +261,9 @@ export default function InboxPage() {
         setAllEmails(prev => {
           const merged = mergeEmails(prev, transformed);
           console.log(`📊 Total emails after merge: ${merged.length}`);
+          // Update cache with merged data
+          const currentTab = currentTabRef.current as 'unread' | 'read' | 'all';
+          setCachedInbox(currentTab, merged, currentPage + 1, hasMore);
           return merged;
         });
         
@@ -366,13 +414,38 @@ export default function InboxPage() {
     const tabActuallyChanged = currentTabRef.current !== tab;
     currentTabRef.current = tab;
     
+    // Check cache first - if we have valid cached data, use it immediately
+    const cached = getCachedInbox(tab);
+    if (cached && cached.emails.length > 0 && !tabActuallyChanged) {
+      console.log(`✅ Using cached data for ${tab}: ${cached.emails.length} emails, skipping fetch`);
+      setAllEmails(cached.emails);
+      setNextPageToFetch(cached.nextPage);
+      setHasMorePages(cached.hasMore);
+      setInitialLoading(false);
+      fetchUnreadCount(); // Still refresh counts
+      return;
+    }
+    
     // Only stop background fetch if tab actually changed
     if (tabActuallyChanged) {
       console.log(`🔄 Tab changed to: ${tab}, stopping existing background fetch`);
       stopBackgroundFetch();
+      
+      // Check cache for the new tab
+      const tabCache = getCachedInbox(tab);
+      if (tabCache && tabCache.emails.length > 0) {
+        console.log(`✅ Switching to cached ${tab} tab: ${tabCache.emails.length} emails`);
+        setAllEmails(tabCache.emails);
+        setNextPageToFetch(tabCache.nextPage);
+        setHasMorePages(tabCache.hasMore);
+        setInitialLoading(false);
+        setVisibleCount(INITIAL_VISIBLE_PER_SECTION * 4);
+        fetchUnreadCount();
+        return;
+      }
     }
     
-    // Reset state
+    // Reset state - we need to fetch
     setAllEmails([]);
     setNextPageToFetch(1);
     setHasMorePages(true);
@@ -387,21 +460,26 @@ export default function InboxPage() {
         fetchUnreadCount();
         
         // Fetch first batch of pages for fast first paint
-        console.log(`🔄 Fetching initial ${INITIAL_PAGES_TO_FETCH} pages for tab: ${tab}`);
+        // Use cache (forceRefresh=false) when navigating back
+        console.log(`🔄 Fetching initial ${INITIAL_PAGES_TO_FETCH} pages for tab: ${tab} (using cache)`);
         
         const { emails, lastPage, hasMore } = await withTimeout(
-          fetchPages(1, INITIAL_PAGES_TO_FETCH, isReadParam),
+          fetchPages(1, INITIAL_PAGES_TO_FETCH, isReadParam, false), // Use cache
           "Initial inbox fetch"
         );
         
         if (emails.length === 0) {
           setAllEmails([]);
           setHasMorePages(false);
+          setCachedInbox(tab, [], 1, false); // Cache empty result
         } else {
           const transformed = emails.map(transformEmailToCard);
           setAllEmails(transformed);
           setNextPageToFetch(lastPage + 1);
           setHasMorePages(hasMore);
+          
+          // Save to persistent cache for instant restore on navigation back
+          setCachedInbox(tab, transformed, lastPage + 1, hasMore);
           
           console.log(`📊 Initial load: ${emails.length} emails, lastPage=${lastPage}, hasMore=${hasMore}`);
           
@@ -426,10 +504,9 @@ export default function InboxPage() {
     
     loadInitialData();
     
-    // Cleanup function - only runs on unmount or actual tab change
+    // Cleanup function - save current state to cache before unmount
     return () => {
-      // The tab change detection above handles stopping for tab switches
-      // This cleanup is mainly for component unmount
+      // Cache is already updated incrementally, no action needed
     };
   }, [tab, fetchPages, fetchUnreadCount, startBackgroundFetch, stopBackgroundFetch]);
 
@@ -443,36 +520,18 @@ export default function InboxPage() {
     };
   }, [stopBackgroundFetch]);
 
-  // Handle window focus and visibility - refresh data when returning to page
+  // Handle window focus and visibility - only refresh counts, not full list (to avoid reload UX)
   useEffect(() => {
     const handleFocus = () => {
-      console.log('🔄 Window focused - refreshing counts');
+      console.log('🔄 Window focused - refreshing counts only');
       fetchUnreadCount();
     };
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        console.log('🔄 Page visible again - refreshing data');
+        console.log('🔄 Page visible again - refreshing counts only');
         fetchUnreadCount();
-        // Also refresh the email list to get updated read status
-        const isReadParam = tab === "unread" ? false : tab === "read" ? true : undefined;
-        fetchPage(1, isReadParam).then(emails => {
-          if (emails.length > 0) {
-            const transformed = emails.map(transformEmailToCard);
-            setAllEmails(prev => {
-              // Merge with existing, but update read status from fresh data
-              const emailMap = new Map(transformed.map(e => [e.emailId, e]));
-              const updated = prev.map(e => emailMap.get(e.emailId) || e);
-              // Filter out emails that shouldn't be in current tab view
-              if (tab === "unread") {
-                return updated.filter(e => !e.read);
-              } else if (tab === "read") {
-                return updated.filter(e => e.read);
-              }
-              return updated;
-            });
-          }
-        });
+        // Don't reload emails automatically - let user pull to refresh if they want fresh data
       }
     };
 

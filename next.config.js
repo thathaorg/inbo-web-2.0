@@ -3,6 +3,11 @@
 const nextConfig = {
   reactStrictMode: true,
 
+  // Fix Turbopack root detection warning
+  turbopack: {
+    root: __dirname,
+  },
+
   images: {
     remotePatterns: [
       {

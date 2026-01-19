@@ -24,6 +24,8 @@ import {
 } from "lucide-react";
 import TTSPlayerModal from "@/components/TTSPlayerModal";
 import ReadModeSettings from "@/components/reading/ReadModeSettings";
+import AISummaryModal from "@/components/reading/AISummaryModal";
+import EmailSkeletonLoader from "@/components/reading/EmailSkeletonLoader";
 import MobileReadingSection from "./MobileReadingSection";
 import emailService, { extractNewsletterName, extractFirstImage } from "@/services/email";
 import type { EmailDetail } from "@/services/email";
@@ -34,6 +36,19 @@ import type { EmailDetail } from "@/services/email";
 type PageProps = {
   params: Promise<{ slug: string }>;
 };
+
+type FontType =
+  | "System Default"
+  | "Georgia"
+  | "Merriweather"
+  | "Lora"
+  | "Charter"
+  | "Palatino"
+  | "Times New Roman"
+  | "Helvetica"
+  | "Inter"
+  | "SF Pro"
+  | "Roboto";
 
 /* ------------------------------------------------------------------ */
 /* UTILITY FUNCTIONS */
@@ -163,7 +178,8 @@ function IconButton({
     <button
       ref={buttonRef}
       onClick={onClick}
-      className="h-9 w-9 rounded-full flex items-center justify-center bg-white hover:bg-gray-100 transition"
+      className="h-9 w-9 rounded-full flex items-center justify-center border border-gray-200 hover:bg-gray-50 transition-colors shadow-sm"
+      style={{ backgroundColor: '#ffffff' }}
     >
       {children}
     </button>
@@ -369,12 +385,14 @@ export default function ReadingPage(props: PageProps) {
   // Default to FALSE so we show the Original HTML first
   const [isReadingMode, setIsReadingMode] = useState(false);
   const [showReadingStyle, setShowReadingStyle] = useState(false);
+  const [showAISummary, setShowAISummary] = useState(false);
 
   // READING APPEARANCE STATE
   const [themeMode, setThemeMode] = useState<ThemeMode>("system");
   const [fontSize, setFontSize] = useState(18); // Default 18px
   const [pageColor, setPageColor] = useState<"white" | "paper" | "calm">("white");
   const [fontFamily, setFontFamily] = useState<"sans" | "serif" | "mono">("sans");
+  const [fontType, setFontType] = useState<FontType>("Georgia");
 
   // HIGHLIGHT STATE
   const [isHighlightMode, setIsHighlightMode] = useState(false);
@@ -389,6 +407,11 @@ export default function ReadingPage(props: PageProps) {
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showSharePopup, setShowSharePopup] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
+
+  // Navigation state for next/previous emails
+  const [nextEmailId, setNextEmailId] = useState<string | null>(null);
+  const [prevEmailId, setPrevEmailId] = useState<string | null>(null);
+  const [isNavigating, setIsNavigating] = useState(false);
 
   const typeBtnRef = useRef<HTMLButtonElement>(null);
   const moreBtnRef = useRef<HTMLButtonElement>(null);
@@ -435,23 +458,79 @@ export default function ReadingPage(props: PageProps) {
         }
       } catch (err: any) {
         console.error('Failed to fetch email:', err);
-        const errorMessage = err.response?.data?.message
-          || err.message
-          || 'Failed to load email. Please try again.';
-        setError(errorMessage);
-        setEmailData(null); // Clear email data on error
+        setError(err.message || 'Failed to load email');
       } finally {
         setLoading(false);
       }
     };
 
-    if (slug) {
-      fetchEmail();
-    } else {
-      setError('Invalid email ID');
-      setLoading(false);
-    }
+    fetchEmail();
   }, [slug]);
+
+  // Fetch inbox and preload adjacent emails
+  useEffect(() => {
+    const loadAdjacentEmails = async () => {
+      try {
+        // Get all cached inbox pages to find the email
+        let allEmails: any[] = [];
+        let page = 1;
+        let found = false;
+        
+        // Try to find the email in cached pages first, then fetch if needed
+        while (page <= 20 && !found) { // Limit to 20 pages max (1000 emails)
+          const inboxData = await emailService.getInboxEmails('latest', undefined, page, false);
+          
+          if (!Array.isArray(inboxData) || inboxData.length === 0) {
+            break;
+          }
+          
+          allEmails = [...allEmails, ...inboxData];
+          
+          // Check if current email is in this batch
+          const currentIndex = allEmails.findIndex((email: any) => email.id === slug);
+          if (currentIndex !== -1) {
+            found = true;
+            console.log('📧 Found email at index:', currentIndex, 'after fetching', page, 'pages');
+            
+            const nextId = currentIndex < allEmails.length - 1 ? allEmails[currentIndex + 1].id : null;
+            const prevId = currentIndex > 0 ? allEmails[currentIndex - 1].id : null;
+            
+            console.log('📧 Navigation IDs - prev:', prevId, 'next:', nextId);
+            
+            setNextEmailId(nextId);
+            setPrevEmailId(prevId);
+            
+            // Preload adjacent emails
+            if (nextId) {
+              emailService.getEmailDetail(nextId).catch(() => {});
+            }
+            if (prevId) {
+              emailService.getEmailDetail(prevId).catch(() => {});
+            }
+            break;
+          }
+          
+          page++;
+        }
+        
+        if (!found) {
+          console.log('📧 Email not found in first', page - 1, 'pages (', allEmails.length, 'emails)');
+        }
+      } catch (err) {
+        console.warn('Failed to load adjacent emails:', err);
+      }
+    };
+
+    loadAdjacentEmails();
+  }, [slug]);
+
+  // Navigation handlers
+  const handleNavigate = async (emailId: string) => {
+    setIsNavigating(true);
+    router.push(`/reading/${emailId}`);
+    // Reset will happen on slug change
+    setTimeout(() => setIsNavigating(false), 300);
+  };
 
   const handleToggleRead = useCallback(async (forcedStatus?: boolean) => {
     if (!emailData) return;
@@ -567,16 +646,23 @@ export default function ReadingPage(props: PageProps) {
 
   const handleNativeShare = async () => {
     if (!emailData) return;
+    
+    // Prevent multiple share calls
+    if (showSharePopup === false) return;
+    
     const shareUrl = `${window.location.origin}/reading/${emailData.id}`;
     const shareData = {
       title: title || 'Check out this article',
       text: title || 'Check out this article on Inbo',
       url: shareUrl,
     };
+    
+    // Close popup first to prevent multiple calls
+    setShowSharePopup(false);
+    
     try {
       if (navigator.share) {
         await navigator.share(shareData);
-        setShowSharePopup(false);
       }
     } catch (err) {
       if ((err as Error).name !== 'AbortError') {
@@ -710,11 +796,31 @@ export default function ReadingPage(props: PageProps) {
       return "bg-[#1C1C1E] text-white"; // Standard Dark
     }
 
-    // Light Mode (check Page Color)
+    // Light Mode (check Page Color) - Reading-optimized
     switch (pageColor) {
-      case "paper": return "bg-[#F5F5F3] text-black";
-      case "calm": return "bg-[#E8F1F5] text-black";
-      default: return "bg-white text-black"; // White
+      case "paper": return "bg-[#F7F3E9] text-[#3A3A3A]"; // Warm sepia paper tone
+      case "calm": return "bg-[#E8F4F8] text-[#2A2A2A]"; // Soft blue-gray calm
+      default: return "bg-white text-gray-900"; // Pure white
+    }
+  };
+
+  // TEXT COLOR FOR READING CONTENT
+  const getTextColorClass = () => {
+    if (themeMode === 'dark') return 'text-gray-100';
+    switch (pageColor) {
+      case "paper": return 'text-[#3A3A3A]';
+      case "calm": return 'text-[#2A2A2A]';
+      default: return 'text-gray-900';
+    }
+  };
+
+  // SUBTLE BORDER COLOR
+  const getBorderColorClass = () => {
+    if (themeMode === 'dark') return 'border-gray-700';
+    switch (pageColor) {
+      case "paper": return 'border-[#E5DFC8]';
+      case "calm": return 'border-[#D0E8F0]';
+      default: return 'border-gray-200';
     }
   };
 
@@ -726,15 +832,37 @@ export default function ReadingPage(props: PageProps) {
     }
   };
 
+  const getFontFamilyCSS = () => {
+    switch (fontType) {
+      case "System Default":
+        return '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+      case "Georgia":
+        return '"Georgia", serif';
+      case "Merriweather":
+        return '"Merriweather", "Georgia", serif';
+      case "Lora":
+        return '"Lora", "Georgia", serif';
+      case "Charter":
+        return '"Charter", "Georgia", serif';
+      case "Palatino":
+        return '"Palatino Linotype", "Book Antiqua", Palatino, serif';
+      case "Times New Roman":
+        return '"Times New Roman", Times, serif';
+      case "Helvetica":
+        return '"Helvetica Neue", Helvetica, Arial, sans-serif';
+      case "Inter":
+        return '"Inter", -apple-system, BlinkMacSystemFont, sans-serif';
+      case "SF Pro":
+        return '-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", sans-serif';
+      case "Roboto":
+        return '"Roboto", -apple-system, sans-serif';
+      default:
+        return '"Georgia", serif';
+    }
+  };
+
   if (loading) {
-    return (
-      <div className="w-full h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading email...</p>
-        </div>
-      </div>
-    );
+    return <EmailSkeletonLoader pageColor={pageColor} />;
   }
 
   if (error || !emailData) {
@@ -775,6 +903,8 @@ export default function ReadingPage(props: PageProps) {
         setPageColor={setPageColor}
         fontFamily={fontFamily}
         setFontFamily={setFontFamily}
+        fontType={fontType}
+        setFontType={setFontType}
       />
     );
   }
@@ -787,13 +917,49 @@ export default function ReadingPage(props: PageProps) {
 
       {/* MODAL CONTAINER */}
       <div className={`relative z-10 h-screen w-full flex hide-scrollbar ${appearanceClass} transition-colors duration-300`}>
-        <div className={`flex flex-col w-full ${appearanceClass}`}>
-          {/* HEADER */}
-          <header className={`h-[64px] flex items-center justify-end px-6 border-b transition-all ${isReadingMode ? 'opacity-0 h-0 overflow-hidden' : `opacity-100 ${appearanceClass}`}`}>
-            <div className="flex items-center gap-2">
+        {/* Previous Email Button - Subtle, non-distracting */}
+        {prevEmailId && (
+          <button
+            onClick={() => handleNavigate(prevEmailId)}
+            disabled={isNavigating}
+            className="fixed left-0 top-1/2 -translate-y-1/2 z-[9999] group"
+            aria-label="Previous email"
+            style={{ position: 'fixed', left: '0px', top: '50%', transform: 'translateY(-50%)' }}
+          >
+            <div className="w-8 h-20 rounded-r-2xl bg-gray-200/40 backdrop-blur-sm flex items-center justify-center transition-all duration-300 group-hover:w-10 group-hover:bg-gray-300/60 group-hover:shadow-lg group-disabled:opacity-30 group-disabled:cursor-not-allowed">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500 group-hover:text-gray-700 transition-colors">
+                <polyline points="15 18 9 12 15 6"></polyline>
+              </svg>
+            </div>
+          </button>
+        )}
+
+        {/* Next Email Button - Subtle, non-distracting */}
+        {nextEmailId && (
+          <button
+            onClick={() => handleNavigate(nextEmailId)}
+            disabled={isNavigating}
+            className="fixed right-0 top-1/2 -translate-y-1/2 z-[9999] group"
+            aria-label="Next email"
+            style={{ position: 'fixed', right: '0px', top: '50%', transform: 'translateY(-50%)' }}
+          >
+            <div className="w-8 h-20 rounded-l-2xl bg-gray-200/40 backdrop-blur-sm flex items-center justify-center transition-all duration-300 group-hover:w-10 group-hover:bg-gray-300/60 group-hover:shadow-lg group-disabled:opacity-30 group-disabled:cursor-not-allowed">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500 group-hover:text-gray-700 transition-colors">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </div>
+          </button>
+        )}
+
+        <div className="flex flex-col w-full min-h-screen bg-white">
+          {/* HEADER - Isolated from newsletter content with forced white background */}
+          <header 
+            className={`h-[64px] flex items-center justify-end px-6 border-b border-gray-200 transition-all relative z-[100] ${isReadingMode ? 'opacity-0 h-0 overflow-hidden' : 'opacity-100'}`} 
+            style={{ backgroundColor: '#ffffff !important' }}
+          >
+            <div className="flex items-center gap-2" style={{ backgroundColor: 'transparent' }}>
               <IconButton
-                buttonRef={typeBtnRef}
-                onClick={() => setShowReadingStyle(v => !v)}
+                onClick={() => setIsReadingMode(true)}
               >
                 <img src="/icons/read-style-icon.png" alt="style" />
               </IconButton>
@@ -870,10 +1036,12 @@ export default function ReadingPage(props: PageProps) {
             </div>
 
             <button
-              onClick={() => router.back()}
-              className="ml-4 h-9 w-9 rounded-lg flex items-center justify-center border hover:bg-gray-100"
+              onClick={() => router.push('/inbox')}
+              className="ml-4 h-9 w-9 rounded-lg flex items-center justify-center border border-gray-300 hover:bg-gray-100 transition-colors"
+              aria-label="Close and return to inbox"
+              style={{ backgroundColor: '#ffffff' }}
             >
-              <X size={24} />
+              <X size={20} className="text-gray-700" />
             </button>
           </header>
 
@@ -904,15 +1072,18 @@ export default function ReadingPage(props: PageProps) {
 
             <div
               ref={contentRef}
-              className={`flex-1 overflow-y-auto py-10 hide-scrollbar transition-all duration-300 ${isHighlightMode ? 'cursor-text selection:bg-yellow-200 selection:text-black' : ''}`}
+              className={`flex-1 overflow-y-auto py-10 hide-scrollbar transition-all duration-300 ${getAppearanceClasses()} ${isHighlightMode ? 'cursor-text selection:bg-yellow-200 selection:text-black' : ''}`}
             >
               <div
                 className={`mx-auto max-w-[760px] px-10 transition-all duration-300 ${getFontFamily()}`}
               >
-                <h1 className="text-[34px] font-bold mb-8">{title}</h1>
+                <div className={`mb-10 pb-8 border-b ${getBorderColorClass()}`}>
+                  <h1 className={`text-4xl font-serif font-bold mb-4 ${getTextColorClass()} tracking-tight`}>{title}</h1>
+                  <p className={`text-sm font-medium ${themeMode === 'dark' ? 'text-gray-400' : pageColor === 'paper' ? 'text-[#6B6B6B]' : pageColor === 'calm' ? 'text-[#5A5A5A]' : 'text-gray-600'}`}>{author} • {published}</p>
+                </div>
 
                 {isReadingMode && hero && (
-                  <div className="rounded-2xl overflow-hidden border mb-10">
+                  <div className="rounded-xl overflow-hidden border border-gray-200/60 shadow-md hover:shadow-lg transition-shadow mb-10">
                     <Image
                       src={hero}
                       alt={title}
@@ -926,17 +1097,31 @@ export default function ReadingPage(props: PageProps) {
 
                 {/* CONDITIONAL RENDERING - Reader mode shows parsed content, default shows HTML */}
                 {isReadingMode ? (
-                  <article className="max-w-none" style={{ fontSize: `${fontSize}px`, lineHeight: 1.7 }}>
+                  <article 
+                    className={`max-w-3xl mx-auto [&_a]:text-blue-600 [&_a]:underline [&_a]:hover:text-blue-700 [&_strong]:font-bold [&_em]:italic [&_ul]:ml-6 [&_ol]:ml-6 [&_li]:mb-2 ${getTextColorClass()}`}
+                    style={{ 
+                      fontSize: `${fontSize}px`, 
+                      lineHeight: 1.8,
+                      fontFamily: getFontFamilyCSS(),
+                      letterSpacing: '0.3px'
+                    }}
+                  >
                     {content.map((p, i) => (
-                      <p key={i} className="mb-4 leading-relaxed">
+                      <p key={i} className="mb-6 leading-relaxed first-letter:ml-8" style={{ opacity: 0.95 }}>
                         {applyHighlights(p, emailData?.highlights)}
                       </p>
                     ))}
                   </article>
                 ) : (
                   <div
-                    className="prose prose-lg max-w-none [&_*]:!text-inherit"
-                    style={{ fontSize: `${fontSize}px` }}
+                    className={`max-w-3xl mx-auto prose prose-lg prose-headings:font-serif prose-p:leading-8 prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline prose-strong:font-bold prose-em:italic prose-blockquote:border-l-4 prose-blockquote:pl-4 [&_*]:!text-inherit [&_strong]:!font-semibold [&_ul]:ml-6 [&_ol]:ml-6 [&_li]:mb-2 ${getTextColorClass()} ${getBorderColorClass()}`}
+                    style={{ 
+                      fontSize: `${fontSize}px`,
+                      fontFamily: getFontFamilyCSS(),
+                      lineHeight: 1.8,
+                      letterSpacing: '0.3px',
+                      isolation: 'isolate'
+                    }}
                     dangerouslySetInnerHTML={{ __html: htmlContent }}
                   />
                 )}
@@ -949,22 +1134,30 @@ export default function ReadingPage(props: PageProps) {
       {/* READER MODE FLOATING TOOLBAR */}
       {isReadingMode && (
         <div className="fixed left-5 top-1/2 -translate-y-1/2 z-50">
-          <div className="bg-white rounded-3xl shadow-xl border flex flex-col">
+          <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-gray-200/60 flex flex-col">
             <button
               onClick={() => setShowReadSettings(true)}
-              className="p-3 rounded-t-3xl hover:bg-gray-100 bg-gray-50/50"
+              className="p-3 rounded-t-3xl hover:bg-gray-100 bg-gray-50/50 transition-colors"
             >
-              <img src="/icons/read-style-icon.png" alt="style" />
+              <img src="/icons/read-style-icon.png" alt="style" className="w-6 h-6" />
             </button>
             <button
               onClick={() => setIsHighlightMode(v => !v)}
               className={`p-3 hover:bg-gray-100 transition-colors ${isHighlightMode ? 'bg-yellow-100 hover:bg-yellow-200' : ''}`}
               title="Toggle Highlight Mode"
             >
-              <img src="/icons/highlight-icon.png" alt="highlight" />
+              <img src="/icons/highlight-icon.png" alt="highlight" className="w-6 h-6" />
             </button>
-            <button className="p-3 hover:bg-gray-100">
-              <img src="/icons/note-icon.png" alt="note" />
+            <button 
+              onClick={() => setShowAISummary(true)}
+              className="p-3 hover:bg-gray-100 hover:bg-purple-50 transition-colors"
+              title="AI Summary"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-purple-500">
+                <path d="M12 3l1.09 3.41L16.5 7.5l-3.41 1.09L12 12l-1.09-3.41L7.5 7.5l3.41-1.09L12 3z"/>
+                <path d="M19 10l.54 1.69L21.23 12l-1.69.54L19 14l-.54-1.69L16.77 12l1.69-.54L19 10z"/>
+                <path d="M5 15l.54 1.69L7.23 17l-1.69.54L5 19l-.54-1.69L2.77 17l1.69-.54L5 15z"/>
+              </svg>
             </button>
             <div className="relative" data-share-popup>
               <button
@@ -972,7 +1165,7 @@ export default function ReadingPage(props: PageProps) {
                 className={`p-3 hover:bg-gray-100 transition-colors ${showSharePopup ? 'bg-gray-100' : ''}`}
                 title="Share"
               >
-                <Link2 size={24} />
+                <Link2 size={24} className="text-gray-700" />
               </button>
 
               {showSharePopup && (
@@ -980,7 +1173,7 @@ export default function ReadingPage(props: PageProps) {
                   <p className="text-xs font-semibold text-gray-500 px-3 py-1">Share</p>
                   <button
                     onClick={handleCopyLink}
-                    className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-lg text-sm font-medium flex items-center gap-2"
+                    className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-lg text-sm font-medium flex items-center gap-2 text-gray-700"
                   >
                     <Link2 size={16} className="text-gray-500" />
                     {copySuccess ? 'Copied!' : 'Copy Link'}
@@ -988,7 +1181,7 @@ export default function ReadingPage(props: PageProps) {
                   {typeof window !== 'undefined' && 'share' in navigator && (
                     <button
                       onClick={handleNativeShare}
-                      className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-lg text-sm font-medium flex items-center gap-2"
+                      className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-lg text-sm font-medium flex items-center gap-2 text-gray-700"
                     >
                       <Share2 size={16} className="text-gray-500" />
                       Share via...
@@ -1003,21 +1196,21 @@ export default function ReadingPage(props: PageProps) {
                 className={`p-3 hover:bg-gray-100 transition-colors ${showMoreMenu ? 'bg-gray-100' : ''}`}
                 title="More actions"
               >
-                <LucideCircleEllipsis size={24} />
+                <LucideCircleEllipsis size={24} className="text-gray-700" />
               </button>
 
               {showMoreMenu && (
                 <div className="absolute left-full ml-2 bottom-0 w-48 bg-white rounded-xl shadow-lg border p-2 z-50">
                   <button
                     onClick={handleToggleReadLater}
-                    className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-lg text-sm font-medium flex items-center gap-2"
+                    className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-lg text-sm font-medium flex items-center gap-2 text-gray-700"
                   >
                     <Bookmark size={16} className={emailData.isReadLater ? 'fill-current text-blue-500' : 'text-gray-500'} />
                     {emailData.isReadLater ? 'Remove Read Later' : 'Read Later'}
                   </button>
                   <button
                     onClick={handleToggleFavorite}
-                    className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-lg text-sm font-medium flex items-center gap-2"
+                    className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-lg text-sm font-medium flex items-center gap-2 text-gray-700"
                   >
                     <Star size={16} className={emailData.isFavorite ? 'fill-current text-yellow-500' : 'text-gray-500'} />
                     {emailData.isFavorite ? 'Favorite' : 'Add to Favorite'}
@@ -1043,19 +1236,12 @@ export default function ReadingPage(props: PageProps) {
         </div>
       )}
 
-      {/* READ MODE SETTINGS MODAL */}
-      {showReadSettings && (
+      {/* READ MODE SETTINGS MODAL - Only in Reading Mode */}
+      {showReadSettings && isReadingMode && (
         <ReadModeSettings
           isOpen={showReadSettings}
           onClose={() => setShowReadSettings(false)}
-        />
-      )}
-
-      {showReadingStyle && (
-        <ReadingStylePopover
-          anchorRef={typeBtnRef}
-          onClose={() => setShowReadingStyle(false)}
-          // Props for appearance
+          // Share the same appearance state as the page so controls work
           themeMode={themeMode}
           setThemeMode={setThemeMode}
           fontSize={fontSize}
@@ -1064,12 +1250,11 @@ export default function ReadingPage(props: PageProps) {
           setPageColor={setPageColor}
           fontFamily={fontFamily}
           setFontFamily={setFontFamily}
-
-          isReaderMode={isReadingMode}
-          onEnableReader={() => {
-            setIsReadingMode(true);
-            setShowReadingStyle(false); // Close popover when reader mode is enabled
-          }}
+          fontType={fontType}
+          setFontType={setFontType}
+          // Full settings for reading mode
+          showFontSelector={true}
+          position='center'
         />
       )}
 
@@ -1079,6 +1264,14 @@ export default function ReadingPage(props: PageProps) {
         title={title}
         // TTS always uses the parsed text
         content={content.join(" ")}
+      />
+
+      <AISummaryModal
+        isOpen={showAISummary}
+        onClose={() => setShowAISummary(false)}
+        emailId={emailData.id}
+        title={title}
+        existingSummary={emailData.summary}
       />
 
       <style jsx global>{`

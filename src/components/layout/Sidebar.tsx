@@ -6,6 +6,7 @@ import {
   BarChart3,
   Bell,
   Trash2,
+  Highlighter,
 } from "lucide-react";
 
 import Image from "next/image";
@@ -44,6 +45,7 @@ export default function Sidebar({ openMobile, onClose }: any) {
     { label: t("navigation.discover"), icon: Compass, href: "/discover" },
     { label: t("navigation.analytics"), icon: BarChart3, href: "/analytics" },
     { label: t("navigation.subscriptions"), icon: Bell, href: "/subscriptions" },
+    { label: "Highlights", icon: Highlighter, href: "/highlights" },
     { label: t("common.delete"), icon: Trash2, href: "/delete" },
   ];
 

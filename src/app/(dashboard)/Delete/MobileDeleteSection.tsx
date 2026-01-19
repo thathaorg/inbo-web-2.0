@@ -1,39 +1,57 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
 import InboxCardMobile from "@/components/inbox/InboxCard";
 import SortButton, { SortValue } from "@/components/SortButton";
+import emailService, { EmailListItem } from "@/services/email";
 import {
   ArrowLeft,
   Search,
   HelpCircle,
   Trash2,
+  RotateCcw,
 } from "lucide-react";
 
-/* ---------------- TYPES ---------------- */
+/* ---------------- HELPERS ---------------- */
+function transformEmailToCard(email: EmailListItem) {
+  const dateReceived = email.dateReceived ? new Date(email.dateReceived) : new Date();
+  const day = dateReceived.getDate();
+  const month = dateReceived.toLocaleDateString("en-US", { month: "short" });
+  const daySuffix = day === 1 || day === 21 || day === 31 ? 'st' :
+    day === 2 || day === 22 ? 'nd' :
+      day === 3 || day === 23 ? 'rd' : 'th';
+  const dateStr = `${month} ${day}${daySuffix}`;
 
-type Newsletter = {
-  id: string;
-  badgeText: string;
-  badgeColor: string;
-  badgeTextColor: string;
-  author: string;
-  title: string;
-  description: string;
-  date: string;
-  time: string;
-  tag: string;
-  thumbnail: string;
-  slug: string;
-  read: boolean;
-};
+  return {
+    id: email.id,
+    badgeText: email.newsletterName || "Newsletter",
+    badgeColor: "#E0F2FE",
+    badgeTextColor: "#0369A1",
+    author: email.newsletterName || email.sender || "Unknown",
+    title: email.subject || "No Subject",
+    description: email.contentPreview || "No preview available",
+    date: `Deleted on ${dateStr}`,
+    time: "2m",
+    tag: "Email",
+    thumbnail: email.newsletterLogo || null,
+    slug: email.id,
+    read: email.isRead,
+    emailId: email.id,
+  };
+}
 
 export default function MobileDeleteSection() {
   const [sortBy, setSortBy] = useState<SortValue>("recent");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [showInfoSheet, setShowInfoSheet] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [newsletters, setNewsletters] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isRestoring, setIsRestoring] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [showToast, setShowToast] = useState(false);
 
   const isSelectionMode = selectedIds.length > 0;
 
@@ -51,48 +69,70 @@ export default function MobileDeleteSection() {
     setSelectedIds([]);
   };
 
-  /* ---------------- MOCK DATA ---------------- */
-  const newsletters: Newsletter[] = [
-    {
-      id: "1",
-      badgeText: "H",
-      badgeColor: "#111827",
-      badgeTextColor: "#FFFFFF",
-      author: "The Hustler",
-      title: "The woman who puts America to sleep",
-      description: "",
-      date: "Today",
-      time: "2m",
-      tag: "Business",
-      thumbnail: "/thumb.jpg",
-      slug: "woman-america-sleep",
-      read: false,
-    },
-    {
-      id: "2",
-      badgeText: "BBG",
-      badgeColor: "#F97316",
-      badgeTextColor: "#FFFFFF",
-      author: "ByteByteGo Newsletter",
-      title:
-        "How Disney Hotstar (now JioHotstar) Scaled Its Infra for 60 Million Concurrent Users.",
-      description: "",
-      date: "Today",
-      time: "2m",
-      tag: "Engineering",
-      thumbnail: "/thumb.jpg",
-      slug: "hotstar-scaling",
-      read: true,
-    },
-  ];
+  const showToastMessage = (message: string) => {
+    setToastMessage(message);
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 3000);
+  };
 
-  /* ---------------- SORT LOGIC (USING YOUR COMPONENT) ---------------- */
-  const sortedNewsletters = useMemo(() => {
-    if (sortBy === "oldest") {
-      return [...newsletters].reverse();
+  // Fetch trash emails
+  useEffect(() => {
+    async function fetchTrash() {
+      try {
+        setLoading(true);
+        const filter = sortBy === "oldest" ? "oldest" : "latest";
+        const data = await emailService.getTrashEmails(filter);
+        setNewsletters(data.map(transformEmailToCard));
+      } catch (err) {
+        console.error("Failed to fetch trash:", err);
+      } finally {
+        setLoading(false);
+      }
     }
-    return newsletters;
-  }, [sortBy, newsletters]);
+    fetchTrash();
+  }, [sortBy]);
+
+  // Restore selected emails
+  const handleRestore = useCallback(async () => {
+    if (selectedIds.length === 0) return;
+    
+    setIsRestoring(true);
+    try {
+      await Promise.all(selectedIds.map(id => emailService.restoreFromTrash(id)));
+      setNewsletters(prev => prev.filter(n => !selectedIds.includes(n.id)));
+      showToastMessage(`${selectedIds.length} email${selectedIds.length > 1 ? 's' : ''} restored!`);
+      clearSelection();
+    } catch (err) {
+      console.error("Failed to restore emails:", err);
+      showToastMessage("Failed to restore. Please try again.");
+    } finally {
+      setIsRestoring(false);
+    }
+  }, [selectedIds]);
+
+  // Permanently delete selected emails
+  const handleConfirmDelete = useCallback(async () => {
+    if (selectedIds.length === 0) return;
+    
+    setIsDeleting(true);
+    try {
+      await Promise.all(selectedIds.map(id => emailService.deleteEmail(id)));
+      setNewsletters(prev => prev.filter(n => !selectedIds.includes(n.id)));
+      showToastMessage(`${selectedIds.length} email${selectedIds.length > 1 ? 's' : ''} deleted!`);
+      clearSelection();
+      setShowDeleteModal(false);
+    } catch (err) {
+      console.error("Failed to delete emails:", err);
+      showToastMessage("Failed to delete. Please try again.");
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [selectedIds]);
+
+  /* ---------------- SORT LOGIC ---------------- */
+  const sortedNewsletters = useMemo(() => {
+    return newsletters; // Already sorted from API
+  }, [newsletters]);
 
   return (
     <div className="w-full min-h-screen bg-[#F5F6FA]">
@@ -154,6 +194,7 @@ export default function MobileDeleteSection() {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setShowDeleteModal(true)}
+                disabled={isDeleting}
                 className="
                   h-[44px]
                   px-5
@@ -165,13 +206,16 @@ export default function MobileDeleteSection() {
                   text-[15px]
                   flex items-center gap-2
                   active:scale-[0.97]
+                  disabled:opacity-50
                 "
               >
-                Delete Permanently
+                Delete ({selectedIds.length})
                 <Trash2 size={18} />
               </button>
 
               <button
+                onClick={handleRestore}
+                disabled={isRestoring}
                 className="
                   h-[44px]
                   px-6
@@ -181,9 +225,21 @@ export default function MobileDeleteSection() {
                   font-semibold
                   text-[15px]
                   active:scale-[0.97]
+                  disabled:opacity-50
+                  flex items-center gap-2
                 "
               >
-                Restore
+                {isRestoring ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-400 border-t-transparent"></div>
+                    Restoring...
+                  </>
+                ) : (
+                  <>
+                    <RotateCcw size={16} />
+                    Restore
+                  </>
+                )}
               </button>
             </div>
           </div>
@@ -240,17 +296,20 @@ export default function MobileDeleteSection() {
             "
           >
             <h3 className="text-[18px] font-semibold text-[#0C0D0E] mb-2">
-              Are you sure to delete The women…?
+              Delete {selectedIds.length} item{selectedIds.length > 1 ? 's' : ''}?
             </h3>
 
             <p className="text-[15px] text-[#6B7280] leading-[22px] mb-6">
-              This newsletter will be deleted immediately from your inbox account.
-              You can’t undo this action.
+              {selectedIds.length > 1 
+                ? "These newsletters will be deleted immediately. You can't undo this action."
+                : "This newsletter will be deleted immediately. You can't undo this action."
+              }
             </p>
 
             <div className="flex gap-3">
               <button
                 onClick={() => setShowDeleteModal(false)}
+                disabled={isDeleting}
                 className="
                   flex-1
                   h-[44px]
@@ -259,16 +318,15 @@ export default function MobileDeleteSection() {
                   text-[#111827]
                   text-[16px]
                   font-semibold
+                  disabled:opacity-50
                 "
               >
                 Cancel
               </button>
 
               <button
-                onClick={() => {
-                  setShowDeleteModal(false);
-                  clearSelection();
-                }}
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
                 className="
                   flex-1
                   h-[44px]
@@ -277,12 +335,29 @@ export default function MobileDeleteSection() {
                   text-[#EF4444]
                   text-[16px]
                   font-semibold
+                  disabled:opacity-50
+                  flex items-center justify-center gap-2
                 "
               >
-                Delete
+                {isDeleting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-red-400 border-t-transparent"></div>
+                    Deleting...
+                  </>
+                ) : (
+                  'Delete'
+                )}
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ================= TOAST ================= */}
+      {showToast && (
+        <div className="fixed bottom-20 left-4 right-4 bg-[#1F2937] text-white rounded-xl px-4 py-3 text-sm font-medium flex items-center gap-2 z-50 shadow-lg">
+          <span className="text-green-400">✓</span>
+          {toastMessage}
         </div>
       )}
     </div>

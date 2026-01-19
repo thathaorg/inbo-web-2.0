@@ -21,14 +21,16 @@ export default function TabSwitcher({
   className?: string;
 }) {
   const { t } = useTranslation("common");
-  
+
   const items = [
     {
       id: "unread",
       label: (
         <div className="flex items-center gap-2">
           <span>{t("common.unread")}</span>
-          <CountBubble count={unreadCount} />
+          {unreadCount > 0 && (
+            <CountBubble count={unreadCount > 9 ? "9+" : unreadCount} />
+          )}
         </div>
       ),
     },
@@ -37,7 +39,6 @@ export default function TabSwitcher({
       label: (
         <div className="flex items-center gap-2">
           <span>{t("common.read")}</span>
-          <CountBubble count={readCount} />
         </div>
       ),
     },
@@ -46,7 +47,6 @@ export default function TabSwitcher({
       label: (
         <div className="flex items-center gap-2">
           <span>{t("common.all")}</span>
-          <CountBubble count={allCount} />
         </div>
       ),
     },

@@ -126,11 +126,11 @@ export default function AnalyticsPage() {
   return (
     <div className="w-full min-h-screen bg-[#F5F6FA]">
       {/* Desktop Header */}
-          <div className="w-full">
-            <div className="w-full h-[78px] bg-white border border-[#E5E7EB] flex items-center justify-between px-6 shadow-sm">
-              <h2 className="text-[26px] font-bold text-[#0C1014]">{t("analytics.title")}</h2>
-            </div>
-          </div>
+      <div className="w-full sticky top-0 z-50">
+        <div className="w-full h-[78px] bg-white border border-[#E5E7EB] flex items-center justify-between px-6">
+          <h2 className="text-[26px] font-bold text-[#0C1014]">{t("analytics.title")}</h2>
+        </div>
+      </div>
 
       {/* Subtitle BELOW header (styled correctly) */}
       <div className="px-8 pt-3 pb-2">

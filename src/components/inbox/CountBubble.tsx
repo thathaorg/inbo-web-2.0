@@ -1,6 +1,6 @@
 "use client";
 
-export default function CountBubble({ count }: { count: number }) {
+export default function CountBubble({ count }: { count: number | string }) {
   const text = count.toString();
 
   return (

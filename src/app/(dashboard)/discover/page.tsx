@@ -63,8 +63,15 @@ export default function DiscoverPage() {
     }, []);
 
   return (
-      <div className="flex flex-col w-full">
-
+    <div className="min-h-screen w-full bg-[#F5F6FA]">
+      {/* Sticky Header */}
+      <div className="w-full sticky top-0 z-30">
+        <div className="w-full h-[78px] bg-white border border-[#E5E7EB] flex items-center justify-between px-6">
+          <h2 className="text-[26px] font-bold text-[#0C1014]">{t("discover.title")}</h2>
+        </div>
+      </div>
+      {/* Main Content */}
+      <div className="min-h-[90%] w-full flex flex-col gap-8">
         {/* ======================= */}
         {/* MOBILE VERSION (only <768px) */}
         {/* ======================= */}
@@ -79,13 +86,6 @@ export default function DiscoverPage() {
         {/* DESKTOP/TABLET VERSION */}
         {/* ======================= */}
         <div className="hidden md:block w-full">
-          {/* ========== CONTAINER 1: HEADER ========== */}
-          <div className="w-full">
-            <div className="w-full h-[78px] bg-white border border-[#E5E7EB] flex items-center justify-between px-6 shadow-sm">
-              <h2 className="text-[26px] font-bold text-[#0C1014]">{t("discover.title")}</h2>
-            </div>
-          </div>
-
           {/* ========== CONTAINER 2: MAIN CONTENT ========== */}
           <div className="flex flex-col gap-10 w-full px-6 py-10">
 
@@ -115,5 +115,6 @@ export default function DiscoverPage() {
           </div>
         </div>
       </div>
+    </div>
     );
 }

@@ -134,12 +134,15 @@ export default function SubscriptionsPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-[#F6F7F9]">
-      {/* ================= HEADER (ALWAYS) ================= */}
-      <header className="h-[78px] bg-white border-b border-[#E5E7EB] flex items-center px-6">
-        <h1 className="text-[26px] font-bold text-[#0C1014]">
-          {t("subscriptions.title")}
-        </h1>
-      </header>
+      {/* ================= STICKY HEADER & CONTROLS ================= */}
+      <div className="w-full sticky top-0 z-30 bg-white border-b border-[#E5E7EB] shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+        <header className="h-[78px] flex items-center px-6">
+          <h1 className="text-[26px] font-bold text-[#0C1014]">
+            {t("subscriptions.title")}
+          </h1>
+        </header>
+        {/* You can add header controls here if needed in future (e.g., filter/sort/search) */}
+      </div>
 
       {/* ================= MAIN ================= */}
       <main className="flex-1 p-6">
@@ -160,9 +163,6 @@ export default function SubscriptionsPage() {
             setInactiveVisible={setInactiveVisible}
             onSelect={setSelectedPublisher}
           />
-
-
-
         ) : (
           <PublisherDetail
             publisher={selectedPublisher}

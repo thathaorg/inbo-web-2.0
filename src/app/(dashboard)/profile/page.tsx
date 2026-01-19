@@ -302,7 +302,9 @@ export default function ProfileSection() {
     <div className="flex flex-col w-full">
 
       {/* HEADER */}
-      <ProfileHeader title="Profile" />
+      <div className="w-full sticky top-0 z-30">
+        <ProfileHeader title="Profile Overview" />
+      </div>
 
       {/* CONTENT */}
       <div className="px-6 py-8 flex flex-col gap-6">

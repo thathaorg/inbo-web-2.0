@@ -157,63 +157,62 @@ export default function HighlightsPage() {
 
   // Desktop Layout
   return (
-    <div className="flex flex-col w-full">
-      {/* Header */}
-      <div className="w-full h-[78px] bg-white border border-[#E5E7EB] flex items-center justify-between px-6 shadow-sm">
-        <div className="flex items-center gap-3">
-          <Highlighter size={24} className="text-yellow-500" />
+    <div className="min-h-screen w-full bg-[#F5F6FA]">
+      {/* Sticky Header with Search Bar */}
+      <div className="w-full sticky top-0 z-30 bg-white border-b border-[#E5E7EB] shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
+        <div className="flex items-center justify-between px-6 h-[78px]">
           <h2 className="text-[26px] font-bold text-[#0C1014]">Highlights</h2>
-          <span className="text-sm text-gray-500">({highlights.length} total)</span>
-        </div>
-
-        {/* Search */}
-        <div className="relative w-80">
-          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search highlights..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-10 pl-10 pr-4 rounded-xl bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-black/10"
-          />
+          <div className="relative w-80">
+            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search highlights..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full h-10 pl-10 pr-4 rounded-xl bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-black/10"
+            />
+          </div>
         </div>
       </div>
 
-      {/* Content */}
-      <div className="flex flex-col gap-6 px-6 py-6">
-        {highlights.length === 0 ? (
-          <EmptyHighlights />
-        ) : filteredHighlights.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20">
-            <Search size={48} className="text-gray-300 mb-4" />
-            <p className="text-gray-500">No highlights match your search</p>
-          </div>
-        ) : (
-          <div className="grid gap-6">
-            {emailGroups.map((group, groupIndex) => (
-              <div key={`${group.emailId}-${groupIndex}`} className="bg-white rounded-2xl border border-gray-200 p-6">
-                <Link 
-                  href={`/reading/${group.emailId}`}
-                  className="text-base font-semibold text-gray-800 mb-4 block hover:text-black flex items-center gap-2"
-                >
-                  <BookOpen size={18} className="text-gray-400" />
-                  {group.emailSubject}
-                </Link>
-                <div className="grid gap-3">
-                  {group.highlights.map((h) => (
-                    <HighlightCard
-                      key={h.id}
-                      highlight={h}
-                      onDelete={() => handleDelete(h.emailId, h.id)}
-                      isDeleting={deletingId === h.id}
-                      onClick={() => router.push(`/reading/${h.emailId}`)}
-                    />
-                  ))}
+      {/* Main Content */}
+      <div className="min-h-[90%] w-full flex flex-col gap-8">
+        {/* Content */}
+        <div className="flex flex-col gap-6 px-6 py-6">
+          {highlights.length === 0 ? (
+            <EmptyHighlights />
+          ) : filteredHighlights.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20">
+              <Search size={48} className="text-gray-300 mb-4" />
+              <p className="text-gray-500">No highlights match your search</p>
+            </div>
+          ) : (
+            <div className="grid gap-6">
+              {emailGroups.map((group, groupIndex) => (
+                <div key={`${group.emailId}-${groupIndex}`} className="bg-white rounded-2xl border border-gray-200 p-6">
+                  <Link 
+                    href={`/reading/${group.emailId}`}
+                    className="text-base font-semibold text-gray-800 mb-4 block hover:text-black flex items-center gap-2"
+                  >
+                    <BookOpen size={18} className="text-gray-400" />
+                    {group.emailSubject}
+                  </Link>
+                  <div className="grid gap-3">
+                    {group.highlights.map((h) => (
+                      <HighlightCard
+                        key={h.id}
+                        highlight={h}
+                        onDelete={() => handleDelete(h.emailId, h.id)}
+                        isDeleting={deletingId === h.id}
+                        onClick={() => router.push(`/reading/${h.emailId}`)}
+                      />
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

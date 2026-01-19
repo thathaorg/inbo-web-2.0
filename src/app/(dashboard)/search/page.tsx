@@ -93,62 +93,50 @@ export default function SearchPage() {
   };
 
   return (
-    <div className="min-h-[90%] w-full flex flex-col gap-8">
-      {/* HEADER */}
-      <div className="w-full h-[78px] bg-white border border-[#E5E7E8] flex items-center justify-between px-5 shadow-sm">
-        <h2 className="text-[26px] font-bold text-[#0C1014]">
-          {t("search.title")}
-        </h2>
-
-        {/* ✅ WORKING FILTER BUTTON */}
-        <FilterButton
-          value={filter}
-          onChange={(value) => {
-            setFilter(value);
-            setVisible(INITIAL_VISIBLE);
-          }}
-        />
+    <div className="min-h-screen w-full bg-[#F5F6FA]">
+      {/* Sticky Header */}
+      <div className="w-full sticky top-0 z-30">
+        <div className="w-full h-[78px] bg-white border border-[#E5E7E8] flex items-center justify-between px-5 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
+          <h2 className="text-[26px] font-bold text-[#0C1014]">
+            {t("search.title")}
+          </h2>
+          <FilterButton
+            value={filter}
+            onChange={(value) => {
+              setFilter(value);
+              setVisible(INITIAL_VISIBLE);
+            }}
+          />
+        </div>
       </div>
-
-      {/* CONTENT */}
-      <div className="w-full flex-1 flex px-6">
-        {isEmpty ? (
-          /* EMPTY SEARCH */
-          <div className="w-full flex flex-col">
-            <div className="flex flex-1 pt-10 items-center justify-center">
-              <EmptyState />
-            </div>
-
-            {/* SUGGESTIONS */}
-            <div className="w-full mt-10">
-              <NewsletterCarousel
-                title="You may also like"
-                items={carouselItems}
-                showArrows
-              />
-            </div>
-          </div>
-        ) : (
-          /* SEARCH RESULTS */
-          <div className="w-full flex flex-col mt-2">
-            {filteredItems.slice(0, visible).map((item) => (
-              <div key={item.slug} className="mb-3">
-                <NewsletterCard {...item} onClick={() => {}} />
+      {/* Main Content */}
+      <div className="min-h-[90%] w-full flex flex-col gap-8">
+        {/* CONTENT */}
+        <div className="w-full flex-1 flex px-6">
+          {isEmpty ? (
+            <div className="w-full flex flex-col">
+              <div className="flex flex-1 pt-10 items-center justify-center">
+                <EmptyState />
               </div>
-            ))}
-
-            {showMore && <CenterButton onClick={loadMore} />}
-
-            {/* SIMILAR RESULTS */}
-            <div className="w-full mt-12">
-              <NewsletterCarousel
-                title="Similar newsletters"
-                items={carouselItems}
-                showArrows
-              />
             </div>
-          </div>
-        )}
+          ) : (
+            <div className="w-full flex flex-col mt-2">
+              {filteredItems.slice(0, visible).map((item) => (
+                <div key={item.slug} className="mb-3">
+                  <NewsletterCard {...item} />
+                </div>
+              ))}
+              {showMore && (
+                <button
+                  onClick={loadMore}
+                  className="mx-auto mt-4 px-6 py-2 border border-gray-300 rounded-full font-medium hover:bg-gray-200 transition"
+                >
+                  {t("common.viewMore")}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

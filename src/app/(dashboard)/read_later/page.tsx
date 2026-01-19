@@ -270,44 +270,54 @@ export default function ReadLaterPage() {
   ====================================================== */
 
   return (
-    <div className="hidden min-h-[90%] md:flex w-full flex-col gap-8">
-      {/* HEADER */}
-      <div className="w-full h-[78px] bg-white border border-[#E5E7E8] flex items-center justify-between px-5 shadow-sm">
-        <h2 className="text-[26px] font-bold text-[#0C1014]">
-          {t("readLater.title")}
-        </h2>
-
-        <div className="flex gap-3">
-          <FilterButton value={filter} onChange={setFilter} />
-          <SortButton value={sortBy} onChange={setSortBy} />
+    <div className="min-h-screen w-full bg-[#F5F6FA]">
+      {/* Sticky Header */}
+      <div className="w-full sticky top-0 z-30">
+        <div className="w-full h-[78px] bg-white border border-[#E5E7E8] flex items-center justify-between px-5 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
+          <h2 className="text-[26px] font-bold text-[#0C1014]">
+            {t("readLater.title")}
+          </h2>
+          <div className="flex gap-3">
+            <FilterButton value={filter} onChange={setFilter} />
+            <SortButton value={sortBy} onChange={setSortBy} />
+          </div>
         </div>
       </div>
 
-      {/* CONTENT */}
-      <div className="w-full flex-1 flex px-6">
-        {isEmpty ? (
-          <div className="flex flex-1 items-center justify-center">
-            <EmptyReadLater />
-          </div>
-        ) : (
-          <div className="w-full flex flex-col mt-2">
-            {sortedItems.slice(0, visible).map((item) => (
-              <div key={item.slug} className="mb-3">
-                <NewsletterCard
-                  {...item}
-                  onClick={() => { }}
-                  isReadLater={true}
-                  onMoveToTrash={onMoveToTrash}
-                  onToggleReadLater={onToggleReadLater}
-                  onToggleFavorite={(emailId: string, isFavorite: boolean) => onToggleFavorite(emailId, isFavorite)}
-                  isFavorite={item.isFavorite}
-                />
-              </div>
-            ))}
-
-            {showMore && <CenterButton onClick={loadMore} />}
-          </div>
-        )}
+      {/* Main Content */}
+      <div className="hidden min-h-[90%] md:flex w-full flex-col gap-8">
+        {/* CONTENT */}
+        <div className="w-full flex-1 flex px-6">
+          {isEmpty ? (
+            <div className="flex flex-1 items-center justify-center">
+              <EmptyReadLater />
+            </div>
+          ) : (
+            <div className="w-full flex flex-col mt-2">
+              {sortedItems.slice(0, visible).map((item) => (
+                <div key={item.slug} className="mb-3">
+                  <NewsletterCard
+                    {...item}
+                    onClick={() => { }}
+                    isReadLater={true}
+                    onMoveToTrash={onMoveToTrash}
+                    onToggleReadLater={onToggleReadLater}
+                    onToggleFavorite={(emailId: string, isFavorite: boolean) => onToggleFavorite(emailId, isFavorite)}
+                    isFavorite={item.isFavorite}
+                  />
+                </div>
+              ))}
+              {showMore && (
+                <button
+                  onClick={loadMore}
+                  className="mx-auto mt-4 px-6 py-2 border border-gray-300 rounded-full font-medium hover:bg-gray-200 transition"
+                >
+                  {t("common.viewMore")}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

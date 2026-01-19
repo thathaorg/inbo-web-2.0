@@ -132,188 +132,92 @@ export default function DeletePage() {
   }
 
   return (
-    <div className="flex flex-col w-full relative">
-      {/* ================= HEADER ================= */}
-      <div className="w-full h-[78px] bg-white border border-[#E5E7EB] flex items-center justify-between px-6 shadow-sm">
-        {/* LEFT */}
-        <h2 className="text-[26px] font-bold text-[#0C1014]">
-          Delete
-        </h2>
+    <div className="min-h-screen w-full bg-[#F5F6FA]">
+      {/* Sticky Header */}
+      <div className="w-full sticky top-0 z-30">
+        <div className="w-full h-[78px] bg-white border border-[#E5E7EB] flex items-center justify-between px-6 ">
+          <h2 className="text-[26px] font-bold text-[#0C1014]">Delete</h2>
+        </div>
+      </div>
+      {/* Main Content */}
+      <div className="min-h-[90%] w-full flex flex-col gap-8">
+        {/* ================= CONTENT ================= */}
+        <div className="flex flex-col gap-4 px-6 py-6">
+          <p className="text-sm text-[#6B7280]">
+            Newsletters are automatically deleted after 30 days.
+          </p>
 
-        {/* RIGHT */}
-        <div className="flex items-center gap-3">
-          {isSelected && (
-            <>
-              {/* Restore */}
-              <button
-                onClick={handleRestore}
-                disabled={isRestoring}
-                className="
-                  h-10 px-5 rounded-xl
-                  border border-[#E5E7EB]
-                  bg-white
-                  text-sm font-medium text-[#111827]
-                  hover:bg-gray-100
-                  disabled:opacity-50 disabled:cursor-not-allowed
-                  flex items-center gap-2
-                "
+          {/* ================= NEWSLETTER LIST ================= */}
+          <div className="flex flex-col gap-3">
+            {newsletters.map((item, idx) => (
+              <div
+                key={item.id || idx}
+                className={
+                  selectedIds.includes(item.id)
+                    ? "ring-2 ring-black rounded-2xl"
+                    : ""
+                }
               >
-                {isRestoring ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-400 border-t-transparent"></div>
-                    Restoring...
-                  </>
-                ) : (
-                  <>
-                    <span>♻️</span>
-                    Restore ({selectedIds.length})
-                  </>
-                )}
-              </button>
-
-              {/* Delete Permanently */}
-              <button
-                onClick={() => setShowDeleteModal(true)}
-                disabled={isDeleting}
-                className="
-                  h-10 px-5 rounded-xl
-                  border border-red-500
-                  bg-red-50
-                  text-sm font-medium text-red-600
-                  hover:bg-red-100
-                  disabled:opacity-50 disabled:cursor-not-allowed
-                  flex items-center gap-2
-                "
-              >
-                Delete Permanently ({selectedIds.length})
-                <span className="text-base">🗑️</span>
-              </button>
-            </>
-          )}
-
-          {/* SORT DROPDOWN (styled pill) */}
-          <div className="relative">
-            {/* Visible pill */}
-            <div
-              className="
-                h-10 px-4 rounded-xl
-                border border-[#E5E7EB]
-                bg-gray-50
-                text-sm font-medium text-[#111827]
-                flex items-center gap-2
-                cursor-pointer
-                hover:bg-gray-100
-              "
-            >
-              <span className="text-[#6B7280]">Sort by:</span>
-              <span className="capitalize">{sortBy}</span>
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                className="text-[#6B7280]"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.94a.75.75 0 111.08 1.04l-4.24 4.5a.75.75 0 01-1.08 0l-4.24-4.5a.75.75 0 01.02-1.06z"
-                  clipRule="evenodd"
+                <NewsletterCard
+                  {...item}
+                  showCheckbox
+                  checked={selectedIds.includes(item.id)}
+                  onCheckChange={() => toggleSelect(item.id)}
                 />
-              </svg>
-            </div>
-
-            {/* Invisible native select for logic */}
-            <select
-              value={sortBy}
-              onChange={(e) =>
-                setSortBy(e.target.value as SortType)
-              }
-              className="absolute inset-0 opacity-0 cursor-pointer"
-            >
-              <option value="latest">Latest</option>
-              <option value="oldest">Oldest</option>
-            </select>
+              </div>
+            ))}
           </div>
         </div>
-      </div>
 
+        {/* ================= DELETE MODAL ================= */}
+        {showDeleteModal && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+            <div className="bg-white w-[420px] rounded-2xl p-6 shadow-lg">
+              <h3 className="text-lg font-semibold text-[#0C1014] mb-2">
+                Delete {selectedIds.length} Newsletter{selectedIds.length > 1 ? 's' : ''} – Are you sure?
+              </h3>
 
-      {/* ================= CONTENT ================= */}
-      <div className="flex flex-col gap-4 px-6 py-6">
-        <p className="text-sm text-[#6B7280]">
-          Newsletters are automatically deleted after 30 days.
-        </p>
+              <p className="text-sm text-[#6B7280] mb-6">
+                Are you sure you want to permanently delete {selectedIds.length > 1 ? 'these items' : 'this item'}?
+                This action cannot be undone.
+              </p>
 
-        {/* ================= NEWSLETTER LIST ================= */}
-        <div className="flex flex-col gap-3">
-          {newsletters.map((item, idx) => (
-            <div
-              key={item.id || idx}
-              className={
-                selectedIds.includes(item.id)
-                  ? "ring-2 ring-black rounded-2xl"
-                  : ""
-              }
-            >
-              <NewsletterCard
-                {...item}
-                showCheckbox
-                checked={selectedIds.includes(item.id)}
-                onCheckChange={() => toggleSelect(item.id)}
-              />
-            </div>
-          ))}
-        </div>
-      </div>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setShowDeleteModal(false)}
+                  disabled={isDeleting}
+                  className="h-10 px-5 rounded-full border border-[#E5E7EB] bg-white text-sm font-medium hover:bg-gray-100 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
 
-      {/* ================= DELETE MODAL ================= */}
-      {showDeleteModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white w-[420px] rounded-2xl p-6 shadow-lg">
-            <h3 className="text-lg font-semibold text-[#0C1014] mb-2">
-              Delete {selectedIds.length} Newsletter{selectedIds.length > 1 ? 's' : ''} – Are you sure?
-            </h3>
-
-            <p className="text-sm text-[#6B7280] mb-6">
-              Are you sure you want to permanently delete {selectedIds.length > 1 ? 'these items' : 'this item'}?
-              This action cannot be undone.
-            </p>
-
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setShowDeleteModal(false)}
-                disabled={isDeleting}
-                className="h-10 px-5 rounded-full border border-[#E5E7EB] bg-white text-sm font-medium hover:bg-gray-100 disabled:opacity-50"
-              >
-                Cancel
-              </button>
-
-              <button
-                onClick={handleConfirmDelete}
-                disabled={isDeleting}
-                className="h-10 px-5 rounded-full bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50 flex items-center gap-2"
-              >
-                {isDeleting ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                    Deleting...
-                  </>
-                ) : (
-                  'Yes, Delete'
-                )}
-              </button>
+                <button
+                  onClick={handleConfirmDelete}
+                  disabled={isDeleting}
+                  className="h-10 px-5 rounded-full bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50 flex items-center gap-2"
+                >
+                  {isDeleting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                      Deleting...
+                    </>
+                  ) : (
+                    'Yes, Delete'
+                  )}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* ================= TOAST ================= */}
-      {showToast && (
-        <div className="fixed top-6 right-6 bg-white border border-[#E5E7EB] shadow-lg rounded-xl px-4 py-3 text-sm font-medium text-[#0C1014] flex items-center gap-2">
-          <span className="text-green-500">✓</span>
-          {toastMessage}
-        </div>
-      )}
+        {/* ================= TOAST ================= */}
+        {showToast && (
+          <div className="fixed top-6 right-6 bg-white border border-[#E5E7EB] shadow-lg rounded-xl px-4 py-3 text-sm font-medium text-[#0C1014] flex items-center gap-2">
+            <span className="text-green-500">✓</span>
+            {toastMessage}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

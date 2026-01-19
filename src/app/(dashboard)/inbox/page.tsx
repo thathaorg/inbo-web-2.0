@@ -162,6 +162,7 @@ export default function InboxPage() {
 
   // UI visibility controls (how many to show in each section)
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_PER_SECTION); // Start with 10 visible total
+  const [visibleLast24Count, setVisibleLast24Count] = useState(2); // Initially show 2 emails from last 24 hours
 
   /**
    * Merge emails with deduplication by ID
@@ -392,6 +393,16 @@ export default function InboxPage() {
     };
   }, [todayEmails, last7DaysEmails, last30DaysEmails, olderEmails, visibleCount]);
 
+  // Compute last 24 hours emails
+  const last24HoursEmails = useMemo(() => {
+    const now = new Date();
+    const cutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    return sortedAllEmails.filter(e => {
+      const dateReceived = e.dateReceived ? new Date(e.dateReceived) : null;
+      return dateReceived && dateReceived > cutoff;
+    });
+  }, [sortedAllEmails]);
+
   // Fetch unread count and total from API
   const fetchUnreadCount = useCallback(async () => {
     try {
@@ -575,6 +586,10 @@ export default function InboxPage() {
     setVisibleCount(prev => prev + LOAD_MORE_COUNT);
   };
 
+  const showMoreLast24 = () => {
+    setVisibleLast24Count(c => c + 5);
+  };
+
   const refreshInbox = () => {
     window.location.reload();
   };
@@ -748,6 +763,34 @@ export default function InboxPage() {
             {/* CONTENT */}
             <div className="w-full flex flex-col gap-10 mt-6 px-6">
               {allEmpty && <EmptyInbox />}
+
+              {/* LAST 24 HOURS */}
+              {last24HoursEmails.length > 0 && (
+                <section>
+                  <h3 className="text-[18px] font-semibold text-[#6F7680] mb-4">Last 24 hours</h3>
+                  {last24HoursEmails.slice(0, visibleLast24Count).map((item) => (
+                    <div key={item.emailId} className="mb-2">
+                      <NewsletterCard
+                        {...item}
+                        onMoveToTrash={onMoveToTrash}
+                        onToggleReadLater={onToggleReadLater}
+                        onToggleFavorite={() => onToggleFavorite(item.emailId, !item.isFavorite)}
+                        isFavorite={item.isFavorite}
+                      />
+                    </div>
+                  ))}
+                  {last24HoursEmails.length > visibleLast24Count && (
+                    <div className="w-full flex justify-center mt-4">
+                      <button
+                        onClick={showMoreLast24}
+                        className="px-6 py-2 border border-gray-300 rounded-full text-black font-medium hover:bg-gray-50 transition shadow-sm"
+                      >
+                        View More ({visibleLast24Count} of {last24HoursEmails.length})
+                      </button>
+                    </div>
+                  )}
+                </section>
+              )}
 
               {/* TODAY */}
               {visibleEmails.today.length > 0 && (

@@ -36,6 +36,16 @@ apiClient.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
+    // Log 401 errors with details
+    if (error.response?.status === 401) {
+      console.error('❌ 401 Unauthorized Error:', {
+        url: originalRequest.url,
+        method: originalRequest.method,
+        data: originalRequest.data,
+        responseData: error.response?.data,
+      });
+    }
+
     // Handle 401 Unauthorized
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;

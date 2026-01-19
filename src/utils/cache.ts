@@ -317,17 +317,49 @@ export const cacheManager = new CacheManager();
 
 // Cache keys for different data types
 export const CACHE_KEYS = {
+    // Email data
     INBOX: 'inbox',
     INBOX_PAGE: (page: number, isRead?: boolean) => `inbox:${isRead}:${page}`,
     EMAIL_DETAIL: (id: string) => `email:${id}`,
     READ_LATER: 'read-later',
     FAVORITES: 'favorites',
     TRASH: 'trash',
-    CATEGORIES: 'categories',
+    
+    // User data - persistent (rarely changes)
     USER_PROFILE: 'user-profile',
+    USER_COMPLETE_DATA: 'user-complete-data',
+    USER_INBOX_EMAIL: 'user-inbox-email',
+    USER_SUBSCRIPTIONS: 'user-subscriptions',
+    
+    // Directory/Static data
+    CATEGORIES: 'categories',
+    
+    // Analytics
     ANALYTICS_SNAPSHOT: 'analytics-snapshot',
     ANALYTICS_CHART: (days: number) => `analytics-chart:${days}`,
+    READING_STREAK: 'reading-streak',
+    
+    // Newsletter providers
     NEWSLETTER_PROVIDER: (sender: string) => `provider:${sender.toLowerCase()}`,
+} as const;
+
+// TTL values specific to data types
+export const DATA_TTL = {
+    // User data that rarely changes - cache for longer
+    USER_PROFILE: 30 * 60 * 1000,      // 30 minutes
+    USER_COMPLETE_DATA: 30 * 60 * 1000, // 30 minutes
+    USER_INBOX_EMAIL: 24 * 60 * 60 * 1000, // 24 hours (inbox email never changes)
+    
+    // Email lists - cache briefly, user expects fresh data
+    INBOX: 2 * 60 * 1000,              // 2 minutes
+    EMAIL_DETAIL: 10 * 60 * 1000,      // 10 minutes
+    
+    // Static data
+    CATEGORIES: 24 * 60 * 60 * 1000,   // 24 hours
+    SUBSCRIPTIONS: 10 * 60 * 1000,     // 10 minutes
+    
+    // Analytics - moderate caching
+    ANALYTICS: 5 * 60 * 1000,          // 5 minutes
 } as const;
 
 export default cacheManager;

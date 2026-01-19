@@ -76,25 +76,47 @@ apiClient.interceptors.response.use(
       try {
         const refreshToken = Cookies.get('refresh_token');
         if (refreshToken) {
+          console.log('🔄 Attempting token refresh...');
           const response = await axios.post(`${API_BASE_URL}/api/auth/refresh/`, {
             refreshToken: refreshToken,
           });
 
           const { accessToken } = response.data;
-          Cookies.set('access_token', accessToken, { expires: 7, sameSite: 'strict' });
+          
+          // Use consistent cookie options
+          const isSecure = IS_BROWSER && window.location.protocol === 'https:';
+          Cookies.set('access_token', accessToken, { 
+            expires: 7, 
+            sameSite: 'lax',
+            secure: isSecure,
+            path: '/',
+          });
+          
+          console.log('✅ Token refreshed successfully');
 
           if (originalRequest.headers) {
             originalRequest.headers.Authorization = `Bearer ${accessToken}`;
           }
 
           return apiClient(originalRequest);
+        } else {
+          console.warn('⚠️ No refresh token available');
         }
-      } catch (refreshError) {
+      } catch (refreshError: any) {
         // Refresh token expired or invalid - clear tokens and redirect
-        console.error('🔄 Token refresh failed:', refreshError);
-        Cookies.remove('access_token');
-        Cookies.remove('refresh_token');
-        localStorage.removeItem('user_cache');
+        console.error('❌ Token refresh failed:', refreshError?.response?.data || refreshError.message);
+        Cookies.remove('access_token', { path: '/' });
+        Cookies.remove('refresh_token', { path: '/' });
+        
+        // Clear all cached data
+        try {
+          localStorage.removeItem('inbo_user_cache');
+          localStorage.removeItem('inbo_user_last_fetch');
+          localStorage.removeItem('user_cache');
+        } catch (e) {
+          // Ignore localStorage errors
+        }
+        
         if (IS_BROWSER && !window.location.pathname.startsWith('/auth')) {
           window.location.href = '/auth/login';
         }
@@ -105,6 +127,37 @@ apiClient.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+/**
+ * Proactively refresh token before it expires
+ * Call this periodically (e.g., every 5 minutes) to keep session alive
+ */
+export const proactiveTokenRefresh = async (): Promise<boolean> => {
+  const refreshToken = Cookies.get('refresh_token');
+  if (!refreshToken) return false;
+
+  try {
+    const response = await axios.post(`${API_BASE_URL}/api/auth/refresh/`, {
+      refreshToken: refreshToken,
+    });
+
+    const { accessToken } = response.data;
+    const isSecure = IS_BROWSER && window.location.protocol === 'https:';
+    
+    Cookies.set('access_token', accessToken, { 
+      expires: 7, 
+      sameSite: 'lax',
+      secure: isSecure,
+      path: '/',
+    });
+    
+    console.log('🔄 Proactive token refresh successful');
+    return true;
+  } catch (error) {
+    console.warn('Proactive token refresh failed:', error);
+    return false;
+  }
+};
 
 export default apiClient;
 

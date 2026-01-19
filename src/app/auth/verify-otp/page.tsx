@@ -217,14 +217,10 @@ function VerifyOTPContent() {
       // Clear OTP on error to allow retry
       setOtp(["", "", "", ""]);
       inputRefs[0]?.current?.focus();
-      // Reset verifying flag on error so user can retry
-      isVerifyingRef.current = false;
     } finally {
       setIsLoading(false);
-      // Only reset flag if not already reset in catch block
-      if (!error) {
-        isVerifyingRef.current = false;
-      }
+      // Always reset verifying flag to allow retry
+      isVerifyingRef.current = false;
     }
   };
 

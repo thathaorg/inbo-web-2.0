@@ -13,7 +13,7 @@ import FilterButton, {
 import SortButton, { SortValue } from "@/components/SortButton";
 import EmptyReadLater from "@/components/EmptyReadLater";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
-import emailService, { EmailListItem } from "@/services/email";
+import emailService, { EmailListItem, cleanContentPreview } from "@/services/email";
 
 /* --------------------- HELPERS --------------------- */
 
@@ -34,7 +34,7 @@ function transformEmailToCard(email: EmailListItem) {
     badgeTextColor: "#0369A1",
     author: email.newsletterName || email.sender || "Unknown",
     title: email.subject || "No Subject",
-    description: email.contentPreview || "No preview available",
+    description: cleanContentPreview(email.contentPreview),
     date: dateStr,
     time: "2 mins", // Placeholder or calculate if needed
     tag: "Email",
@@ -44,6 +44,7 @@ function transformEmailToCard(email: EmailListItem) {
     emailId: email.id,
     isReadLater: email.isReadLater,
     isFavorite: email.isFavorite,
+    readingProgress: email.readingProgress,
   };
 }
 

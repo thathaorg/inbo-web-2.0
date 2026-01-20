@@ -6,6 +6,7 @@ import { useMediaQuery } from "@/hooks/useMediaQuery";
 import analyticsService from "@/services/analytics";
 
 /* ================= Types ================= */
+
 type StreakDay = {
   label: string;
   completed: boolean;
@@ -18,27 +19,29 @@ type DailyStreakData = {
   days: StreakDay[];
 };
 
-/* ================= Helper: Generate week days ================= */
-function generateWeekDays(streakCount: number): StreakDay[] {
+
+// Helper: Map streak count to week days, marking completed and today
+function mapStreakToWeek(streakCount: number): StreakDay[] {
   const dayLabels = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
   const today = new Date();
   const todayIndex = today.getDay(); // 0 = Sunday
-  
-  // Generate the current week starting from Sunday
+  // Build week array from Sunday to Saturday
   const days: StreakDay[] = [];
   for (let i = 0; i < 7; i++) {
     const isToday = i === todayIndex;
-    // Mark days as completed based on streak count (counting backwards from today)
-    const daysFromToday = todayIndex - i;
-    const completed = daysFromToday >= 0 && daysFromToday < streakCount && !isToday;
-    
+    // Completed if within streakCount days before today (including today)
+    // e.g. streakCount=3, today=Wed (3), completed: Wed, Tue, Mon
+    let completed = false;
+    if (streakCount > 0) {
+      const daysAgo = (todayIndex - i + 7) % 7;
+      completed = daysAgo < streakCount;
+    }
     days.push({
       label: dayLabels[i],
-      completed,
+      completed: completed && !isToday,
       isToday,
     });
   }
-  
   return days;
 }
 
@@ -54,7 +57,7 @@ export default function DailyStreakCard({
   const [data, setData] = useState<DailyStreakData>({
     currentStreak: 0,
     longestStreak: 0,
-    days: generateWeekDays(0),
+    days: mapStreakToWeek(0),
   });
   const [loading, setLoading] = useState(true);
 
@@ -65,7 +68,7 @@ export default function DailyStreakCard({
         setData({
           currentStreak: streakData.streak_count,
           longestStreak: streakData.longest_streak,
-          days: generateWeekDays(streakData.streak_count),
+          days: mapStreakToWeek(streakData.streak_count),
         });
       } catch (error) {
         console.error("Failed to fetch streak data:", error);
@@ -73,7 +76,6 @@ export default function DailyStreakCard({
         setLoading(false);
       }
     };
-
     fetchStreak();
   }, []);
 

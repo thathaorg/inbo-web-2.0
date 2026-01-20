@@ -70,6 +70,7 @@ function transformEmailToCard(email: EmailListItem) {
     newsletterLogo: email.newsletterLogo,
     sender: email.sender,
     dateReceived: email.dateReceived,
+    readingProgress: email.readingProgress,
   };
 }
 

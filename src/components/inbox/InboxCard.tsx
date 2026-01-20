@@ -66,6 +66,7 @@ function InboxCardMobile({
   badgeTextColor,
   author,
   title,
+  description,
   time,
   thumbnail,
   read,
@@ -83,9 +84,11 @@ function InboxCardMobile({
   onToggleReadLater,
   onToggleFavorite,
   sender,
+  readingProgress,
 }: any) {
   const router = useRouter();
   const [showMenu, setShowMenu] = useState(false);
+  const [logoError, setLogoError] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -156,14 +159,14 @@ function InboxCardMobile({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               {/* Newsletter Logo */}
-              {newsletterLogo ? (
+              {newsletterLogo && !logoError ? (
                 <Image
                   src={newsletterLogo}
                   alt={newsletterName || badgeText}
                   width={16}
                   height={16}
-                  className="rounded object-cover"
-                  style={{ width: "auto", height: "auto" }}
+                  className="rounded object-cover w-4 h-4 shrink-0"
+                  onError={() => setLogoError(true)}
                 />
               ) : (
                 <div
@@ -183,9 +186,13 @@ function InboxCardMobile({
               <span className="text-[12px] text-gray-500">
                 {time}
               </span>
-              {!read && (
+              {readingProgress && readingProgress > 0 ? (
+                <span className="text-[10px] text-gray-500 font-medium">
+                  {readingProgress}% read
+                </span>
+              ) : !read ? (
                 <span className="w-[7px] h-[7px] bg-red-500 rounded-full" />
-              )}
+              ) : null}
 
               {/* MORE ICON MOBILE */}
               <div className="relative ml-1" onClick={(e) => e.stopPropagation()}>
@@ -251,9 +258,17 @@ function InboxCardMobile({
 
           {/* TITLE + THUMB */}
           <div className="flex items-start gap-3">
-            <h3 className="flex-1 text-[15px] font-semibold text-[#0C1014] leading-snug line-clamp-3">
-              {title}
-            </h3>
+            <div className="flex-1 flex flex-col gap-2">
+              <h3 className="text-[15px] font-semibold text-[#0C1014] leading-snug line-clamp-2">
+                {title}
+              </h3>
+              
+              {description && (
+                <p className="text-[13px] text-[#6F7680] leading-snug line-clamp-2">
+                  {description}
+                </p>
+              )}
+            </div>
 
             <EmailThumbnail
               emailId={emailId}
@@ -302,9 +317,11 @@ function NewsletterCardDesktop({
   onToggleReadLater,
   onToggleFavorite,
   sender,
+  readingProgress,
 }: any) {
   const router = useRouter();
   const [showMenu, setShowMenu] = useState(false);
+  const [logoError, setLogoError] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -414,8 +431,7 @@ function NewsletterCardDesktop({
                 alt={newsletterName || badgeText}
                 width={20}
                 height={20}
-                className="rounded object-cover"
-                style={{ width: "auto", height: "auto" }}
+                className="rounded object-cover w-5 h-5 shrink-0"
               />
             ) : (
               <div
@@ -435,9 +451,13 @@ function NewsletterCardDesktop({
             <span className="text-[13px] text-[#6F7680]">
               {time}
             </span>
-            {!read && (
+            {readingProgress && readingProgress > 0 ? (
+              <span className="text-[11px] text-[#6F7680] font-medium">
+                {readingProgress}% read
+              </span>
+            ) : !read ? (
               <span className="w-[8px] h-[8px] bg-red-500 rounded-full" />
-            )}
+            ) : null}
 
             {/* MORE ICON */}
             <div className="relative ml-2" ref={menuRef}>

@@ -14,6 +14,8 @@ export interface Newsletter {
   domain: string | null;
   author: string | null;
   description: string | null;
+  icon_url?: string | null;  // Newsletter logo/favicon URL from API
+  logo_url?: string | null;  // Alternative logo field
   targetAudience?: string | null;
   valueProposition?: string | null;
   language?: string | null;
@@ -185,6 +187,9 @@ class DiscoverService {
           description: item.reason || item.description,
           domain: item.domain || null,
           author: item.author || null,
+          // Include logo/icon from API
+          icon_url: item.item_icon_url || item.icon_url || null,
+          logo_url: item.logo_url || null,
         }));
       }
       return [];

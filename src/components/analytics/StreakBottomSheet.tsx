@@ -8,7 +8,8 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import analyticsService from "@/services/analytics";
 
 /* =======================
    Types (API-ready)
@@ -35,25 +36,46 @@ type Props = {
   monthLabel?: string;
 };
 
-/* =======================
-   Dummy data
-======================= */
 
-const DEFAULT_WEEK: WeekDay[] = [
-  { label: "Sa", status: "done" },
-  { label: "Mo", status: "done" },
-  { label: "Tu", status: "done" },
-  { label: "Th", status: "done" },
-  { label: "Fr", status: "today" },
-  { label: "Su", status: "future" },
-  { label: "Mo", status: "future" },
-];
+// Helper: Map streak count to week days, marking completed and today
+function mapStreakToWeek(streakCount: number): WeekDay[] {
+  const dayLabels = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+  const today = new Date();
+  const todayIndex = today.getDay(); // 0 = Sunday
+  const days: WeekDay[] = [];
+  for (let i = 0; i < 7; i++) {
+    const isToday = i === todayIndex;
+    let status: WeekDay["status"] = "future";
+    if (isToday) status = "today";
+    else {
+      const daysAgo = (todayIndex - i + 7) % 7;
+      if (streakCount > 0 && daysAgo < streakCount) status = "done";
+    }
+    days.push({ label: dayLabels[i], status });
+  }
+  return days;
+}
 
-const DEFAULT_CALENDAR: CalendarDay[] = Array.from({ length: 35 }, (_, i) => ({
-  date: i + 1,
-  isStreak: i >= 10 && i <= 16,
-  isToday: i === 14,
-}));
+// Helper: Generate a simple calendar for the current month, marking streak days
+function mapStreakToCalendar(streakCount: number): CalendarDay[] {
+  const today = new Date();
+  const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+  const calendar: CalendarDay[] = [];
+  // Mark the last `streakCount` days as streak, ending today
+  for (let i = 1; i <= daysInMonth; i++) {
+    const isToday = i === today.getDate();
+    let isStreak = false;
+    if (streakCount > 0 && i <= today.getDate() && i > today.getDate() - streakCount) {
+      isStreak = true;
+    }
+    calendar.push({ date: i, isStreak, isToday });
+  }
+  // Pad to 35 days for 5 weeks
+  while (calendar.length < 35) {
+    calendar.push({ date: calendar.length + 1, isStreak: false });
+  }
+  return calendar;
+}
 
 /* =======================
    Helpers
@@ -101,23 +123,45 @@ const getStreakSegments = (calendar: CalendarDay[]) => {
    Component
 ======================= */
 
+
 export default function StreakBottomSheet({
   open,
   onClose,
-  currentStreak = 10,
-  bestStreak = 15,
-  week = DEFAULT_WEEK,
-  calendar = DEFAULT_CALENDAR,
-  monthLabel = "JAN 2022",
 }: Props) {
-  if (!open) return null;
+  const [currentStreak, setCurrentStreak] = useState(0);
+  const [bestStreak, setBestStreak] = useState(0);
+  const [week, setWeek] = useState<WeekDay[]>(mapStreakToWeek(0));
+  const [calendar, setCalendar] = useState<CalendarDay[]>(mapStreakToCalendar(0));
+  const [monthLabel, setMonthLabel] = useState("");
 
   useEffect(() => {
+    if (!open) return;
     document.body.style.overflow = "hidden";
+    // Set month label
+    const today = new Date();
+    setMonthLabel(today.toLocaleString("default", { month: "short", year: "numeric" }).toUpperCase());
+    // Fetch streak data
+    const fetchStreak = async () => {
+      try {
+        const streakData = await analyticsService.getStreakCount();
+        setCurrentStreak(streakData.streak_count);
+        setBestStreak(streakData.longest_streak);
+        setWeek(mapStreakToWeek(streakData.streak_count));
+        setCalendar(mapStreakToCalendar(streakData.streak_count));
+      } catch (e) {
+        // fallback to zeroes
+        setCurrentStreak(0);
+        setBestStreak(0);
+        setWeek(mapStreakToWeek(0));
+        setCalendar(mapStreakToCalendar(0));
+      }
+    };
+    fetchStreak();
     return () => {
       document.body.style.overflow = "";
     };
-  }, []);
+  }, [open]);
+  if (!open) return null;
 
   const streakSegments = getStreakSegments(calendar);
 

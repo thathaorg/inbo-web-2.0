@@ -9,6 +9,7 @@ import EmptyState from "@/components/SearchNotFound";
 import NewsletterCarousel from "@/components/discover/NewsletterCarousel";
 import { NewsletterEntry } from "@/components/discover/NewsletterCarouselItem";
 import searchService, { EmailSearchResult } from "@/services/search";
+import { cleanContentPreview } from "@/services/email";
 
 /* --------------------- PAGINATION --------------------- */
 
@@ -72,7 +73,7 @@ function SearchResults() {
         badgeTextColor: "#0369A1",
         author: email.newsletterName || email.sender || "Unknown",
         title: email.subject || "No Subject",
-        description: email.contentPreview || "No preview available",
+        description: cleanContentPreview(email.contentPreview),
         date: dateStr,
         time: "2 mins",
         tag: "Email",

@@ -6,7 +6,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMediaQuery } from "@/hooks/useMediaQuery"; // <-- your existing hook
 
-export default function InterestedIn() {
+export default function InterestedIn({ categoryImages }: { categoryImages?: Record<string, string[]> }) {
   const categories = [
     "Technology","AI","Economics","Startups","Business",
     "Finance","Career","Productivity","Design","Marketing",
@@ -24,7 +24,7 @@ export default function InterestedIn() {
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   const router = useRouter();
-  const isMobile = useMediaQuery("(max-width: 640px)");
+  const isMobile = useMediaQuery("(max-width: 639px)");
 
   // Convert category → slug (e.g., "Current Affairs" → "current-affairs")
   const slugify = (label: string) =>
@@ -57,11 +57,17 @@ export default function InterestedIn() {
     const el = document.getElementById(`carousel-${slug}`);
 
     if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      // Optionally fine-tune offset if needed (e.g. for sticky header)
+      setTimeout(() => {
+        window.scrollBy({ top: -20, left: 0, behavior: "smooth" });
+      }, 400);
     }
+    // Auto-clear active state after scroll
+    setTimeout(() => setSelected([]), 600);
   };
 
-  // 🔥 Pill component with desktop + mobile behavior
+    // 🔥 Pill component with desktop + mobile behavior
   const Pill = ({ label }: { label: string }) => {
     const handleClick = () => {
       const slug = slugify(label);
@@ -77,6 +83,9 @@ export default function InterestedIn() {
       scrollToCarousel(label);
     };
 
+    const images = categoryImages?.[label] || [];
+    const hasImages = images.length > 0;
+
     return (
       <button
         onClick={handleClick}
@@ -88,12 +97,44 @@ export default function InterestedIn() {
         }
       >
         <div className="relative w-[48px] h-5 flex-shrink-0">
-          <span className="absolute left-0 w-5 h-5 rounded-full bg-[#08DC2F] z-[3]" />
-          <img
-            src='/icons/forbes-icon.png'
-            className="absolute left-[14px] w-5 h-5 rounded-full z-[2]"
-          />
-          <span className="absolute left-[28px] w-5 h-5 rounded-full bg-[#DC4949] z-[1]" />
+          {hasImages ? (
+            <>
+              {/* Stacked images from category */}
+              {/* 3rd image (bottom) */}
+              {images[2] && (
+                <img
+                  src={images[2]}
+                  className="absolute left-[28px] w-5 h-5 rounded-full z-[1] object-cover border border-white"
+                  alt=""
+                />
+              )}
+              {/* 2nd image (middle) */}
+              {images[1] && (
+                <img
+                  src={images[1]}
+                  className="absolute left-[14px] w-5 h-5 rounded-full z-[2] object-cover border border-white"
+                  alt=""
+                />
+              )}
+              {/* 1st image (top) */}
+              {images[0] && (
+                <img
+                  src={images[0]}
+                  className="absolute left-0 w-5 h-5 rounded-full z-[3] object-cover border border-white"
+                  alt=""
+                />
+              )}
+            </>
+          ) : (
+            <>
+              <span className="absolute left-0 w-5 h-5 rounded-full bg-[#08DC2F] z-[3]" />
+              <img
+                src='/icons/forbes-icon.png'
+                className="absolute left-[14px] w-5 h-5 rounded-full z-[2]"
+              />
+              <span className="absolute left-[28px] w-5 h-5 rounded-full bg-[#DC4949] z-[1]" />
+            </>
+          )}
         </div>
 
         <span>{label}</span>

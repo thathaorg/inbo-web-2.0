@@ -1,28 +1,28 @@
+
 "use client";
 
 import React, { use, useState, useRef, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import Image from "next/image";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
-import { useTranslation } from "react-i18next";
 import { SEOHead } from "@/components/seo/SEOHead";
 import {
   Bookmark,
   Share2,
-  ExternalLink,
   LucideCircleEllipsis,
   Link2,
   X,
   ArrowUp,
   ArrowDown,
-  Sun,
-  Moon,
-  Laptop,
-  Book,
   Star,
   Trash2,
   Eraser,
+  Highlighter,
+  Type,
+  Volume2,
+  Clock,
+  CheckCircle,
 } from "lucide-react";
 import TTSPlayerModal from "@/components/TTSPlayerModal";
 import ReadModeSettings from "@/components/reading/ReadModeSettings";
@@ -38,6 +38,8 @@ import type { EmailDetail } from "@/services/email";
 type PageProps = {
   params: Promise<{ slug: string }>;
 };
+
+type ThemeMode = "light" | "dark" | "system";
 
 type FontType =
   | "System Default"
@@ -189,152 +191,12 @@ function IconButton({
 }
 
 /* ------------------------------------------------------------------ */
-/* READING STYLE POPOVER */
-/* ------------------------------------------------------------------ */
-type ThemeMode = "light" | "dark" | "system";
-
-function ReadingStylePopover({
-  anchorRef,
-  onClose,
-  themeMode, setThemeMode,
-  fontSize, setFontSize,
-  pageColor, setPageColor,
-  fontFamily, setFontFamily,
-  isReaderMode, onEnableReader
-}: {
-  anchorRef: React.RefObject<HTMLButtonElement | null>;
-  onClose: () => void;
-  // State props
-  themeMode: ThemeMode; setThemeMode: (v: ThemeMode) => void;
-  fontSize: number; setFontSize: (v: number) => void;
-  pageColor: "white" | "paper" | "calm"; setPageColor: (v: "white" | "paper" | "calm") => void;
-  fontFamily: "sans" | "serif" | "mono"; setFontFamily: (v: "sans" | "serif" | "mono") => void;
-  isReaderMode: boolean; onEnableReader: () => void;
-}) {
-  if (!anchorRef.current) return null;
-  const rect = anchorRef.current.getBoundingClientRect();
-
-  return (
-    <div
-      className="fixed z-[100]"
-      style={{ top: rect.bottom + 10, left: rect.left - 20 }}
-    >
-      <div className="w-[300px] rounded-2xl bg-white p-5 border border-gray-200/60 shadow-[0_12px_32px_rgba(0,0,0,0.18)] flex flex-col gap-6">
-
-        {/* Header */}
-        <div className="flex justify-between items-center">
-          <p className="font-semibold text-sm">Inbo Appearance</p>
-          <button onClick={onClose}><X size={16} className="text-gray-400 hover:text-black" /></button>
-        </div>
-
-        {/* 1. Theme Toggles */}
-        <div className="flex gap-1 p-1 bg-gray-100 rounded-lg">
-          {/* Simple implementation of the toggle switch */}
-          <ThemeToggleItem label="Light" icon={<Sun size={14} />} active={themeMode === 'light'} onClick={() => setThemeMode('light')} />
-          <ThemeToggleItem label="Dark" icon={<Moon size={14} />} active={themeMode === 'dark'} onClick={() => setThemeMode('dark')} />
-          <ThemeToggleItem label="System" icon={<Laptop size={14} />} active={themeMode === 'system'} onClick={() => setThemeMode('system')} />
-        </div>
-
-        {/* 2. Reader Mode Button (only if not active) */}
-        {!isReaderMode && (
-          <button
-            onClick={onEnableReader}
-            className="w-full h-10 rounded-full bg-black text-white font-medium text-sm flex items-center justify-center gap-2 hover:opacity-90 transition"
-          >
-            <Book size={16} /> Enter Reader Mode
-          </button>
-        )}
-
-        {/* 3. Size Controls */}
-        <div className="space-y-2">
-          <p className="text-xs font-semibold text-gray-500">Size</p>
-          <div className="flex gap-4">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                const newSize = Math.max(14, fontSize - 2);
-                setFontSize(newSize);
-              }}
-              disabled={fontSize <= 14}
-              className={`flex-1 h-10 rounded-lg border flex items-center justify-center font-medium transition ${fontSize <= 14 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}`}
-            >
-              A -
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                const newSize = Math.min(32, fontSize + 2);
-                setFontSize(newSize);
-              }}
-              disabled={fontSize >= 32}
-              className={`flex-1 h-10 rounded-lg border flex items-center justify-center font-medium transition ${fontSize >= 32 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}`}
-            >
-              A +
-            </button>
-          </div>
-          <p className="text-xs text-center text-gray-400">{fontSize}px</p>
-        </div>
-
-        {/* 4. Page Color */}
-        <div className="space-y-2">
-          <p className="text-xs font-semibold text-gray-500">Page Color</p>
-          <div className="flex gap-3">
-            <ColorOption mode="white" active={pageColor === 'white'} onClick={() => setPageColor('white')} />
-            <ColorOption mode="paper" active={pageColor === 'paper'} onClick={() => setPageColor('paper')} />
-            <ColorOption mode="calm" active={pageColor === 'calm'} onClick={() => setPageColor('calm')} />
-          </div>
-        </div>
-
-        {/* 5. Font Selector */}
-        <div className="space-y-2">
-          <button
-            onClick={() => {
-              const map = { sans: 'serif', serif: 'mono', mono: 'sans' } as const;
-              setFontFamily(map[fontFamily]);
-            }}
-            className="w-full h-10 rounded-lg bg-gray-100 px-4 flex items-center justify-between text-sm hover:bg-gray-200"
-          >
-            <span>Font: {fontFamily === 'sans' ? 'Sans Serif' : fontFamily === 'serif' ? 'Serif' : 'Monospaced'}</span>
-            <span className="text-gray-500">{'>'}</span>
-          </button>
-        </div>
-
-      </div>
-    </div>
-  );
-}
-
-function ThemeToggleItem({ label, icon, active, onClick }: any) {
-  return (
-    <button
-      onClick={onClick}
-      className={`flex-1 flex items-center justify-center gap-2 h-8 rounded-md text-xs font-medium transition-all ${active ? 'bg-white shadow text-black' : 'text-gray-500 hover:text-gray-700'}`}
-    >
-      {icon} {label}
-    </button>
-  );
-}
-
-function ColorOption({ mode, active, onClick }: { mode: string, active: boolean, onClick: () => void }) {
-  const bg = mode === 'white' ? 'bg-white' : mode === 'paper' ? 'bg-[#F5F5F3]' : 'bg-[#E8F1F5]';
-  return (
-    <button onClick={onClick} className={`flex-1 aspect-[4/3] rounded-lg border-2 flex flex-col items-center justify-center gap-2 ${bg} ${active ? 'border-black' : 'border-transparent hover:border-gray-200'}`}>
-      <div className="w-8 h-px bg-gray-300 mb-0.5"></div>
-      <div className="w-8 h-px bg-gray-300 mb-0.5"></div>
-      <div className="w-5 h-px bg-gray-300"></div>
-      <span className="text-[10px] text-gray-500 capitalize mt-1">{mode}</span>
-    </button>
-  );
-}
-
-
-/* ------------------------------------------------------------------ */
 /* PAGE */
 /* ------------------------------------------------------------------ */
 /* ------------------------------------------------------------------ */
 /* HELPER: HIGHLIGHTING */
 /* ------------------------------------------------------------------ */
-function applyHighlights(text: string, highlights: any[] | null | undefined) {
+function applyHighlights(text: string, highlights: any[] | null | undefined, onHighlightClick?: (h: any) => void) {
   if (!highlights || highlights.length === 0) return text;
 
   let parts: (string | React.JSX.Element)[] = [text];
@@ -360,7 +222,16 @@ function applyHighlights(text: string, highlights: any[] | null | undefined) {
 
         if (before) nextParts.push(before);
         nextParts.push(
-          <mark key={`hl-${hIdx}`} className="bg-yellow-200 text-black rounded-sm px-0.5">
+          <mark
+            key={`hl-${hIdx}`}
+            id={`highlight-${h.id}`}
+            className="bg-yellow-200 text-black rounded-sm px-0.5 cursor-pointer hover:bg-yellow-300 transition-colors relative z-10"
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault(); // Prevent selection when clicking to erase
+              onHighlightClick?.(h);
+            }}
+          >
             {match}
           </mark>
         );
@@ -374,19 +245,192 @@ function applyHighlights(text: string, highlights: any[] | null | undefined) {
 }
 
 export default function ReadingPage(props: PageProps) {
+
   const isMobile = useMediaQuery("(max-width: 768px)");
   const { slug } = use(props.params);
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [emailData, setEmailData] = useState<EmailDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // --- Reading Mode State (must be first) ---
+  const [isReadingMode, setIsReadingMode] = useState(false);
+
+  // --- Highlight/Eraser Tool State ---
+  const [activeTool, setActiveTool] = useState<'highlighter' | 'eraser' | null>(null);
+  const [localHighlights, setLocalHighlights] = useState<any[]>([]); // [{text, range, ...}]
+  const pendingSavesRef = useRef<any[]>([]); // Ref to track pending saves without dependency cycles
+
+  // Scroll to highlight if param exists
+  useEffect(() => {
+    const highlightId = searchParams.get('highlight');
+    if (highlightId && emailData && isReadingMode) {
+      // Wait a bit for rendering
+      setTimeout(() => {
+        const el = document.getElementById(`highlight-${highlightId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          // Optional: Add a flash effect
+          el.style.transition = 'background-color 0.5s';
+          const originalBg = el.style.backgroundColor;
+          el.style.backgroundColor = '#ff9966'; // Darker orange flash
+          setTimeout(() => {
+            el.style.backgroundColor = originalBg;
+          }, 1000);
+        }
+      }, 500);
+    }
+  }, [searchParams, emailData, isReadingMode]);
+
+  // --- Custom Cursor Logic ---
+  useEffect(() => {
+    if (!isReadingMode) {
+      document.body.style.cursor = '';
+      return;
+    }
+    if (activeTool === 'highlighter') {
+      document.body.style.cursor = 'url(/icons/highlight-icon.png), auto'; // Fallback to auto if custom cursor fails
+    } else if (activeTool === 'eraser') {
+      document.body.style.cursor = 'cell'; // Use cell cursor for eraser (crosshair-like)
+    } else {
+      document.body.style.cursor = '';
+    }
+    return () => { document.body.style.cursor = ''; };
+  }, [activeTool, isReadingMode]);
+
+  // --- Batch Save Logic ---
+  const savePendingHighlights = useCallback(async () => {
+    const highlightsToSave = pendingSavesRef.current;
+    if (highlightsToSave.length === 0 || !emailData) return;
+
+    console.log("Batch saving highlights:", highlightsToSave.length);
+    
+    // Clear pending immediately to avoid double saves
+    pendingSavesRef.current = [];
+    
+    // Process in parallel
+    const savePromises = highlightsToSave.map(h => 
+      emailService.addHighlight(emailData.id, h.text, {}, 'yellow')
+        .catch(err => console.error("Failed to save highlight:", h.text, err))
+    );
+
+    try {
+      await Promise.all(savePromises);
+      console.log("Batch save complete");
+      
+      // Update local emailData
+      setEmailData(prev => {
+        if (!prev) return null;
+        // Merge saved highlights (assuming they saved successfully)
+        // Ideally we should get the IDs back from server, but for now we trust the text matching
+        const newHighlights = [...(prev.highlights || []), ...highlightsToSave.map(h => ({
+            ...h,
+            // If server returns real ID we should use it, but here we keep local ID or generate temp one
+            // We'll rely on refresh for real IDs later
+        }))];
+        return { ...prev, highlights: newHighlights };
+      });
+
+      // Clear local highlights since they are now "saved" (merged into emailData)
+      setLocalHighlights([]);
+
+    } catch (err) {
+      console.error("Batch save failed", err);
+    }
+  }, [emailData]);
+
+  // Save when leaving reading mode
+  useEffect(() => {
+    if (!isReadingMode) {
+      savePendingHighlights();
+    }
+  }, [isReadingMode, savePendingHighlights]);
+
+  // Save on unmount
+  useEffect(() => {
+    return () => {
+      savePendingHighlights();
+    };
+  }, [savePendingHighlights]);
+
+  // --- Highlighting Logic (MouseUp) ---
+  useEffect(() => {
+    if (!isReadingMode || activeTool !== 'highlighter' || !emailData) return;
+
+    const handleMouseUp = () => {
+      const selection = window.getSelection();
+      if (!selection || selection.isCollapsed) return;
+
+      const rawText = selection.toString();
+      const text = rawText.replace(/\s+/g, ' ').trim();
+
+      if (text.length < 3) return;
+
+      // Check if text exists in content (to avoid cross-paragraph highlights)
+      const content = parseEmailBody(emailData.body);
+      const existsInContent = content.some(p => p.includes(text));
+
+      if (!existsInContent) {
+        selection.removeAllRanges();
+        toast.error('Please highlight text within a single paragraph.');
+        return;
+      }
+
+      // Create new highlight
+      const newHighlight = { 
+        text, 
+        id: `local-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`, 
+        color: 'yellow',
+        createdAt: new Date().toISOString()
+      };
+
+      setLocalHighlights(prev => [...prev, newHighlight]);
+      pendingSavesRef.current.push(newHighlight);
+      
+      selection.removeAllRanges();
+      // toast.success('Highlighted'); // Optional: too many toasts might be annoying
+    };
+
+    const el = contentRef.current;
+    if (el) el.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      if (el) el.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isReadingMode, activeTool, emailData, localHighlights]);
+
+  // --- Eraser Logic ---
+  const handleHighlightClick = async (highlight: any) => {
+    if (activeTool !== 'eraser' || !emailData) return;
+
+    if (highlight.id.toString().startsWith('local-')) {
+      // Remove from local
+      setLocalHighlights(prev => prev.filter(h => h.id !== highlight.id));
+      pendingSavesRef.current = pendingSavesRef.current.filter(h => h.id !== highlight.id);
+      toast.success('Highlight removed');
+    } else {
+      // Remove from server
+      try {
+        await emailService.deleteHighlight(emailData.id, highlight.id);
+        
+        // Update local emailData
+        setEmailData(prev => {
+          if (!prev) return null;
+          return { ...prev, highlights: (prev.highlights || []).filter(h => h.id !== highlight.id) };
+        });
+        toast.success('Highlight removed');
+      } catch (err) {
+        console.error("Failed to delete highlight", err);
+        toast.error('Failed to remove highlight');
+      }
+    }
+  };
+
   const [showReadSettings, setShowReadSettings] = useState(false);
   const [ttsOpen, setTtsOpen] = useState(false);
   // Default to FALSE so we show the Original HTML first
-  const [isReadingMode, setIsReadingMode] = useState(false);
-  const [showReadingStyle, setShowReadingStyle] = useState(false);
+  // const [isReadingMode, setIsReadingMode] = useState(false); // Duplicate removed
   const [showAISummary, setShowAISummary] = useState(false);
 
   // READING APPEARANCE STATE
@@ -397,10 +441,8 @@ export default function ReadingPage(props: PageProps) {
   const [fontType, setFontType] = useState<FontType>("Georgia");
 
   // HIGHLIGHT STATE
-  const [isHighlightMode, setIsHighlightMode] = useState(false);
-  const [isEraserMode, setIsEraserMode] = useState(false);
-
-  const { t } = useTranslation("common");
+  // const [isHighlightMode, setIsHighlightMode] = useState(false); // REMOVED: using activeTool
+  // const [isEraserMode, setIsEraserMode] = useState(false); // REMOVED: using activeTool
 
   // SCROLL STATE
   const [atTop, setAtTop] = useState(true);
@@ -416,7 +458,6 @@ export default function ReadingPage(props: PageProps) {
   const [prevEmailId, setPrevEmailId] = useState<string | null>(null);
   const [isNavigating, setIsNavigating] = useState(false);
 
-  const typeBtnRef = useRef<HTMLButtonElement>(null);
   const moreBtnRef = useRef<HTMLButtonElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -782,112 +823,6 @@ export default function ReadingPage(props: PageProps) {
     return () => el.removeEventListener("scroll", handleScroll);
   }, [handleToggleRead]);
 
-  /* ---------------- HIGHLIGHTING LOGIC ---------------- */
-  useEffect(() => {
-    // Turn off eraser mode when highlight mode is turned off
-    if (!isHighlightMode && isEraserMode) {
-      setIsEraserMode(false);
-    }
-  }, [isHighlightMode, isEraserMode]);
-
-  useEffect(() => {
-    if ((!isHighlightMode && !isEraserMode) || !isReadingMode) return;
-
-    const handleSelection = async () => {
-      const selection = window.getSelection();
-      if (!selection || selection.isCollapsed) return;
-
-      // STRICT NORMALIZATION: Collapse all whitespace to single spaces to match parseEmailBody logic
-      const rawText = selection.toString();
-      const text = rawText.replace(/\s+/g, ' ').trim();
-
-      if (text.length < 3) return;
-
-      if (!emailData) return;
-
-      // Check if we're in eraser mode
-      if (isEraserMode) {
-        console.log("Attempting to delete highlight:", text);
-        
-        // Find matching highlight
-        const existingHighlights = emailData.highlights || [];
-        const matchingHighlight = existingHighlights.find(h => {
-          const normalizedH = (h.text || '').replace(/\s+/g, ' ').trim();
-          return normalizedH === text;
-        });
-
-        if (matchingHighlight && matchingHighlight.id) {
-          try {
-            await emailService.deleteHighlight(emailData.id, matchingHighlight.id);
-            
-            // Remove from local state
-            setEmailData(prev => {
-              if (!prev) return null;
-              const updatedHighlights = (prev.highlights || []).filter(h => h.id !== matchingHighlight.id);
-              return { ...prev, highlights: updatedHighlights };
-            });
-            
-            console.log("Highlight deleted!");
-            toast.success('Highlight removed');
-          } catch (err) {
-            console.error("Failed to delete highlight", err);
-            toast.error('Failed to remove highlight');
-          }
-        } else {
-          console.log("No matching highlight found");
-        }
-        
-        selection.removeAllRanges();
-        return;
-      }
-
-      // Highlight mode - check for duplicates
-      console.log("Attempting to highlight:", text);
-      
-      // Check if this text is already highlighted
-      const existingHighlights = emailData.highlights || [];
-      const isDuplicate = existingHighlights.some(h => {
-        const normalizedH = (h.text || '').replace(/\s+/g, ' ').trim();
-        return normalizedH === text;
-      });
-
-      if (isDuplicate) {
-        console.log("Text already highlighted, skipping...");
-        selection.removeAllRanges();
-        toast.info('Already highlighted');
-        return;
-      }
-
-      try {
-        const result = await emailService.addHighlight(emailData.id, text, {}, 'yellow');
-
-        // Update local state to show highlight immediately
-        setEmailData(prev => {
-          if (!prev) return null;
-          // If result is null (void), shim it
-          const newH = result || { text, id: 'temp-' + Date.now(), color: 'yellow' };
-          const newHighlights = [...(prev.highlights || []), newH];
-          return { ...prev, highlights: newHighlights };
-        });
-
-        // Clear selection
-        selection.removeAllRanges();
-        console.log("Highlight saved!");
-        toast.success('Highlighted');
-      } catch (err) {
-        console.error("Failed to save highlight", err);
-        toast.error('Failed to highlight');
-      }
-    };
-
-    const el = contentRef.current;
-    if (el) el.addEventListener('mouseup', handleSelection);
-    return () => {
-      if (el) el.removeEventListener('mouseup', handleSelection);
-    };
-  }, [isHighlightMode, isEraserMode, isReadingMode, emailData]);
-
-
   // BACKGROUND CLASSES
   const getAppearanceClasses = () => {
     // If Dark Mode active
@@ -1014,6 +949,14 @@ export default function ReadingPage(props: PageProps) {
     <>
       <SEOHead title={title} description={emailData.contentPreview || "Reading view"} />
 
+      {/* PROGRESS BAR */}
+      <div className="fixed top-0 left-0 w-full h-1 bg-gray-200/50 z-[99999]">
+        <div 
+          className="h-full bg-[#C46A54] transition-all duration-300 ease-out"
+          style={{ width: `${scrollProgress}%` }}
+        />
+      </div>
+
       {/* MODAL CONTAINER */}
       <div className={`relative z-10 h-screen w-full flex hide-scrollbar ${appearanceClass} transition-colors duration-300`}>
         {/* Previous Email Button - Subtle, non-distracting */}
@@ -1060,16 +1003,16 @@ export default function ReadingPage(props: PageProps) {
               <IconButton
                 onClick={() => setIsReadingMode(true)}
               >
-                <img src="/icons/read-style-icon.png" alt="style" />
+                <Type size={20} className="text-gray-700" />
               </IconButton>
 
               <IconButton onClick={() => setTtsOpen(prev => !prev)}>
-                <img src="/icons/read-tts-icon.png" alt="tts" />
+                <Volume2 size={20} className="text-gray-700" />
               </IconButton>
 
               <div className="relative group">
                 <IconButton onClick={handleToggleReadLater}>
-                  <img src="/icons/read-timer-icon.png" alt="read later" />
+                  <Clock size={20} className={emailData.isReadLater ? 'fill-current text-blue-500' : 'text-gray-700'} />
                 </IconButton>
                 <div className="absolute top-full mt-1 left-1/2 -translate-x-1/2 bg-black text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition whitespace-nowrap z-50">
                   {emailData.isReadLater ? 'Remove from Read Later' : 'Add to Read Later'}
@@ -1079,10 +1022,7 @@ export default function ReadingPage(props: PageProps) {
               <div className="relative group">
                 <IconButton onClick={handleToggleRead}>
                   <div className="relative">
-                    <img src="/icons/read-check-icon.png" alt="check" />
-                    {emailData.isRead && (
-                      <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white" />
-                    )}
+                    <CheckCircle size={20} className={emailData.isRead ? 'fill-current text-green-500' : 'text-gray-700'} />
                   </div>
                 </IconButton>
                 <div className="absolute top-full mt-1 left-1/2 -translate-x-1/2 bg-black text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition whitespace-nowrap z-50">
@@ -1171,7 +1111,7 @@ export default function ReadingPage(props: PageProps) {
 
             <div
               ref={contentRef}
-              className={`flex-1 overflow-y-auto py-10 hide-scrollbar transition-all duration-300 ${getAppearanceClasses()} ${isHighlightMode ? 'cursor-text selection:bg-yellow-200 selection:text-black' : isEraserMode ? 'cursor-pointer selection:bg-red-200 selection:text-black' : ''}`}
+              className={`flex-1 overflow-y-auto py-10 hide-scrollbar transition-all duration-300 ${getAppearanceClasses()} ${activeTool === 'highlighter' ? 'cursor-text selection:bg-yellow-200 selection:text-black' : activeTool === 'eraser' ? 'cursor-pointer selection:bg-red-200 selection:text-black' : ''}`}
             >
               <div
                 className={`mx-auto max-w-[760px] px-10 transition-all duration-300 ${getFontFamily()}`}
@@ -1207,7 +1147,7 @@ export default function ReadingPage(props: PageProps) {
                   >
                     {content.map((p, i) => (
                       <p key={i} className="mb-6 leading-relaxed first-letter:ml-8" style={{ opacity: 0.95 }}>
-                        {applyHighlights(p, emailData?.highlights)}
+                        {applyHighlights(p, [...(emailData?.highlights || []), ...localHighlights], handleHighlightClick)}
                       </p>
                     ))}
                   </article>
@@ -1241,32 +1181,22 @@ export default function ReadingPage(props: PageProps) {
               <img src="/icons/read-style-icon.png" alt="style" className="w-6 h-6" />
             </button>
             <button
-              onClick={() => {
-                setIsHighlightMode(v => !v);
-                if (isEraserMode) setIsEraserMode(false);
-              }}
-              className={`p-3 hover:bg-gray-100 transition-colors ${isHighlightMode ? 'bg-yellow-100 hover:bg-yellow-200' : ''}`}
+              onClick={() => setActiveTool(activeTool === 'highlighter' ? null : 'highlighter')}
+              className={`p-3 hover:bg-gray-100 transition-colors ${activeTool === 'highlighter' ? 'bg-yellow-100 hover:bg-yellow-200' : ''}`}
               title="Toggle Highlight Mode"
             >
-              <img src="/icons/highlight-icon.png" alt="highlight" className="w-6 h-6" />
+              <Highlighter size={24} className="text-gray-700" />
             </button>
-            {isHighlightMode && (
-              <button
-                onClick={() => {
-                  setIsEraserMode(v => !v);
-                }}
-                className={`p-3 hover:bg-gray-100 transition-colors ${isEraserMode ? 'bg-red-100 hover:bg-red-200' : ''}`}
-                title="Erase Highlights"
-              >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M7 21h10M2.5 13.5L9 7l5-5 4 4-5 5-6.5 6.5a2 2 0 01-1.414.586h-2.172" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M8.5 8.5l7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </button>
-            )}
+            <button
+              onClick={() => setActiveTool(activeTool === 'eraser' ? null : 'eraser')}
+              className={`p-3 rounded-b-3xl hover:bg-gray-100 transition-colors ${activeTool === 'eraser' ? 'bg-yellow-100 hover:bg-yellow-200' : ''}`}
+              title="Toggle Eraser Mode"
+            >
+              <Eraser size={24} className="text-gray-700" />
+            </button>
             <button 
               onClick={() => setShowAISummary(true)}
-              className="p-3 hover:bg-gray-100 hover:bg-purple-50 transition-colors"
+              className="p-3 hover:bg-purple-50 transition-colors"
               title="AI Summary"
             >
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-purple-500">
@@ -1371,6 +1301,8 @@ export default function ReadingPage(props: PageProps) {
           // Full settings for reading mode
           showFontSelector={true}
           position='center'
+          activeTool={activeTool}
+          setActiveTool={setActiveTool}
         />
       )}
 

@@ -15,6 +15,17 @@ interface PublicationData {
   url?: string; // Newsletter website URL
 }
 
+// Helper function to generate favicon URL from domain
+const getFaviconUrl = (url: string | null | undefined, size: number = 128): string => {
+  if (!url) return "/logos/forbes-sample.png";
+  try {
+    const domain = new URL(url).hostname;
+    return `https://www.google.com/s2/favicons?domain=${domain}&sz=${size}`;
+  } catch {
+    return "/logos/forbes-sample.png";
+  }
+};
+
 export default function PublicationList({ title }: { title: string }) {
   const [list, setList] = useState<PublicationData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,7 +44,8 @@ export default function PublicationList({ title }: { title: string }) {
         const newsletters = await discoverService.getPopularNewsletters(11);
         const transformed = newsletters.map((n, index) => ({
           rank: index + 1,
-          logo: "/logos/forbes-sample.png", // Default logo
+          // Use icon_url from API, fall back to logo_url, then generate from URL
+          logo: n.icon_url || n.logo_url || getFaviconUrl(n.url),
           name: n.name,
           desc: n.description || "Discover curated content delivered to your inbox.",
           id: n.id,
@@ -67,6 +79,8 @@ export default function PublicationList({ title }: { title: string }) {
           categories: details.categories,
           author: details.author,
           url: details.url || pub.url, // Include website URL
+          // Update logo with API data if available
+          logo: details.icon_url || details.logo_url || pub.logo,
         });
       } catch {
         setSelectedPublication(pub);

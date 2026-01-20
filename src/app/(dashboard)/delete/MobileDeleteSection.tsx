@@ -5,7 +5,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import InboxCardMobile from "@/components/inbox/InboxCard";
 import SortButton, { SortValue } from "@/components/SortButton";
-import emailService, { EmailListItem } from "@/services/email";
+import emailService, { EmailListItem, cleanContentPreview } from "@/services/email";
 import {
   ArrowLeft,
   Search,
@@ -31,7 +31,7 @@ function transformEmailToCard(email: EmailListItem) {
     badgeTextColor: "#0369A1",
     author: email.newsletterName || email.sender || "Unknown",
     title: email.subject || "No Subject",
-    description: email.contentPreview || "No preview available",
+    description: cleanContentPreview(email.contentPreview),
     date: `Deleted on ${dateStr}`,
     time: "2m",
     tag: "Email",

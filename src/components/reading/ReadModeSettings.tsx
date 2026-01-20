@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Sun, Moon, Laptop, ChevronRight } from "lucide-react";
+import { Sun, Moon, Laptop, ChevronRight, Highlighter, Eraser } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
 /* TYPES */
@@ -38,6 +38,8 @@ interface ReadModeSettingsProps {
   setFontType?: (v: FontType) => void;
   showFontSelector?: boolean;
   position?: 'left' | 'center' | 'right';
+  activeTool?: 'highlighter' | 'eraser' | null;
+  setActiveTool?: (tool: 'highlighter' | 'eraser' | null) => void;
 }
 
 /* ------------------------------------------------------------------ */
@@ -58,6 +60,8 @@ export default function ReadModeSettings({
   setFontType: externalSetFontType,
   showFontSelector = true,
   position = 'center',
+  activeTool,
+  setActiveTool,
 }: ReadModeSettingsProps) {
   // Internal state (used when no external state is provided)
   const [internalTheme, setInternalTheme] = useState<ThemeMode>("system");
@@ -168,6 +172,27 @@ export default function ReadModeSettings({
           <div className="md:hidden flex justify-center mb-2">
             <div className="w-10 h-1.5 rounded-full bg-gray-300" />
           </div>
+
+          {/* TOOLS */}
+          {activeTool !== undefined && setActiveTool && (
+            <div className="flex flex-col gap-2">
+              <p className="text-sm font-medium text-[#0C1014]">Tools</p>
+              <div className="flex gap-2">
+                <ToolButton
+                  label="Highlight"
+                  icon={<Highlighter size={14} />}
+                  active={activeTool === 'highlighter'}
+                  onClick={() => setActiveTool(activeTool === 'highlighter' ? null : 'highlighter')}
+                />
+                <ToolButton
+                  label="Eraser"
+                  icon={<Eraser size={14} />}
+                  active={activeTool === 'eraser'}
+                  onClick={() => setActiveTool(activeTool === 'eraser' ? null : 'eraser')}
+                />
+              </div>
+            </div>
+          )}
 
           <h3 className="text-sm font-medium text-[#0C1014]">
             Inbo Appearance
@@ -387,14 +412,40 @@ function ThemeButton({
     <button
       onClick={onClick}
       className={`
-        flex-1 h-9 rounded-full
-        flex items-center justify-center gap-2
-        text-sm font-medium
-        transition
+        flex-1 h-9 rounded-lg border text-sm font-medium flex items-center justify-center gap-2 transition
         ${
           active
-            ? "bg-black text-white"
-            : "bg-[#F3F4F6] text-[#0C1014]"
+            ? "bg-black text-white border-black"
+            : "bg-white text-[#0C1014] border-gray-200 hover:bg-gray-50"
+        }
+      `}
+    >
+      {icon}
+      {label}
+    </button>
+  );
+}
+
+function ToolButton({
+  label,
+  icon,
+  active,
+  onClick,
+}: {
+  label: string;
+  icon: React.ReactNode;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`
+        flex-1 h-9 rounded-lg border text-sm font-medium flex items-center justify-center gap-2 transition
+        ${
+          active
+            ? "bg-yellow-100 text-yellow-900 border-yellow-300"
+            : "bg-white text-[#0C1014] border-gray-200 hover:bg-gray-50"
         }
       `}
     >

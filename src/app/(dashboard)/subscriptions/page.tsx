@@ -34,6 +34,7 @@ type Newsletter = {
   slug: string;             // duplicate id field for NewsletterCard compatibility
 
   read: boolean;
+  readingProgress?: number | null;
 };
 
 
@@ -97,6 +98,7 @@ function convertSubscriptionToPublisher(sub: Subscription): Publisher {
 /* --------------------------------------------
    PAGE
 --------------------------------------------- */
+
 export default function SubscriptionsPage() {
   const { t } = useTranslation("common");
   const [activeView, setActiveView] = useState<"list" | "grid">("list");
@@ -105,10 +107,9 @@ export default function SubscriptionsPage() {
   const [inactiveVisible, setInactiveVisible] = useState(6);
   const [publishers, setPublishers] = useState<Publisher[]>([]);
   const [loading, setLoading] = useState(true);
+  // Remove local search bar, use global SearchBar for filtering
 
-  const [selectedPublisher, setSelectedPublisher] =
-    useState<Publisher | null>(null);
-  
+  const [selectedPublisher, setSelectedPublisher] = useState<Publisher | null>(null);
   const isMobile = useMediaQuery("(max-width: 768px)");
 
   // Fetch subscriptions from API
@@ -124,12 +125,31 @@ export default function SubscriptionsPage() {
         setLoading(false);
       }
     };
-
     fetchSubscriptions();
   }, []);
 
+
+
+  // Listen for custom search event from SearchBar
+  const [searchQuery, setSearchQuery] = useState("");
+  useEffect(() => {
+    const handler = (e: any) => setSearchQuery(e.detail || "");
+    window.addEventListener("subscriptions-search", handler);
+    return () => window.removeEventListener("subscriptions-search", handler);
+  }, []);
+
+  const filteredPublishers = useMemo(() => {
+    if (!searchQuery.trim()) return publishers;
+    const q = searchQuery.trim().toLowerCase();
+    return publishers.filter(p =>
+      p.name.toLowerCase().includes(q) ||
+      (p.description && p.description.toLowerCase().includes(q)) ||
+      (p.senderEmail && p.senderEmail.toLowerCase().includes(q))
+    );
+  }, [publishers, searchQuery]);
+
   if (isMobile) {
-    return <MobileSubscriptionSection/>
+    return <MobileSubscriptionSection/>;
   }
 
   return (
@@ -149,7 +169,7 @@ export default function SubscriptionsPage() {
           </div>
         ) : !selectedPublisher ? (
           <PublisherList
-            publishers={publishers}
+            publishers={filteredPublishers}
             activeView={activeView}
             setActiveView={setActiveView}
             inactiveView={inactiveView}
@@ -160,9 +180,6 @@ export default function SubscriptionsPage() {
             setInactiveVisible={setInactiveVisible}
             onSelect={setSelectedPublisher}
           />
-
-
-
         ) : (
           <PublisherDetail
             publisher={selectedPublisher}

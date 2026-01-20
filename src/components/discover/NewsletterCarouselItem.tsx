@@ -1,5 +1,6 @@
 "use client";
 import Image from "next/image";
+import { useState } from "react";
 import SubscribeButton from "../SubscribeButton";
 
 export interface NewsletterEntry {
@@ -25,6 +26,9 @@ export default function NewsletterCarouselItem({
   tagIcon,
   websiteUrl,
 }: NewsletterEntry) {
+  const [imgError, setImgError] = useState(false);
+  const fallbackImage = "/logos/sample-img.png";
+  
   return (
     <div className="w-full max-w-[280px] flex-none p-4 bg-white rounded-[20px] shadow-sm flex flex-col gap-3 relative z-10">
 
@@ -49,9 +53,10 @@ export default function NewsletterCarouselItem({
         )}
 
         <img
-          src={imageUrl}
+          src={imgError ? fallbackImage : imageUrl}
           alt={title}
           className="w-full h-full object-cover pointer-events-none"
+          onError={() => setImgError(true)}
         />
       </div>
 

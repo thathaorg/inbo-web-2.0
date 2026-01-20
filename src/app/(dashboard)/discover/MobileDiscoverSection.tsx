@@ -11,7 +11,9 @@ import BottomNav from "@/components/layout/BottomNav";
 export default function MobileDiscoverSection({
   forYouItems,
   techItems,
-  cryptoItems
+  cryptoItems,
+  onLoadMoreTech,
+  onLoadMoreCrypto
 }: any) {
   const { t } = useTranslation("common");
   
@@ -48,12 +50,20 @@ export default function MobileDiscoverSection({
 
         {/* TECHNOLOGY */}
         <div className="mt-8">
-          <NewsletterCarousel title={t("mobile.technology")} items={techItems} />
+          <NewsletterCarousel 
+            title={t("mobile.technology")} 
+            items={techItems} 
+            onReachEnd={onLoadMoreTech}
+          />
         </div>
 
         {/* CRYPTO */}
         <div className="mt-8">
-          <NewsletterCarousel title={t("mobile.crypto")} items={cryptoItems} />
+          <NewsletterCarousel 
+            title={t("mobile.crypto")} 
+            items={cryptoItems} 
+            onReachEnd={onLoadMoreCrypto}
+          />
         </div>
 
         {/* PERSONALIZE DISCOVER */}

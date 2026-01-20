@@ -9,6 +9,7 @@ export interface EmailSearchResult {
   isRead: boolean;
   newsletterName?: string | null;
   newsletterLogo?: string | null;
+  logoUrl?: string | null;  // API might return logoUrl directly
 }
 
 export interface NewsletterSearchResult {
@@ -19,6 +20,8 @@ export interface NewsletterSearchResult {
   author?: string;
   description?: string;
   logo?: string;
+  icon_url?: string;  // API returns icon_url for newsletters
+  logo_url?: string;  // Alternative field
 }
 
 export interface SearchResults {
@@ -150,9 +153,21 @@ class SearchService {
 
       const [emailResults, newsletterResults] = await Promise.all(promises);
 
-      // Ensure arrays
-      const emails = Array.isArray(emailResults?.data) ? emailResults.data : [];
-      const newsletters = Array.isArray(newsletterResults) ? newsletterResults : [];
+      // Ensure arrays and normalize logo fields
+      const rawEmails = Array.isArray(emailResults?.data) ? emailResults.data : [];
+      const rawNewsletters = Array.isArray(newsletterResults) ? newsletterResults : [];
+
+      // Normalize email results to ensure newsletterLogo is set from logoUrl if available
+      const emails = rawEmails.map((email: any) => ({
+        ...email,
+        newsletterLogo: email.newsletterLogo || email.logoUrl || email.newsletter_logo || email.logo_url || null,
+      }));
+
+      // Normalize newsletter results to ensure logo is set from icon_url if available
+      const newsletters = rawNewsletters.map((nl: any) => ({
+        ...nl,
+        logo: nl.logo || nl.icon_url || nl.logo_url || null,
+      }));
 
       console.log('✅ Quick search results:', { emails: emails.length, newsletters: newsletters.length });
 

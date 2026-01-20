@@ -19,6 +19,8 @@ export default function PublicationItem({
   onClick
 }: PublicationItemProps) {
   const [isMobileOrTablet, setIsMobileOrTablet] = useState(false);
+  const [imgError, setImgError] = useState(false);
+  const fallbackLogo = "/logos/forbes-sample.png";
 
   useEffect(() => {
     const checkSize = () => setIsMobileOrTablet(window.innerWidth <= 1024); // <1024 = mobile + tablet
@@ -47,9 +49,10 @@ export default function PublicationItem({
         </span>
 
         <img
-          src={logo}
+          src={imgError ? fallbackLogo : logo}
           alt={name}
           className="w-12 h-12 rounded-full object-cover pointer-events-none"
+          onError={() => setImgError(true)}
         />
 
         <div className="flex flex-col">

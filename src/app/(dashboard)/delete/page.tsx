@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import NewsletterCard from "@/components/inbox/InboxCard"; // ✅ adjust path if needed
 import MobileDeleteSection from "./MobileDeleteSection";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
-import emailService, { EmailListItem } from "@/services/email";
+import emailService, { EmailListItem, cleanContentPreview } from "@/services/email";
 import { useEffect } from "react";
 type SortType = "latest" | "oldest";
 
@@ -30,7 +30,7 @@ function transformEmailToCard(email: EmailListItem) {
     badgeTextColor: "#0369A1",
     author: email.newsletterName || email.sender || "Unknown",
     title: email.subject || "No Subject",
-    description: email.contentPreview || "No preview available",
+    description: cleanContentPreview(email.contentPreview),
     date: `Deleted on ${dateStr}`,
     time: "2 mins",
     tag: "Email",
@@ -39,6 +39,7 @@ function transformEmailToCard(email: EmailListItem) {
     slug: email.id,
     emailId: email.id,
     isReadLater: email.isReadLater,
+    readingProgress: email.readingProgress,
   };
 }
 

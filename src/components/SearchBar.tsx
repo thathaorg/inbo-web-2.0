@@ -1,5 +1,6 @@
 "use client";
 
+
 import { Search, X, Mail, Globe, Clock, ArrowRight } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState, useRef, useCallback } from "react";
@@ -78,28 +79,38 @@ export default function SearchBar() {
   }, [query]);
 
   // Perform search with debouncing
+
+  // Custom: If on subscriptions page, emit event instead of API search
   const performSearch = useCallback(
     async (searchQuery: string) => {
+      if (pathname.startsWith("/subscriptions")) {
+        window.dispatchEvent(new CustomEvent("subscriptions-search", { detail: searchQuery }));
+        setSearchResults(null);
+        setIsSearching(false);
+        return;
+      }
+      if (pathname.startsWith("/highlights")) {
+        window.dispatchEvent(new CustomEvent("highlights-search", { detail: searchQuery }));
+        setSearchResults(null);
+        setIsSearching(false);
+        return;
+      }
       if (!searchQuery.trim()) {
         setSearchResults(null);
         return;
       }
-
       setIsSearching(true);
       try {
         const context = getSearchContext();
-        console.log("🔎 Performing search:", searchQuery, "context:", context);
         const results = await searchService.quickSearch(searchQuery, context);
-        console.log("📋 Search results:", results);
         setSearchResults(results);
       } catch (error) {
-        console.error("Search failed:", error);
         setSearchResults(null);
       } finally {
         setIsSearching(false);
       }
     },
-    [getSearchContext]
+    [getSearchContext, pathname]
   );
 
   // Handle input change with debounce

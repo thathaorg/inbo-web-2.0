@@ -43,6 +43,7 @@ export interface EmailDetail {
 
 // API response type that might have snake_case fields
 type EmailDetailApi = Partial<EmailDetail> & {
+  subject_line?: string;  // API might return subject in snake_case
   content_preview?: string | null;
   date_received?: string | null;
   words_count?: number | null;
@@ -61,7 +62,7 @@ function normalizeEmailDetail(item: EmailDetailApi): EmailDetail {
   return {
     id: item.id || '',
     sender: item.sender || '',
-    subject: item.subject || '',
+    subject: item.subject ?? item.subject_line ?? '',
     contentPreview: item.contentPreview ?? item.content_preview ?? null,
     dateReceived: item.dateReceived ?? item.date_received ?? null,
     wordsCount: item.wordsCount ?? item.words_count ?? null,
@@ -92,6 +93,7 @@ type EmailListItemApi = Partial<EmailListItem> & {
   newsletterLogo?: string | null;
   firstImage?: string | null;
   // snake_case fallbacks
+  subject_line?: string;  // API might return subject in snake_case
   content_preview?: string | null;
   date_received?: string | null;
   words_count?: number | null;
@@ -101,6 +103,8 @@ type EmailListItemApi = Partial<EmailListItem> & {
   newsletter_name?: string | null;
   newsletter_logo?: string | null;
   first_image?: string | null;
+  logoUrl?: string | null;  // API returns this in camelCase sometimes
+  logo_url?: string | null; // or snake_case
 };
 
 /**
@@ -153,10 +157,28 @@ export function cleanContentPreview(preview: string | null | undefined): string 
     .replace(/<[^>]*>/g, '')
     // Remove HTML entities
     .replace(/&[a-zA-Z0-9#]+;/g, ' ')
-    // Remove URLs and links
+    // Remove URLs (http/https links)
+    .replace(/https?:\/\/[^\s]+/g, '')
+    // Remove email addresses
+    .replace(/[\w.-]+@[\w.-]+\.\w+/g, '')
+    // Remove long sequences of dashes, underscores, equals signs (5 or more)
+    .replace(/[-_=—–]{5,}/g, ' ')
+    // Remove asterisks used for bullet points or emphasis
+    .replace(/\*+/g, '')
+    // Remove pipe characters often used as separators
+    .replace(/\|/g, ' ')
+    // Remove brackets and reference markers
     .replace(/\[[\d\w]+\]/g, '')
+    .replace(/[\[\]]/g, '')
+    // Remove common newsletter formatting patterns
+    .replace(/Sign Up|Advertise|View Online|Unsubscribe|Update Preferences/gi, '')
+    // Remove date patterns like "2026-01-08"
+    .replace(/\d{4}-\d{2}-\d{2}/g, '')
+    // Remove emojis and special unicode characters
+    .replace(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu, '')
     // Remove excessive whitespace (including non-breaking spaces)
     .replace(/[\u00A0\u2002\u2003\u2009\u200A\u200B\u202F\u205F\u3000]/g, ' ')
+    // Remove multiple spaces
     .replace(/\s+/g, ' ')
     // Remove leading/trailing whitespace
     .trim();
@@ -322,23 +344,28 @@ function normalizeEmailListItem(item: EmailListItemApi): EmailListItem {
   const cachedName = cached?.name;
   const newsletterName = item.newsletterName ?? item.newsletter_name ?? cachedName ?? extractNewsletterName(sender);
 
-  // Get logo from cache if available
+  // Get logo from API (logoUrl or newsletter_logo) or cache
+  // API can return: logoUrl (camelCase), logo_url (snake_case), newsletter_logo, or newsletterLogo
   const cachedLogo = cached?.logo;
-  const newsletterLogo = item.newsletterLogo ?? item.newsletter_logo ?? cachedLogo ?? null;
+  const newsletterLogo = item.logoUrl ?? item.logo_url ?? item.newsletterLogo ?? item.newsletter_logo ?? cachedLogo ?? null;
 
   // Extract first image from content
   const firstImage = item.firstImage ?? item.first_image ?? extractFirstImage(contentPreview);
 
+  // Handle subject field - API should return 'subject' but check for snake_case fallback
+  const subject = item.subject ?? item.subject_line ?? '';
+
   return {
     id: item.id ?? '',
     sender,
-    subject: item.subject ?? '',
+    subject,
     contentPreview,
     dateReceived: item.dateReceived ?? item.date_received ?? null,
     wordsCount: item.wordsCount ?? item.words_count ?? null,
     isRead: item.isRead ?? item.is_read ?? false,
     isFavorite: item.isFavorite ?? item.is_favorite ?? false,
     isReadLater: item.isReadLater ?? item.is_read_later ?? false,
+    readingProgress: item.readingProgress ?? item.reading_progress ?? null,
     newsletterName,
     firstImage,
     newsletterLogo,
@@ -523,6 +550,25 @@ class EmailService {
         || error?.message 
         || 'Unknown error';
       console.warn('Backend reported error toggling read status (ignoring):', errorMsg);
+    }
+  }
+
+  /**
+   * Update reading progress for an email
+   */
+  async updateReadingProgress(emailId: string, progress: number, isRead?: boolean, timeSpent?: number, wordsRead?: number): Promise<void> {
+    try {
+      await apiClient.patch(`/api/email/${emailId}/progress/`, {
+        progress,
+        isRead,
+        timeSpent,
+        wordsRead
+      });
+      // Invalidate caches
+      cacheManager.invalidate(CACHE_KEYS.EMAIL_DETAIL(emailId));
+      cacheManager.invalidatePrefix(CACHE_KEYS.INBOX);
+    } catch (error: any) {
+      console.warn('Failed to update reading progress:', error.message);
     }
   }
 

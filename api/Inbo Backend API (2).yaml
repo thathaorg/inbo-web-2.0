@@ -319,100 +319,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
           description: Internal Server Error
-  /api/api/experience/interactions/:
-    get:
-      operationId: api_api_experience_interactions_retrieve
-      description: Get experience interactions for current user
-      tags:
-      - api
-      security:
-      - jwtAuth: []
-      - cookieAuth: []
-      - Bearer: []
-      responses:
-        '200':
-          description: No response body
-    post:
-      operationId: api_api_experience_interactions_create
-      description: |-
-        Track user interaction with experience elements
-
-        Body:
-            {
-                "interaction_type": "click",
-                "section_type": "continue_reading",
-                "item_id": "...",
-                "position": 2,
-                "dwell_time": 5.2,
-                "session_id": "...",
-                "metadata": {...}
-            }
-      tags:
-      - api
-      security:
-      - jwtAuth: []
-      - cookieAuth: []
-      - Bearer: []
-      responses:
-        '200':
-          description: No response body
-  /api/api/experience/page/{page}/:
-    get:
-      operationId: api_api_experience_page_retrieve
-      description: |-
-        Get personalized experience for a page
-
-        Query Parameters:
-            - max_sections: Maximum number of sections (default: 10)
-            - session_id: Session identifier
-            - time_of_day: morning, afternoon, evening
-            - device: mobile, desktop, tablet
-            - location: Location identifier
-
-        Returns:
-            {
-                "page": "home",
-                "intent": "discovery",
-                "sections": [
-                    {
-                        "type": "continue_reading",
-                        "priority": 0.92,
-                        "title": "Continue Reading",
-                        "items": [...],
-                        "metadata": {...}
-                    },
-                    ...
-                ],
-                "metadata": {...}
-            }
-      parameters:
-      - in: path
-        name: page
-        schema:
-          type: string
-        required: true
-      tags:
-      - api
-      security:
-      - jwtAuth: []
-      - cookieAuth: []
-      - Bearer: []
-      responses:
-        '200':
-          description: No response body
-  /api/api/experience/renders/:
-    get:
-      operationId: api_api_experience_renders_retrieve
-      description: Get experience renders for current user
-      tags:
-      - api
-      security:
-      - jwtAuth: []
-      - cookieAuth: []
-      - Bearer: []
-      responses:
-        '200':
-          description: No response body
   /api/auth/check-email/:
     get:
       operationId: api_auth_check_email_retrieve
@@ -838,7 +744,7 @@ paths:
         description: Newsletter ID
         required: true
       tags:
-      - Directory
+      - Newsletter Catalog
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -859,6 +765,7 @@ paths:
                     domain: example.com
                     author: John Doe
                     description: Weekly tech news
+                    icon_url: https://www.google.com/s2/favicons?domain=example.com&sz=128
                     targetAudience: Developers
                     categories:
                     - Technology
@@ -886,7 +793,7 @@ paths:
       description: Get all newsletter categories (public endpoint)
       summary: Get categories
       tags:
-      - Directory
+      - Newsletter Catalog
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -915,7 +822,7 @@ paths:
           default: 10
         description: 'Number of recommendations (default: 10)'
       tags:
-      - Directory
+      - Newsletter Catalog
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -965,7 +872,7 @@ paths:
           type: string
         description: Search query
       tags:
-      - Directory
+      - Newsletter Catalog
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -987,6 +894,7 @@ paths:
                       domain: example.com
                       author: John Doe
                       description: Weekly tech news
+                      icon_url: https://www.google.com/s2/favicons?domain=example.com&sz=128
                     total: 100
                     page: 1
                     limit: 20
@@ -1011,7 +919,7 @@ paths:
           type: string
         description: Search query
       tags:
-      - Directory
+      - Newsletter Catalog
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -1045,7 +953,7 @@ paths:
           type: string
         description: Search query
       tags:
-      - Directory
+      - Newsletter Catalog
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -1073,7 +981,7 @@ paths:
           type: string
         description: Search query
       tags:
-      - Directory
+      - Newsletter Catalog
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -1096,15 +1004,10 @@ paths:
       summary: Get email by ID
       parameters:
       - in: path
-        name: emailId
-        schema:
-          type: string
-        description: Email UUID
-        required: true
-      - in: path
         name: email_id
         schema:
           type: string
+        description: Email UUID
         required: true
       tags:
       - Email
@@ -1168,15 +1071,10 @@ paths:
       summary: Toggle favorite
       parameters:
       - in: path
-        name: emailId
-        schema:
-          type: string
-        description: Email UUID
-        required: true
-      - in: path
         name: email_id
         schema:
           type: string
+        description: Email UUID
         required: true
       tags:
       - Email
@@ -1244,15 +1142,10 @@ paths:
       summary: Update email progress
       parameters:
       - in: path
-        name: emailId
-        schema:
-          type: string
-        description: Email UUID
-        required: true
-      - in: path
         name: email_id
         schema:
           type: string
+        description: Email UUID
         required: true
       tags:
       - Email
@@ -1322,15 +1215,10 @@ paths:
       summary: Toggle read later
       parameters:
       - in: path
-        name: emailId
-        schema:
-          type: string
-        description: Email UUID
-        required: true
-      - in: path
         name: email_id
         schema:
           type: string
+        description: Email UUID
         required: true
       tags:
       - Email
@@ -1842,7 +1730,10 @@ paths:
   /api/email/favorites/:
     get:
       operationId: api_email_favorites_retrieve
-      description: Get paginated list of favorite emails for the authenticated user
+      description: "Get paginated list of favorite emails for the authenticated user.\n\
+        \    \n    **Pagination:**\n    - Returns 50 emails per page (default)\n \
+        \   - Use `page` query parameter to navigate through pages\n    - Example:\
+        \ `GET /api/email/favorites/?page=1` returns first 50 emails\n    "
       summary: Get favorite emails
       parameters:
       - in: query
@@ -1856,7 +1747,7 @@ paths:
         schema:
           type: integer
           default: 1
-        description: 'Page number (default: 1)'
+        description: 'Page number (default: 1). Each page returns 50 emails.'
       tags:
       - Email
       security:
@@ -1900,7 +1791,10 @@ paths:
   /api/email/folder/{folderName}/:
     get:
       operationId: api_email_folder_retrieve
-      description: Get paginated list of emails in a folder
+      description: "Get paginated list of emails in a folder.\n    \n    **Pagination:**\n\
+        \    - Returns 50 emails per page (default)\n    - Use `page` query parameter\
+        \ to navigate through pages\n    - Example: `GET /api/email/folder/technology/?page=1`\
+        \ returns first 50 emails\n    "
       summary: Get folder emails
       parameters:
       - in: query
@@ -1920,7 +1814,7 @@ paths:
         schema:
           type: integer
           default: 1
-        description: 'Page number (default: 1)'
+        description: 'Page number (default: 1). Each page returns 50 emails.'
       tags:
       - Email
       security:
@@ -1951,8 +1845,16 @@ paths:
   /api/email/inbox/:
     get:
       operationId: api_email_inbox_retrieve
-      description: Get paginated list of inbox emails for the authenticated user.
-        Can filter by read status and sort by latest/oldest.
+      description: "Get paginated list of inbox emails for the authenticated user.\
+        \ Can filter by read status and sort by latest/oldest.\n    \n    **Pagination:**\n\
+        \    - Returns 50 emails per page (default)\n    - Use `page` query parameter\
+        \ to navigate through pages\n    - Example: `GET /api/email/inbox/?page=1`\
+        \ returns first 50 emails, `page=2` returns next 50, etc.\n    - Response\
+        \ includes pagination metadata: `page`, `limit`, `total`, `hasNext`, `hasPrev`\n\
+        \    \n    **Filtering:**\n    - Use `isRead=true` to get only read emails\n\
+        \    - Use `isRead=false` to get only unread emails\n    - Omit `isRead` to\
+        \ get all emails\n    \n    **Sorting:**\n    - Use `filter=latest` (default)\
+        \ to sort by newest first\n    - Use `filter=oldest` to sort by oldest first"
       summary: Get inbox emails
       parameters:
       - in: query
@@ -1972,7 +1874,7 @@ paths:
         schema:
           type: integer
           default: 1
-        description: 'Page number (default: 1)'
+        description: 'Page number (default: 1). Each page returns 50 emails.'
       tags:
       - Email
       security:
@@ -1984,13 +1886,12 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/EmailListItem'
+                $ref: '#/components/schemas/InboxEmailsPaginatedResponse'
               examples:
                 SuccessResponse-WithEmails:
                   value:
-                  - - id: 123e4567-e89b-12d3-a456-426614174000
+                    data:
+                    - id: 123e4567-e89b-12d3-a456-426614174000
                       sender: newsletter@example.com
                       subject: Weekly Newsletter
                       contentPreview: This week we cover...
@@ -1999,14 +1900,23 @@ paths:
                       isRead: false
                       isFavorite: false
                       isReadLater: false
+                    page: 1
+                    limit: 50
+                    total: 152
+                    hasNext: true
+                    hasPrev: false
                   summary: Success Response - With Emails
                 SuccessResponse-NoEmails:
                   value:
-                  - pendingNewsletters: 5
-                    emailsCount: 0
+                    data: []
+                    page: 1
+                    limit: 50
+                    total: 0
+                    hasNext: false
+                    hasPrev: false
+                    pendingNewsletters: 5
                   summary: Success Response - No Emails
-          description: List of inbox emails or object with pendingNewsletters if no
-            emails
+          description: Paginated list of inbox emails with pagination metadata
         '401':
           content:
             application/json:
@@ -2046,7 +1956,10 @@ paths:
   /api/email/read-later/:
     get:
       operationId: api_email_read_later_retrieve
-      description: Get paginated list of read later emails for the authenticated user
+      description: "Get paginated list of read later emails for the authenticated\
+        \ user.\n    \n    **Pagination:**\n    - Returns 50 emails per page (default)\n\
+        \    - Use `page` query parameter to navigate through pages\n    - Example:\
+        \ `GET /api/email/read-later/?page=1` returns first 50 emails\n    "
       summary: Get read later emails
       parameters:
       - in: query
@@ -2060,7 +1973,7 @@ paths:
         schema:
           type: integer
           default: 1
-        description: 'Page number (default: 1)'
+        description: 'Page number (default: 1). Each page returns 50 emails.'
       tags:
       - Email
       security:
@@ -2139,7 +2052,11 @@ paths:
   /api/email/search/emails/:
     get:
       operationId: api_email_search_emails_retrieve
-      description: Search emails by query (searches subject, sender, and content preview)
+      description: "Search emails by query (searches subject, sender, and content\
+        \ preview).\n    \n    **Pagination:**\n    - Returns 50 emails per page (default)\n\
+        \    - Use `page` query parameter to navigate through pages\n    - Example:\
+        \ `GET /api/email/search/?q=newsletter&page=1` returns first 50 results\n\
+        \    "
       summary: Search emails
       parameters:
       - in: query
@@ -2147,7 +2064,7 @@ paths:
         schema:
           type: integer
           default: 1
-        description: 'Page number (default: 1)'
+        description: 'Page number (default: 1). Each page returns 50 emails.'
       - in: query
         name: q
         schema:
@@ -2176,7 +2093,10 @@ paths:
   /api/email/trash/:
     get:
       operationId: api_email_trash_retrieve
-      description: Get paginated list of emails in trash
+      description: "Get paginated list of emails in trash.\n    \n    **Pagination:**\n\
+        \    - Returns 50 emails per page (default)\n    - Use `page` query parameter\
+        \ to navigate through pages\n    - Example: `GET /api/email/trash/?page=1`\
+        \ returns first 50 emails\n    "
       summary: Get trash emails
       parameters:
       - in: query
@@ -2190,7 +2110,7 @@ paths:
         schema:
           type: integer
           default: 1
-        description: 'Page number (default: 1)'
+        description: 'Page number (default: 1). Each page returns 50 emails.'
       tags:
       - Email
       security:
@@ -2236,6 +2156,100 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
           description: Unauthorized
+  /api/experience/interactions/:
+    get:
+      operationId: api_experience_interactions_retrieve
+      description: Get experience interactions for current user
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - Bearer: []
+      responses:
+        '200':
+          description: No response body
+    post:
+      operationId: api_experience_interactions_create
+      description: |-
+        Track user interaction with experience elements
+
+        Body:
+            {
+                "interaction_type": "click",
+                "section_type": "continue_reading",
+                "item_id": "...",
+                "position": 2,
+                "dwell_time": 5.2,
+                "session_id": "...",
+                "metadata": {...}
+            }
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - Bearer: []
+      responses:
+        '200':
+          description: No response body
+  /api/experience/page/{page}/:
+    get:
+      operationId: api_experience_page_retrieve
+      description: |-
+        Get personalized experience for a page
+
+        Query Parameters:
+            - max_sections: Maximum number of sections (default: 10)
+            - session_id: Session identifier
+            - time_of_day: morning, afternoon, evening
+            - device: mobile, desktop, tablet
+            - location: Location identifier
+
+        Returns:
+            {
+                "page": "home",
+                "intent": "discovery",
+                "sections": [
+                    {
+                        "type": "continue_reading",
+                        "priority": 0.92,
+                        "title": "Continue Reading",
+                        "items": [...],
+                        "metadata": {...}
+                    },
+                    ...
+                ],
+                "metadata": {...}
+            }
+      parameters:
+      - in: path
+        name: page
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - Bearer: []
+      responses:
+        '200':
+          description: No response body
+  /api/experience/renders/:
+    get:
+      operationId: api_experience_renders_retrieve
+      description: Get experience renders for current user
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - Bearer: []
+      responses:
+        '200':
+          description: No response body
   /api/gmail/accounts/:
     get:
       operationId: api_gmail_accounts_retrieve
@@ -3217,6 +3231,7 @@ paths:
                     newsletter_id: 123e4567-e89b-12d3-a456-426614174002
                     newsletter_name: Tech Newsletter
                     newsletter_url: https://example.com
+                    logo_url: https://www.google.com/s2/favicons?domain=example.com&sz=128
                     is_subscribed: true
                     is_favorite: false
                     subscribed_at: '2025-12-24T10:00:00Z'
@@ -4695,6 +4710,7 @@ paths:
                     - id: 123e4567-e89b-12d3-a456-426614174000
                       subject: Weekly Newsletter
                       sender: newsletter@example.com
+                      logoUrl: https://www.google.com/s2/favicons?domain=example.com&sz=128
                       date_received: '2025-12-24T10:00:00Z'
                       is_read: false
                       is_favorite: false
@@ -4720,24 +4736,82 @@ paths:
   /api/search/posts/search/:
     get:
       operationId: api_search_posts_search_retrieve
-      description: |-
-        Search newsletter posts
-
-        Query params:
-        - q: Search query
-        - newsletter_url: Filter by newsletter URL
-        - is_read: Filter by read status
-        - page: Page number
-        - page_size: Results per page
+      description: Search newsletter posts with filters for newsletter URL and read
+        status
+      summary: Search newsletter posts
+      parameters:
+      - in: query
+        name: is_read
+        schema:
+          type: string
+        description: 'Filter by read status: true or false'
+      - in: query
+        name: newsletter_url
+        schema:
+          type: string
+        description: Filter by newsletter URL
+      - in: query
+        name: page
+        schema:
+          type: integer
+          default: 1
+        description: 'Page number (default: 1)'
+      - in: query
+        name: page_size
+        schema:
+          type: integer
+          default: 20
+        description: 'Results per page (default: 20)'
+      - in: query
+        name: q
+        schema:
+          type: string
+        description: Search query
       tags:
-      - api
+      - Search
       security:
       - jwtAuth: []
       - cookieAuth: []
       - Bearer: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NewsletterPostSearchResponse'
+              examples:
+                SuccessResponse:
+                  value:
+                    results:
+                    - id: 123e4567-e89b-12d3-a456-426614174000
+                      title: Weekly Newsletter Update
+                      description: This week we cover...
+                      post_url: https://example.substack.com/p/weekly-update
+                      newsletter_url: https://example.substack.com
+                      author: John Doe
+                      published_at: '2025-12-24T10:00:00Z'
+                      is_read: false
+                      reading_progress: 0
+                      word_count: 1200
+                      read_time_minutes: 5
+                      score: 0.85
+                    total: 50
+                    page: 1
+                    page_size: 20
+                  summary: Success Response
+          description: Newsletter post search results
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal Server Error
   /api/search/providers/search/:
     get:
       operationId: api_search_providers_search_retrieve
@@ -4797,6 +4871,7 @@ paths:
                       name: Tech Newsletter
                       description: Weekly tech news
                       url: https://example.com
+                      icon_url: https://www.google.com/s2/favicons?domain=example.com&sz=128
                       categories:
                       - Technology
                       tags:
@@ -4878,11 +4953,13 @@ paths:
                       name: Tech Newsletter
                       description: Weekly tech news
                       url: https://example.com
+                      icon_url: https://www.google.com/s2/favicons?domain=example.com&sz=128
                       score: 0.95
                     - type: email
                       id: 123e4567-e89b-12d3-a456-426614174001
                       subject: Weekly Newsletter
                       sender: newsletter@example.com
+                      logoUrl: https://www.google.com/s2/favicons?domain=example.com&sz=128
                       score: 0.85
                     total: 50
                     page: 1
@@ -5286,19 +5363,21 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Highlight'
+                $ref: '#/components/schemas/HighlightsResponse'
               examples:
                 SuccessResponse:
                   value:
-                  - - id: 123e4567-e89b-12d3-a456-426614174000
+                    data:
+                    - id: 123e4567-e89b-12d3-a456-426614174000
                       emailId: 123e4567-e89b-12d3-a456-426614174001
                       text: This is a highlighted text...
                       selectionInfo:
                         start: 0
                         end: 20
                       createdAt: '2025-12-24T10:00:00Z'
+                    page: 1
+                    limit: 20
+                    total: 1
                   summary: Success Response
           description: List of highlights
         '401':
@@ -6398,14 +6477,44 @@ paths:
           content:
             application/json:
               schema:
-                description: Newsletter subscribed
-          description: ''
+                $ref: '#/components/schemas/SubscribeNewsletterResponse'
+              examples:
+                SuccessResponse:
+                  value:
+                    success: true
+                    message: Newsletter subscribed successfully
+                  summary: Success Response
+          description: Newsletter subscribed successfully
         '201':
           content:
             application/json:
               schema:
-                description: Newsletter subscription created
-          description: ''
+                $ref: '#/components/schemas/SubscribeNewsletterResponse'
+              examples:
+                CreatedResponse:
+                  value:
+                    success: true
+                    message: Newsletter subscribed successfully
+                  summary: Created Response
+          description: Newsletter subscription created
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad Request
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal Server Error
   /api/user/newsletter/unsubscribe/:
     post:
       operationId: api_user_newsletter_unsubscribe_create
@@ -7048,6 +7157,7 @@ paths:
                     id: 123e4567-e89b-12d3-a456-426614174000
                     newsletterId: 123e4567-e89b-12d3-a456-426614174001
                     newsletterName: Tech Newsletter
+                    logoUrl: https://www.google.com/s2/favicons?domain=example.com&sz=128
                     subscribedAt: '2025-12-24T10:00:00Z'
                     isActive: true
                   summary: Success Response
@@ -7669,6 +7779,10 @@ components:
         sender:
           type: string
           format: email
+        logoUrl:
+          type: string
+          format: uri
+          nullable: true
         subject:
           type: string
         contentPreview:
@@ -7721,6 +7835,10 @@ components:
         sender:
           type: string
           format: email
+        logoUrl:
+          type: string
+          format: uri
+          nullable: true
         subject:
           type: string
         contentPreview:
@@ -7912,6 +8030,25 @@ components:
       - id
       - selectionInfo
       - text
+    HighlightsResponse:
+      type: object
+      description: Response for highlights - paginated
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Highlight'
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+          nullable: true
+      required:
+      - data
+      - limit
+      - page
     InboxAvailabilityResponse:
       type: object
       description: Response for inbox availability check
@@ -7931,6 +8068,34 @@ components:
           type: integer
       required:
       - count
+    InboxEmailsPaginatedResponse:
+      type: object
+      description: Paginated response for inbox emails
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmailListItem'
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        hasNext:
+          type: boolean
+        hasPrev:
+          type: boolean
+        pendingNewsletters:
+          type: integer
+          nullable: true
+      required:
+      - data
+      - hasNext
+      - hasPrev
+      - limit
+      - page
+      - total
     InboxSnapshotResponse:
       type: object
       description: Response for inbox snapshot
@@ -8039,6 +8204,10 @@ components:
           nullable: true
         description:
           type: string
+          nullable: true
+        icon_url:
+          type: string
+          format: uri
           nullable: true
         targetAudience:
           type: string
@@ -8242,6 +8411,70 @@ components:
       required:
       - newsletter_url
       - post_url
+    NewsletterPostSearch:
+      type: object
+      description: Newsletter post search result
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        post_url:
+          type: string
+          format: uri
+        newsletter_url:
+          type: string
+          format: uri
+        author:
+          type: string
+          nullable: true
+        published_at:
+          type: string
+          format: date-time
+          nullable: true
+        is_read:
+          type: boolean
+        reading_progress:
+          type: integer
+        word_count:
+          type: integer
+          nullable: true
+        read_time_minutes:
+          type: integer
+          nullable: true
+        score:
+          type: number
+          format: double
+      required:
+      - id
+      - is_read
+      - newsletter_url
+      - post_url
+      - reading_progress
+      - score
+    NewsletterPostSearchResponse:
+      type: object
+      description: Response for newsletter post search
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/NewsletterPostSearch'
+        total:
+          type: integer
+        page:
+          type: integer
+        page_size:
+          type: integer
+      required:
+      - page
+      - page_size
+      - results
+      - total
     NewsletterPostUpdateRequest:
       type: object
       description: Serializer for updating NewsletterPost
@@ -8278,6 +8511,11 @@ components:
           type: string
           description: Get newsletter URL from NewsletterProvider if available
           readOnly: true
+        logo_url:
+          type: string
+          description: Get newsletter logo URL from NewsletterProvider if available,
+            otherwise generate from URL
+          readOnly: true
         is_subscribed:
           type: boolean
         is_favorite:
@@ -8312,6 +8550,7 @@ components:
       required:
       - created_at
       - id
+      - logo_url
       - newsletter_id
       - newsletter_name
       - newsletter_url
@@ -8574,6 +8813,10 @@ components:
           nullable: true
         description:
           type: string
+          nullable: true
+        icon_url:
+          type: string
+          format: uri
           nullable: true
       required:
       - id
@@ -9231,6 +9474,17 @@ components:
       - message
       - scheduledFor
       - success
+    SubscribeNewsletterResponse:
+      type: object
+      description: Response for subscribe newsletter
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+      required:
+      - message
+      - success
     SubscriptionPlan:
       type: object
       description: Subscription plan information
@@ -9418,6 +9672,10 @@ components:
           format: uri
           nullable: true
         icon_url:
+          type: string
+          format: uri
+          nullable: true
+        logoUrl:
           type: string
           format: uri
           nullable: true

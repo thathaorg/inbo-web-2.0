@@ -12,6 +12,7 @@ import AchievementsCard from "@/components/analytics/AchievementsCard";
 import StreakBottomSheet from "@/components/analytics/StreakBottomSheet";
 import AchievementsBottomSheet from "@/components/analytics/AchievementsBottomSheet";
 import MobileAnalyticsSection from "./MobileAnalyticsSection";
+import AnalyticsPageNotice from "@/components/analytics/AnalyticsPageNotice";
 
 /* TEMP placeholders — replace later */
 import { Star, ChevronUp } from "lucide-react";
@@ -136,6 +137,9 @@ export default function AnalyticsPage() {
           {t("analytics.subtitle", "Track your reading – by time, words, and what you've read.")}
         </p>
       </div>
+
+      {/* Notice at the top of analytics page */}
+      <AnalyticsPageNotice />
 
       {/* Desktop Grid */}
       <div className="grid grid-cols-12 gap-x-4 gap-y-6 px-8 pb-6">

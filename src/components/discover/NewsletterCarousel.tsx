@@ -8,12 +8,14 @@ interface CarouselProps {
   title: string;
   items: NewsletterEntry[];
   showArrows?: boolean; 
+  onReachEnd?: () => void;
 }
 
 export default function NewsletterCarousel({
   title,
   items = [],
   showArrows = true,
+  onReachEnd,
 }: CarouselProps) {
   // 🔥 Create a slug-safe ID from the title
   const carouselId = `carousel-${title.toLowerCase().replace(/\s+/g, "-")}`;
@@ -24,10 +26,29 @@ export default function NewsletterCarousel({
   const scroll = (direction: "left" | "right") => {
     if (!scrollRef.current) return;
     const amount = 320; // width of one card + gap
+    
+    // Check if we are near the end before scrolling (for button click)
+    if (direction === "right" && onReachEnd) {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
+      if (scrollLeft + clientWidth >= scrollWidth - (amount * 2)) {
+        onReachEnd();
+      }
+    }
+
     scrollRef.current.scrollBy({
       left: direction === "left" ? -amount : amount,
       behavior: "smooth",
     });
+  };
+
+  const handleScroll = () => {
+    if (!scrollRef.current || !onReachEnd) return;
+    const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
+    const amount = 320;
+    // Trigger when within 2 cards of end
+    if (scrollLeft + clientWidth >= scrollWidth - (amount * 2)) {
+      onReachEnd();
+    }
   };
 
   return (
@@ -60,6 +81,7 @@ export default function NewsletterCarousel({
         {/* Scroll Container */}
         <div
           ref={scrollRef}
+          onScroll={handleScroll}
           className="carousel-scroll flex gap-4 overflow-x-auto pb-3"
           style={{ WebkitOverflowScrolling: "touch" }}
         >

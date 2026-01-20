@@ -37,13 +37,12 @@ export default function AchievementsBottomSheet({
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [loading, setLoading] = useState(true);
 
+
   useEffect(() => {
     if (!open) return;
-    
     const fetchAchievements = async () => {
       try {
         const data = await analyticsService.getAchievements();
-        // Filter to only show earned achievements in the bottom sheet
         setAchievements(data.filter(a => a.status === "earned"));
       } catch (error) {
         console.error("Failed to fetch achievements:", error);
@@ -51,19 +50,18 @@ export default function AchievementsBottomSheet({
         setLoading(false);
       }
     };
-
     fetchAchievements();
   }, [open]);
 
-  if (!open) return null;
-
-  // Prevent background scroll
   useEffect(() => {
+    if (!open) return;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = "";
     };
-  }, []);
+  }, [open]);
+
+  if (!open) return null;
 
   return createPortal(
     <>

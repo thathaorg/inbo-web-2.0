@@ -16,6 +16,7 @@ const USER_ENDPOINTS = {
   ONBOARDING_STATUS: '/api/user/onboarding/status/',
   SUBSCRIPTIONS: '/api/user/subscriptions/',
   FOLDERS: '/api/user/folders/',
+  TOGGLE_SUBSCRIPTION: '/api/user/toggle-subscription/',
 } as const;
 
 const DIRECTORY_ENDPOINTS = {
@@ -157,6 +158,15 @@ export interface Folder {
   email_count: number;
   created_at: string;
   updated_at: string;
+}
+
+export interface ToggleSubscriptionResponse {
+  id: string;
+  newsletterId: string;
+  newsletterName: string;
+  logoUrl: string;
+  subscribedAt: string;
+  isActive: boolean;
 }
 
 /* ---------------------------------------------------------------- */
@@ -415,6 +425,24 @@ class UserService {
       return response.data;
     } catch (error: any) {
       logApiError('SUBSCRIPTIONS', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Toggle subscription status (subscribe/unsubscribe/active/inactive)
+   */
+  async toggleSubscription(newsletterId: string, isAccepted: boolean): Promise<ToggleSubscriptionResponse> {
+    try {
+      const response = await apiClient.patch<ToggleSubscriptionResponse>(
+        USER_ENDPOINTS.TOGGLE_SUBSCRIPTION,
+        { newsletterId, isAccepted }
+      );
+      // Invalidate subscriptions cache
+      cacheManager.invalidate(SUBSCRIPTIONS_CACHE_KEY);
+      return response.data;
+    } catch (error: any) {
+      logApiError('TOGGLE_SUBSCRIPTION', error);
       throw error;
     }
   }

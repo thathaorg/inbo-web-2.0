@@ -19,7 +19,7 @@ export default function MobileHeader({
       <div className="flex items-center gap-2">
         
         {/* FlameBadge box */}
-        <div className="w-8 h-8 flex items-center justify-center">
+        <div className="w-[31px] h-[31px] flex items-center justify-center">
           <FlameBadge />
         </div>
 

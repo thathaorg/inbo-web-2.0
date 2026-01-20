@@ -131,6 +131,12 @@ export default function SearchBar() {
 
   // Handle search submission
   const handleSubmit = (searchQuery?: string) => {
+    // If on highlights page, do not navigate
+    if (pathname.startsWith("/highlights")) {
+      setShowDropdown(false);
+      return;
+    }
+
     const trimmed = (searchQuery || query).trim();
     if (!trimmed) return;
 
@@ -147,10 +153,10 @@ export default function SearchBar() {
   };
 
   // Handle newsletter result click
-  const handleNewsletterClick = (id: string) => {
+  const handleNewsletterClick = (id: string, name: string) => {
     setShowDropdown(false);
     saveRecentSearch(query);
-    router.push(`/discover?newsletter=${id}`);
+    router.push(`/discover?newsletter=${id}&name=${encodeURIComponent(name)}`);
   };
 
   // Handle recent search click
@@ -350,7 +356,7 @@ export default function SearchBar() {
               {searchResults.newsletters.map((newsletter) => (
                 <button
                   key={newsletter.id}
-                  onClick={() => handleNewsletterClick(newsletter.id)}
+                  onClick={() => handleNewsletterClick(newsletter.id, newsletter.name)}
                   className="w-full flex items-center gap-3 px-5 py-2.5 hover:bg-gray-100 transition-colors"
                 >
                   {newsletter.logo ? (

@@ -13,29 +13,22 @@ export default function Navbar() {
 
         <LogoSection />
 
-        <div className="flex-1 flex flex-col md:flex-row md:items-center md:justify-center gap-2.5">
+        <div className="flex-1 flex justify-center px-4">
+          <SearchBar />
+        </div>
 
-          {/* Search - centered with left offset */}
-          <div className="md:ml-16 lg:ml-24">
-            <SearchBar />
-          </div>
-
-          {/* Right Items */}
-          <div
-            className="
-              flex items-center gap-4 flex-shrink-0
-              bg-white border border-[#DBDFE4]
-              rounded-full py-2 px-3 shadow-sm
-              self-end md:self-auto
-            "
-          >
-            <EmailBubble />
-            <div className="flex items-center gap-3">
-              <div className="scale-125">
-                <FlameBadge />
-              </div>
-              <ThemeToggle />
-            </div>
+        {/* Right Items */}
+        <div
+          className="
+            flex items-center gap-4 flex-shrink-0
+            bg-white border border-[#DBDFE4]
+            rounded-full py-2 px-3 shadow-sm
+          "
+        >
+          <EmailBubble />
+          <div className="flex items-center gap-3">
+            <FlameBadge />
+            <ThemeToggle />
           </div>
         </div>
 

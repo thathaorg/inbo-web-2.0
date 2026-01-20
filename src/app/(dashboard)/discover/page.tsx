@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import InterestedIn from "@/components/discover/InterestedIn";
 import NewsletterCarousel from "@/components/discover/NewsletterCarousel";
 import PublicationList from "@/components/discover/PublicationList";
+import PublicationModal, { Publication } from "@/components/discover/PublicationModal";
 import PersonalizeDiscover from "@/components/discover/PersonalizeDiscover";
 import MobileDiscoverSection from "./MobileDiscoverSection";
 import discoverService, { type Newsletter } from "@/services/discover";
@@ -109,6 +110,9 @@ export default function DiscoverPage() {
   // Pagination state: current page for each category
   const [categoryPages, setCategoryPages] = useState<Record<string, number>>({});
   const [loadingMore, setLoadingMore] = useState<Record<string, boolean>>({});
+
+  const [modalPublication, setModalPublication] = useState<Publication | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Helper to slugify category for id
   const slugify = (label: string) => label.toLowerCase().replace(/\s+/g, "-");
@@ -255,13 +259,6 @@ export default function DiscoverPage() {
                  targetCategory = details.categories.find(c => INTEREST_CATEGORIES.includes(c)) || "";
               }
               
-              // Fallback to first category in list or "Trending" if we can't match
-              if (!targetCategory && INTEREST_CATEGORIES.length > 0) {
-                 // If no category match, maybe put it in the first one? Or just don't scroll.
-                 // Better: check if we have a matching carousel key even if loose match
-                 // For now, let's try to map 'Tech' -> 'Technology' etc if needed, but simple include check is safest
-              }
-
               if (targetCategory && categoryCarousels[targetCategory]) {
                 const item = transformToCarouselItem(details);
                 
@@ -273,16 +270,38 @@ export default function DiscoverPage() {
                 
                 // Wait for render then scroll
                 setTimeout(() => scrollToNewsletter(targetCategory), 100);
+              } else {
+                 // FALLBACK: If cannot inject into a specific carousel, show PublicationModal
+                 const pub: Publication = {
+                    id: details.id,
+                    rank: 0,
+                    logo: details.icon_url || details.logo_url || getFaviconUrl(details.url),
+                    name: details.name,
+                    desc: details.description || "",
+                    description: details.description || "",
+                    frequency: details.contentFrequency || "Weekly",
+                    url: details.url
+                 };
+                 setModalPublication(pub);
+                 setIsModalOpen(true);
               }
             }
           } catch (e) {
             console.error("Failed to fetch/inject searched newsletter", e);
+            // FALLBACK 2: API Failed. Google Search.
+            const newsletterName = searchParams.get("name");
+            if (newsletterName) {
+               const query = `${newsletterName} newsletter`;
+               const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+               // Open in new window (popup)
+               window.open(googleUrl, '_blank', 'width=800,height=700,scrollbars=yes');
+            }
           }
         };
         injectAndScroll();
       }
     }
-  }, [loading, newsletterId]); // Removed categoryCarousels from deps to prevent loops, handle check inside
+  }, [loading, newsletterId, searchParams, categoryCarousels, forYouItems, t]);
 
   return (
     <div className="flex flex-col w-full">
@@ -339,6 +358,12 @@ export default function DiscoverPage() {
           <PersonalizeDiscover />
         </div>
       </div>
+
+      <PublicationModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        publication={modalPublication}
+      />
     </div>
   );
 }

@@ -50,12 +50,15 @@ export default function EditProfileModal({
     };
   }, [initialName]);
 
+  // Always reset fields to latest profile when modal opens or profile changes
   useEffect(() => {
-    setFirstName(splitName.first);
-    setLastName(splitName.last);
-    setGender(profile?.gender || "Male");
-    setDob(profile?.birthYear ? `${profile.birthYear}-01-01` : "");
-  }, [splitName, profile?.gender, profile?.birthYear]);
+    if (isOpen) {
+      setFirstName(splitName.first);
+      setLastName(splitName.last);
+      setGender(profile?.gender || "Male");
+      setDob(profile?.birthYear ? `${profile.birthYear}-01-01` : "");
+    }
+  }, [isOpen, splitName, profile?.gender, profile?.birthYear]);
 
   useEffect(() => {
     if (isOpen) document.body.style.overflow = "hidden";

@@ -9,6 +9,8 @@ import TabSwitcher, { TabType } from "@/components/inbox/TabSwitcher";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import MobileSubscriptionSection from "./MobileSubscriptionSection";
 import userService, { Subscription } from "@/services/user";
+import newsletterService, { NewsletterPost } from "@/services/newsletter";
+import { fetchNewsletterProviderDetails } from "@/services/email";
 
 /* --------------------------------------------
    TYPES
@@ -94,6 +96,39 @@ function convertSubscriptionToPublisher(sub: Subscription): Publisher {
   };
 }
 
+function convertPostToNewsletter(post: NewsletterPost): Newsletter {
+  const date = new Date(post.published_at);
+  const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  
+  // Calculate reading time (approx 200 words per minute)
+  let wordCount = 0;
+  if (post.content) {
+    const text = post.content.replace(/<[^>]*>?/gm, ''); // Simple strip tags
+    wordCount = text.split(/\s+/).length;
+  } else if (post.summary) {
+    wordCount = post.summary.split(/\s+/).length;
+  }
+  const readingTime = Math.max(1, Math.ceil(wordCount / 200));
+  
+  return {
+    id: post.id,
+    title: post.title,
+    description: post.summary || "",
+    date: dateStr,
+    time: `${readingTime} min read`,
+    tag: "Newsletter",
+    badgeText: post.newsletter_name?.charAt(0).toUpperCase() || "N",
+    badgeColor: "#E5E7EB",
+    badgeTextColor: "#374151",
+    author: post.newsletter_name,
+    thumbnail: post.newsletter_icon_url || "",
+    slug: post.id,
+    read: post.is_read,
+    readingProgress: null,
+  };
+}
+
+
 
 /* --------------------------------------------
    PAGE
@@ -109,22 +144,43 @@ export default function SubscriptionsPage() {
   const [loading, setLoading] = useState(true);
   // Remove local search bar, use global SearchBar for filtering
 
-  const [selectedPublisher, setSelectedPublisher] = useState<Publisher | null>(null);
+  const [selectedPublisherId, setSelectedPublisherId] = useState<string | null>(null);
   const isMobile = useMediaQuery("(max-width: 768px)");
 
   // Fetch subscriptions from API
+  const fetchSubscriptions = async () => {
+    try {
+      const subscriptions = await userService.getSubscriptions(true);
+      const converted = subscriptions.map(convertSubscriptionToPublisher);
+      setPublishers(converted);
+      
+      // Fetch logos and details in background
+      subscriptions.forEach(async (sub) => {
+        if (sub.sender_email) {
+          try {
+            const details = await fetchNewsletterProviderDetails(sub.sender_email);
+            if (details) {
+              setPublishers(prev => prev.map(p => 
+                p.id === sub.id ? { 
+                  ...p, 
+                  logo: details.logo || p.logo,
+                  description: details.description || p.description,
+                } : p
+              ));
+            }
+          } catch (e) {
+            // Ignore fetch errors
+          }
+        }
+      });
+    } catch (error) {
+      console.error("Failed to fetch subscriptions:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchSubscriptions = async () => {
-      try {
-        const subscriptions = await userService.getSubscriptions();
-        const converted = subscriptions.map(convertSubscriptionToPublisher);
-        setPublishers(converted);
-      } catch (error) {
-        console.error("Failed to fetch subscriptions:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchSubscriptions();
   }, []);
 
@@ -147,6 +203,10 @@ export default function SubscriptionsPage() {
       (p.senderEmail && p.senderEmail.toLowerCase().includes(q))
     );
   }, [publishers, searchQuery]);
+
+  const selectedPublisher = useMemo(() => 
+    publishers.find(p => p.id === selectedPublisherId) || null
+  , [publishers, selectedPublisherId]);
 
   if (isMobile) {
     return <MobileSubscriptionSection/>;
@@ -178,12 +238,13 @@ export default function SubscriptionsPage() {
             setActiveVisible={setActiveVisible}
             inactiveVisible={inactiveVisible}
             setInactiveVisible={setInactiveVisible}
-            onSelect={setSelectedPublisher}
+            onSelect={(p) => setSelectedPublisherId(p.id)}
           />
         ) : (
           <PublisherDetail
             publisher={selectedPublisher}
-            onBack={() => setSelectedPublisher(null)}
+            onBack={() => setSelectedPublisherId(null)}
+            onUpdate={fetchSubscriptions}
           />
         )}
       </main>
@@ -339,18 +400,93 @@ function PublisherGrid({
 function PublisherDetail({
   publisher,
   onBack,
+  onUpdate,
 }: {
   publisher: Publisher;
   onBack: () => void;
+  onUpdate: () => void;
 }) {
   const [tab, setTab] = useState<TabType>("unread");
   const [publisherState, setPublisherState] = useState(publisher);
-  const toggleActive = () => {
-    setPublisherState((prev) => ({
-      ...prev,
-      active: !prev.active,
-    }));
+  const [loadingAction, setLoadingAction] = useState(false);
+
+  // Update local state when prop changes
+  useEffect(() => {
+    setPublisherState(publisher);
+  }, [publisher]);
+
+  // Fetch newsletters for this publisher
+  useEffect(() => {
+    const fetchNewsletters = async () => {
+      if (!publisher.name) return;
+      try {
+        const response = await newsletterService.getPosts({
+          search: publisher.name,
+          page_size: 10
+        });
+        if (response.results) {
+          const newsletters = response.results
+            .filter(post => 
+              post.newsletter_name?.toLowerCase().includes(publisher.name.toLowerCase()) || 
+              publisher.name.toLowerCase().includes(post.newsletter_name?.toLowerCase() || "")
+            )
+            .slice(0, 5)
+            .map(convertPostToNewsletter);
+            
+          setPublisherState((prev) => ({
+            ...prev,
+            newsletters: newsletters,
+          }));
+        }
+      } catch (error) {
+        console.error("Failed to fetch newsletters:", error);
+      }
+    };
+
+    fetchNewsletters();
+  }, [publisher.name]);
+
+  const toggleActive = async () => {
+    if (loadingAction) return;
+    try {
+      setLoadingAction(true);
+      const newActive = !publisherState.active;
+      
+      // Call API
+      await userService.toggleSubscription(publisher.id, newActive);
+      
+      // Update local state immediately
+      setPublisherState((prev) => ({
+        ...prev,
+        active: newActive,
+      }));
+      
+      // Refresh parent list
+      onUpdate();
+    } catch (error) {
+      console.error("Failed to toggle subscription:", error);
+      // Revert on error if needed
+    } finally {
+      setLoadingAction(false);
+    }
   };
+
+  const handleUnsubscribe = async () => {
+    if (loadingAction) return;
+    if (!confirm("Are you sure you want to unsubscribe from " + publisher.name + "?")) return;
+    
+    try {
+      setLoadingAction(true);
+      await userService.toggleSubscription(publisher.id, false);
+      onUpdate();
+      onBack();
+    } catch (error) {
+      console.error("Failed to unsubscribe:", error);
+    } finally {
+      setLoadingAction(false);
+    }
+  };
+
   const total = publisher.newsletters.length;
   const readCount = publisher.newsletters.filter((n) => n.read).length;
   const unreadCount = total - readCount;
@@ -418,9 +554,10 @@ function PublisherDetail({
             </span>
             <button
               onClick={toggleActive}
+              disabled={loadingAction}
               className={`w-[36px] h-[20px] rounded-full relative transition ${
                 publisherState.active ? "bg-[#C46A54]" : "bg-[#DBDFE4]"
-              }`}
+              } ${loadingAction ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <span
                 className={`absolute top-[2px] w-[16px] h-[16px] bg-white rounded-full transition ${
@@ -431,8 +568,12 @@ function PublisherDetail({
           </div>
 
           {/* Unsubscribe */}
-          <button className="px-4 py-2 rounded-full border border-[#CA1C1C] text-[#CA1C1C] text-[14px] font-medium">
-            Unsubscribe
+          <button 
+            onClick={handleUnsubscribe}
+            disabled={loadingAction}
+            className={`px-4 py-2 rounded-full border border-[#CA1C1C] text-[#CA1C1C] text-[14px] font-medium ${loadingAction ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#CA1C1C] hover:text-white transition-colors'}`}
+          >
+            {loadingAction ? 'Processing...' : 'Unsubscribe'}
           </button>
         </div>
       </div>

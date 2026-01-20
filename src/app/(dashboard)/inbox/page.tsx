@@ -17,7 +17,6 @@ import analyticsService from "@/services/analytics";
 import type { EmailListItem } from "@/services/email";
 import InboxSkeleton from "@/components/inbox/InboxSkeleton";
 import EmailBubble from "@/components/EmailBubble";
-import FlameBadge from "@/components/FlameBadge";
 import ThemeToggle from "@/components/ThemeToggle";
 
 /* --------------------- EMAIL TRANSFORMATION --------------------- */

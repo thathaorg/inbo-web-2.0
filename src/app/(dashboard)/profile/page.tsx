@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import Image from "next/image";
 import { ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -146,6 +147,7 @@ export default function ProfileSection() {
     const emailToCopy = profile?.inboxEmail || (profile?.username ? `${profile.username}@inbo.club` : "");
     if (!emailToCopy) return;
     navigator.clipboard.writeText(emailToCopy);
+    toast.success('Address copied', { description: emailToCopy });
   };
 
   useEffect(() => {
@@ -190,6 +192,7 @@ export default function ProfileSection() {
 
   const [showEditModal, setShowEditModal] = useState(false);
 
+  // Dynamically calculate profile completion based on required fields
   const user = useMemo(() => {
     const displayName = profile?.name || profile?.username || "Your name";
     const email = profile?.email || "";
@@ -201,16 +204,17 @@ export default function ProfileSection() {
         })
       : "";
 
-    const completenessFields = [
-      profile?.name,
-      profile?.username,
-      profile?.birthYear,
-      profile?.gender,
-      profile?.inboxEmail || (profile?.isInboxCreated ? "yes" : null),
+    // Define which fields are required for completion
+    const completionFields = [
+      { label: "Name", value: profile?.name },
+      { label: "Username", value: profile?.username },
+      { label: "Birth Year", value: profile?.birthYear },
+      { label: "Gender", value: profile?.gender },
+      { label: "Inbox Email", value: profile?.inboxEmail || (profile?.isInboxCreated ? "yes" : null) },
     ];
-    const filled = completenessFields.filter(Boolean).length;
-    const completeness = completenessFields.length
-      ? Math.round((filled / completenessFields.length) * 100)
+    const filled = completionFields.filter(f => !!f.value).length;
+    const completeness = completionFields.length
+      ? Math.round((filled / completionFields.length) * 100)
       : 0;
 
     const inboxEmail = profile?.inboxEmail || (profile?.username ? `${profile.username}@inbo.club` : "");

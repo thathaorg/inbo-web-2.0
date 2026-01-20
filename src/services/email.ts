@@ -15,6 +15,7 @@ export interface EmailListItem {
   newsletterName?: string | null;
   newsletterLogo?: string | null;
   firstImage?: string | null;
+  readingProgress?: number | null;
 }
 
 export interface InboxResponse extends Array<EmailListItem> { }
@@ -100,6 +101,7 @@ type EmailListItemApi = Partial<EmailListItem> & {
   is_read?: boolean;
   is_favorite?: boolean;
   is_read_later?: boolean;
+  reading_progress?: number | null;
   newsletter_name?: string | null;
   newsletter_logo?: string | null;
   first_image?: string | null;
@@ -266,18 +268,28 @@ export function extractFirstImage(htmlContent: string | null | undefined): strin
 }
 
 /**
- * Fetch newsletter provider logo from directory API
+ * Newsletter Provider Details
+ */
+export interface NewsletterProviderDetails {
+  name: string | null;
+  logo: string | null;
+  description?: string | null;
+  website?: string | null;
+}
+
+/**
+ * Fetch newsletter provider details (logo, name, description)
  * Uses sender email domain to search for matching provider
  */
-async function fetchNewsletterProviderLogo(sender: string): Promise<string | null> {
+export async function fetchNewsletterProviderDetails(sender: string): Promise<NewsletterProviderDetails | null> {
   if (!sender) return null;
 
   const cacheKey = CACHE_KEYS.NEWSLETTER_PROVIDER(sender);
 
   // Check cache first
-  const cached = cacheManager.get<{ logo: string | null; name: string | null }>(cacheKey);
+  const cached = cacheManager.get<NewsletterProviderDetails>(cacheKey);
   if (cached !== null) {
-    return cached.logo;
+    return cached;
   }
 
   try {
@@ -296,23 +308,36 @@ async function fetchNewsletterProviderLogo(sender: string): Promise<string | nul
 
     if (response.data?.results && response.data.results.length > 0) {
       const provider = response.data.results[0];
-      const logo = provider.logo || provider.image || null;
-      const name = provider.name || null;
+      const details: NewsletterProviderDetails = {
+        name: provider.name || null,
+        logo: provider.logo || provider.image || null,
+        description: provider.description || null,
+        website: provider.website || provider.domain || null
+      };
 
       // Cache the result with long TTL (rarely changes)
-      cacheManager.set(cacheKey, { logo, name }, CACHE_TTL.VERY_LONG, true);
-      return logo;
+      cacheManager.set(cacheKey, details, CACHE_TTL.VERY_LONG, true);
+      return details;
     }
 
     // Cache null result to avoid repeated failed requests
-    cacheManager.set(cacheKey, { logo: null, name: null }, CACHE_TTL.LONG, true);
+    // Use a special object to indicate "not found" but cached
+    cacheManager.set(cacheKey, { name: null, logo: null }, CACHE_TTL.LONG, true);
   } catch (error) {
     // Silently fail - newsletter logos are optional, backend endpoint has issues
-    // Cache null result to avoid repeated failed requests
-    cacheManager.set(cacheKey, { logo: null, name: null }, CACHE_TTL.MEDIUM);
+    cacheManager.set(cacheKey, { name: null, logo: null }, CACHE_TTL.MEDIUM);
   }
 
   return null;
+}
+
+/**
+ * Fetch newsletter provider logo from directory API
+ * Uses sender email domain to search for matching provider
+ */
+export async function fetchNewsletterProviderLogo(sender: string): Promise<string | null> {
+  const details = await fetchNewsletterProviderDetails(sender);
+  return details?.logo || null;
 }
 
 /**

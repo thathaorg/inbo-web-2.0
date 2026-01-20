@@ -94,7 +94,11 @@ class AuthService {
     console.log("🎫 Access Token:", response.data.accessToken?.substring(0, 20) + '...');
     console.log("🔄 Refresh Token:", response.data.refreshToken?.substring(0, 20) + '...');
     
-    this.setTokens(response.data.accessToken, response.data.refreshToken);
+    this.setTokens(
+      response.data.accessToken,
+      response.data.refreshToken,
+      response.data.expiresAt
+    );
     
     // Verify tokens were saved
     const savedToken = Cookies.get('access_token');
@@ -142,7 +146,11 @@ class AuthService {
    */
   async googleAuth(data: GoogleAuthRequest): Promise<VerifyOTPResponse> {
     const response = await apiClient.post<VerifyOTPResponse>(AUTH_ENDPOINTS.GOOGLE_AUTH, data);
-    this.setTokens(response.data.accessToken, response.data.refreshToken);
+    this.setTokens(
+      response.data.accessToken, 
+      response.data.refreshToken,
+      response.data.expiresAt
+    );
     return response.data;
   }
 
@@ -151,7 +159,11 @@ class AuthService {
    */
   async appleAuth(data: AppleAuthRequest): Promise<VerifyOTPResponse> {
     const response = await apiClient.post<VerifyOTPResponse>(AUTH_ENDPOINTS.APPLE_AUTH, data);
-    this.setTokens(response.data.accessToken, response.data.refreshToken);
+    this.setTokens(
+      response.data.accessToken, 
+      response.data.refreshToken,
+      response.data.expiresAt
+    );
     return response.data;
   }
 
@@ -219,7 +231,7 @@ class AuthService {
    * - secure: true in production (HTTPS)
    * - path: '/' to ensure cookies are available across all pages
    */
-  private setTokens(accessToken: string, refreshToken: string): void {
+  private setTokens(accessToken: string, refreshToken: string, expiresAt?: string): void {
     const isSecure = typeof window !== 'undefined' && window.location.protocol === 'https:';
     
     // Cookie options for proper persistence
@@ -239,6 +251,10 @@ class AuthService {
     
     Cookies.set('access_token', accessToken, accessTokenOptions);
     Cookies.set('refresh_token', refreshToken, refreshTokenOptions);
+
+    if (expiresAt) {
+      Cookies.set('token_expires_at', expiresAt, accessTokenOptions);
+    }
     
     // Verify cookies were set
     const savedAccess = Cookies.get('access_token');
@@ -246,6 +262,7 @@ class AuthService {
     console.log('🔐 Tokens saved:', {
       accessToken: savedAccess ? '✓ SET' : '✗ FAILED',
       refreshToken: savedRefresh ? '✓ SET' : '✗ FAILED',
+      expiresAt: expiresAt ? '✓ SET' : 'Skipped'
     });
   }
 
